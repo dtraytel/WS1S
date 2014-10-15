@@ -38,6 +38,8 @@ infix 4 upto
 fun ((i: int) upto j) =
   if i > j then [] else i :: (i + 1 upto j);
 
+(* The decision procedure *)
+
 structure WS1S = struct
 
 datatype kind = FO | SO;
@@ -303,6 +305,13 @@ val invalid_m2l = eqv_m2l (0, 0) (B true);
 val valid = eqv (0, 0) (B true);
 val invalid = eqv (0, 0) (B false);
 
+end;
+
+(* Some tests *)
+local
+  open WS1S;
+in
+
 val tt =
     [ All (FO, Ex (FO, Less (1, 0)))
     , Ex (FO, Ex (FO, Less (1, 0)))
@@ -368,12 +377,6 @@ fun PSI n = All (FO, (IMP
 
 fun psi_test_m2l n = eqv_m2l (0, n + 1) (B true) (PSI n);
 fun psi_test n = eqv (0, n + 1) (B true) (PSI n);
-
-end;
-
-local
-  open WS1S;
-in
 
 fun main () =
   if
