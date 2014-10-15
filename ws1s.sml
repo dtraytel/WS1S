@@ -302,7 +302,7 @@ fun eqv_m2l mn = bisim (mk_alph mn) restrict deriv nullable;
 fun eqv mn = bisim (mk_alph mn) restrict deriv (final mn);
 
 val valid_m2l = eqv_m2l (0, 0) (B true);
-val invalid_m2l = eqv_m2l (0, 0) (B true);
+val invalid_m2l = eqv_m2l (0, 0) (B false);
 val valid = eqv (0, 0) (B true);
 val invalid = eqv (0, 0) (B false);
 
@@ -385,7 +385,9 @@ fun main () =
     eqv (1, 0) (Ex (SO, In (0, 0))) (Not (Less (0, 0))) andalso
     test () andalso
     List.all psi_test_m2l (0 upto 15) andalso
-    List.all psi_test (0 upto 15)
+    List.all psi_test (0 upto 15) andalso
+    invalid (Ex (SO, All (FO, In (0, 0)))) andalso
+    valid_m2l (Ex (SO, All (FO, In (0, 0))))
   then print "ok\n"
   else print "error\n"
 
