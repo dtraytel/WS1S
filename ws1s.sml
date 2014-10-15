@@ -1,3 +1,5 @@
+(* Author: Dmitriy Traytel *)
+
 (* Misc list functions *)
 fun fold _ [] y = y
   | fold f (x :: xs) y = fold f xs (f x y);
@@ -39,7 +41,6 @@ fun ((i: int) upto j) =
   if i > j then [] else i :: (i + 1 upto j);
 
 (* The decision procedure *)
-
 structure WS1S = struct
 
 datatype kind = FO | SO;
