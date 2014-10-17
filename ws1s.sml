@@ -52,6 +52,7 @@ datatype ws1s =
   Q of int     |
   Less of int * int | LessF of int * int | LessT of int * int |
   In of int * int   | InT of int * int   |
+  Eps of ws1s |
   Or of ws1s * ws1s | Not of ws1s        |
   Ex of kind * ws1s;
 
@@ -79,6 +80,9 @@ fun less (B b1) (B b2) = not b1 andalso b2
   | less (InT (i1, j1)) (InT (i2, j2)) = i1 < i2 orelse (i1 = i2 andalso j1 < j2) 
   | less (InT _) _ = true
   | less _ (InT _) = false
+  | less (Eps f) (Eps g) = less f g
+  | less (Eps _) _ = true
+  | less _ (Eps _) = false
   | less (Or (f1, g1)) (Or (f2, g2)) = less f1 f2 orelse (f1 = f2 andalso less g1 g2) 
   | less (Or _) _ = true
   | less _ (Or _) = false
@@ -101,6 +105,7 @@ fun find FO l (Q i) = i = l
   | find SO l (In (_, j)) = j = l
   | find FO l (InT (i, _)) = i = l
   | find SO l (InT (_, j)) = j = l
+  | find k l (Eps f) = find k l f
   | find k l (Not f) = find k l f
   | find k l (Or (f, g)) = (find k l f orelse find k l g)
   | find k l (Ex (k', f)) = find k (if k = k' then l + 1 else l) f
@@ -112,6 +117,7 @@ fun fov (Q i) = [i]
   | fov (LessT (i, j)) = [i, j]
   | fov (In (i, _)) = [i]
   | fov (InT (i, _)) = [i]
+  | fov (Eps f) = fov f
   | fov (Not f) = fov f
   | fov (Or (f, g)) = union (op =) (fov f) (fov g)
   | fov (Ex (FO, f)) = map (fn x => x - 1) (remove (op =) 0 (fov f))
@@ -128,6 +134,7 @@ fun decr FO l (Q i) = Q (dec l i)
   | decr SO l (In (i, j)) = In (i, dec l j)
   | decr FO l (InT (i, j)) = InT (dec l i, j)
   | decr SO l (InT (i, j)) = InT (i, dec l j)
+  | decr k l (Eps f) = Eps (decr k l f)
   | decr k l (Not f) = Not (decr k l f)
   | decr k l (Or (f, g)) = Or (decr k l f, decr k l g)
   | decr k l (Ex (k', f)) = Ex (k', decr k (if k = k' then l + 1 else l) f)
@@ -170,6 +177,7 @@ fun nEx k (Or (f, g)) = nOr (nEx k f) (nEx k g)
 
 fun norm (Or (f, g)) = nOr (norm f) (norm g)
   | norm (Not f) = nNot (norm f)
+  | norm (Eps f) = Eps (norm f)
   | norm (Ex (k, f)) = nEx k (norm f)
   | norm f = f;
 
@@ -200,6 +208,7 @@ fun deriv (bs1, _) (Q i) = if nth bs1 i then B true else Q i
       | (true, true) => B true
       | _ => B false)
   | deriv x (Or (f, g)) = nOr (deriv x f) (deriv x g)
+  | deriv x (Eps f) = deriv x f
   | deriv x (Not f) = nNot (deriv x f)
   | deriv x (Ex (k, f)) = nEx k (nOr (deriv (extend k true x) f) (deriv (extend k false x) f))
   | deriv _ b = b;
@@ -216,6 +225,7 @@ fun nullable (B b) = b
   | nullable (InT _) = true
   | nullable (Or (f, g)) = nullable f orelse nullable g
   | nullable (Not f) = not (nullable f)
+  | nullable (Eps _) = true
   | nullable (Ex (_, f)) = nullable f
 
 fun rderiv (bs1, _) (Q i) = if nth bs1 i then B true else Q i
@@ -240,6 +250,7 @@ fun rderiv (bs1, _) (Q i) = if nth bs1 i then B true else Q i
         (true, false) => In (i, j)
       | _ => InT (i, j))
   | rderiv x (Or (f, g)) = nOr (rderiv x f) (rderiv x g)
+  | rderiv x (Eps f) = rderiv x f
   | rderiv x (Not f) = nNot (rderiv x f)
   | rderiv x (Ex (k, f)) = nEx k (nOr (rderiv (extend k true x) f) (rderiv (extend k false x) f))
   | rderiv _ b = b;
@@ -253,6 +264,7 @@ fun futurize (m, n) f =
 
 fun finalize mn (Ex (k, f)) = futurize mn (nEx k (finalize (suc k mn) f))
   | finalize mn (Or (f, g)) = nOr (finalize mn f) (finalize mn g)
+  | finalize mn (Eps f) = Eps (finalize mn f)
   | finalize mn (Not f) = nNot (finalize mn f)
   | finalize _ f = f;
 
@@ -267,6 +279,7 @@ fun restrict f =
   let
     fun restr (Or (f, g)) = nOr (restr f) (restr g)
       | restr (Not f) = nNot (restr f)
+      | restr (Eps f) = Eps (restr f)
       | restr (Ex (FO, f)) = nEx FO (nAnd (restr f) (Q 0))
       | restr (Ex (SO, f)) = nEx SO (restr f)
       | restr f = f;
@@ -301,8 +314,8 @@ fun mk_alph (m, n) = map_product (fn a => fn b => (a, b)) (bitvectors m) (bitvec
 fun eqv_m2l mn = bisim (mk_alph mn) restrict deriv nullable;
 fun eqv mn = bisim (mk_alph mn) restrict deriv (final mn);
 
-val valid_m2l = eqv_m2l (0, 0) (B true);
-val invalid_m2l = eqv_m2l (0, 0) (B false);
+val valid_m2l = eqv_m2l (0, 0) (B true) o Eps;
+val invalid_m2l = eqv_m2l (0, 0) (Eps (B false)) o Eps;
 val valid = eqv (0, 0) (B true);
 val invalid = eqv (0, 0) (B false);
 
@@ -387,7 +400,9 @@ fun main () =
     List.all psi_test_m2l (0 upto 15) andalso
     List.all psi_test (0 upto 15) andalso
     invalid (Ex (SO, All (FO, In (0, 0)))) andalso
-    valid_m2l (Ex (SO, All (FO, In (0, 0))))
+    valid_m2l (Ex (SO, All (FO, In (0, 0)))) andalso
+    valid (All (FO, Ex (FO, Less (1, 0)))) andalso
+    invalid_m2l (All (FO, Ex (FO, Less (1, 0))))
   then print "ok\n"
   else print "error\n"
 
