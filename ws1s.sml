@@ -157,21 +157,6 @@ fun nNot (Not f) = f
   | nNot (B b) = B (not b)
   | nNot f = Not f;
 
-fun inc l i = (if l <= i then i + 1 else i);
-
-fun incr FO l (Q i) = Q (inc l i) 
-  | incr FO l (Less (i, j)) = Less (inc l i, inc l j)
-  | incr FO l (LessF (i, j)) = LessF (inc l i, inc l j)
-  | incr FO l (LessT (i, j)) = LessT (inc l i, inc l j)
-  | incr FO l (In (i, j)) = In (inc l i, j)
-  | incr SO l (In (i, j)) = In (i, inc l j)
-  | incr FO l (InT (i, j)) = InT (inc l i, j)
-  | incr SO l (InT (i, j)) = InT (i, inc l j)
-  | incr k l (Not f) = Not (incr k l f)
-  | incr k l (Or (f, g)) = Or (incr k l f, incr k l g)
-  | incr k l (Ex (k', f)) = Ex (k', incr k (if k = k' then l + 1 else l) f)
-  | incr _ _ f = f;
-
 fun nEx k (Or (f, g)) = nOr (nEx k f) (nEx k g)
   | nEx k f = (if find k 0 f then Ex (k, f) else decr k 0 f);
 
