@@ -31,6 +31,6 @@ There are few deviations from the description in the paper:
   for a stronger normalization function (that is doing strictly more than ACI).
 
 For readers unfamiliar with Isabelle, two separate implementations of the
-algorithm in Standard ML also available: one automatically extracted using
+algorithm in Standard ML are also available: one automatically extracted using
 Isabelle's code generator with guaranteed soundness (WS1S_Generated.sml) and one
 unverified manual minimal implementation (WS1S.sml).
