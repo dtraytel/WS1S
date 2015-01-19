@@ -9,43 +9,6 @@ lemma
   and x y X :: nat
   and \<phi> \<psi> :: formula
   shows
-  "I \<Turnstile> T \<longleftrightarrow> True"
-  "I \<Turnstile> F \<longleftrightarrow> False"
-  "I \<Turnstile> (FO x) \<longleftrightarrow> I[x]\<^sub>1 \<noteq> {}"
-  "I \<Turnstile> (x < y) \<longleftrightarrow> Min (I[x]\<^sub>1) < Min (I[y]\<^sub>1) \<and> I[x]\<^sub>1 \<noteq> {} \<and> I[y]\<^sub>1 \<noteq> {}"
-  "I \<Turnstile> (x \<in> X) \<longleftrightarrow> Min (I[x]\<^sub>1) \<in> I[X]\<^sub>2 \<and> I[x]\<^sub>1 \<noteq> {} \<and> finite (I[X]\<^sub>2)"
-  "I \<Turnstile> (\<not> \<phi>) \<longleftrightarrow> \<not> (I \<Turnstile> \<phi>)"
-  "I \<Turnstile> (\<phi> \<or> \<psi>) \<longleftrightarrow> (I \<Turnstile> \<phi> \<or> I \<Turnstile> \<psi>)"
-  "I \<Turnstile> (FAnd \<phi> \<psi>) \<longleftrightarrow> (I \<Turnstile> \<phi> \<and> I \<Turnstile> \<psi>)"
-  "I \<Turnstile> (\<exists>\<^sub>1 \<phi>) \<longleftrightarrow> (\<exists>P. finite P \<and> P::\<^sub>1\<^sub>a\<^sub>s\<^sub>2I \<Turnstile> \<phi>)"
-  "I \<Turnstile> (\<exists>\<^sub>2 \<phi>) \<longleftrightarrow> (\<exists>P. finite P \<and> P::\<^sub>2I \<Turnstile> \<phi>)"
-  by (auto 0 2 simp: Let_def fMin.rep_eq fmember.rep_eq
-    fset_inverse intro: exI[of _ "fset P" for P])
-
-lemma
-  fixes I :: interp
-  and x y X :: nat
-  and \<phi> \<psi> :: formula
-  shows
-  "I \<Turnstile>\<^sub>< T \<longleftrightarrow> True"
-  "I \<Turnstile>\<^sub>< F \<longleftrightarrow> False"
-  "I \<Turnstile>\<^sub>< (FO x) \<longleftrightarrow> I[x]\<^sub>1 \<noteq> {}"
-  "I \<Turnstile>\<^sub>< (x < y) \<longleftrightarrow> Min (I[x]\<^sub>1) < Min (I[y]\<^sub>1) \<and> I[x]\<^sub>1 \<noteq> {} \<and> I[y]\<^sub>1 \<noteq> {}"
-  "I \<Turnstile>\<^sub>< (x \<in> X) \<longleftrightarrow> Min (I[x]\<^sub>1) \<in> I[X]\<^sub>2 \<and> I[x]\<^sub>1 \<noteq> {} \<and> finite (I[X]\<^sub>2)"
-  "I \<Turnstile>\<^sub>< (\<not> \<phi>) \<longleftrightarrow> \<not> (I \<Turnstile>\<^sub>< \<phi>)"
-  "I \<Turnstile>\<^sub>< (\<phi> \<or> \<psi>) \<longleftrightarrow> (I \<Turnstile>\<^sub>< \<phi> \<or> I \<Turnstile>\<^sub>< \<psi>)"
-  "I \<Turnstile>\<^sub>< (FAnd \<phi> \<psi>) \<longleftrightarrow> (I \<Turnstile>\<^sub>< \<phi> \<and> I \<Turnstile>\<^sub>< \<psi>)"
-  "I \<Turnstile>\<^sub>< (\<exists>\<^sub>1 \<phi>) \<longleftrightarrow> (\<exists>P. (\<forall>p \<in> P. p <# I) \<and> P::\<^sub>1\<^sub>a\<^sub>s\<^sub>2I \<Turnstile>\<^sub>< \<phi>)"
-  "I \<Turnstile>\<^sub>< (\<exists>\<^sub>2 \<phi>) \<longleftrightarrow> (\<exists>P. (\<forall>p \<in> P. p <# I) \<and> P::\<^sub>2I \<Turnstile>\<^sub>< \<phi>)"
-  by (auto 0 2 simp: Let_def fMin.rep_eq fmember.rep_eq
-    len_leq_iff Abs_fset_inverse bounded_nat_set_is_finite fset_inverse
-    elim: exI[of _ "Abs_fset P" for P, OF conjI, rotated])
-
-lemma
-  fixes I :: interp
-  and x y X :: nat
-  and \<phi> \<psi> :: formula
-  shows
   "I \<TTurnstile> T \<longleftrightarrow> True"
   "I \<TTurnstile> F \<longleftrightarrow> False"
   "I \<TTurnstile> (FO x) \<longleftrightarrow> I[x]\<^sub>1 \<noteq> {}"
@@ -54,9 +17,10 @@ lemma
   "I \<TTurnstile> (\<not> \<phi>) \<longleftrightarrow> \<not> (I \<TTurnstile> \<phi>)"
   "I \<TTurnstile> (\<phi> \<or> \<psi>) \<longleftrightarrow> (I \<TTurnstile> \<phi> \<or> I \<TTurnstile> \<psi>)"
   "I \<TTurnstile> (FAnd \<phi> \<psi>) \<longleftrightarrow> (I \<TTurnstile> \<phi> \<and> I \<TTurnstile> \<psi>)"
-  "I \<TTurnstile> (\<exists>\<^sub>1 \<phi>) \<longleftrightarrow> (\<exists>p. p::\<^sub>1I \<TTurnstile> \<phi>)"
+  "I \<TTurnstile> (\<exists>\<^sub>1 \<phi>) \<longleftrightarrow> (\<exists>P. finite P \<and> P::\<^sub>1\<^sub>a\<^sub>s\<^sub>2I \<TTurnstile> \<phi>)"
   "I \<TTurnstile> (\<exists>\<^sub>2 \<phi>) \<longleftrightarrow> (\<exists>P. finite P \<and> P::\<^sub>2I \<TTurnstile> \<phi>)"
-  by (auto simp add: Let_def fMin.rep_eq fmember.rep_eq)
+  by (auto 0 2 simp: Let_def fMin.rep_eq fmember.rep_eq
+    fset_inverse intro: exI[of _ "fset P" for P])
 
 lemma
   fixes I :: interp
@@ -70,8 +34,44 @@ lemma
   "I \<TTurnstile>\<^sub>< (x \<in> X) \<longleftrightarrow> Min (I[x]\<^sub>1) \<in> I[X]\<^sub>2 \<and> I[x]\<^sub>1 \<noteq> {} \<and> finite (I[X]\<^sub>2)"
   "I \<TTurnstile>\<^sub>< (\<not> \<phi>) \<longleftrightarrow> \<not> (I \<TTurnstile>\<^sub>< \<phi>)"
   "I \<TTurnstile>\<^sub>< (\<phi> \<or> \<psi>) \<longleftrightarrow> (I \<TTurnstile>\<^sub>< \<phi> \<or> I \<TTurnstile>\<^sub>< \<psi>)"
-  "I \<TTurnstile>\<^sub>< (\<exists>\<^sub>1 \<phi>) \<longleftrightarrow> (\<exists>p <# I. p::\<^sub>1I \<TTurnstile>\<^sub>< \<phi>)"
+  "I \<TTurnstile>\<^sub>< (FAnd \<phi> \<psi>) \<longleftrightarrow> (I \<TTurnstile>\<^sub>< \<phi> \<and> I \<TTurnstile>\<^sub>< \<psi>)"
+  "I \<TTurnstile>\<^sub>< (\<exists>\<^sub>1 \<phi>) \<longleftrightarrow> (\<exists>P. (\<forall>p \<in> P. p <# I) \<and> P::\<^sub>1\<^sub>a\<^sub>s\<^sub>2I \<TTurnstile>\<^sub>< \<phi>)"
   "I \<TTurnstile>\<^sub>< (\<exists>\<^sub>2 \<phi>) \<longleftrightarrow> (\<exists>P. (\<forall>p \<in> P. p <# I) \<and> P::\<^sub>2I \<TTurnstile>\<^sub>< \<phi>)"
+  by (auto 0 2 simp: Let_def fMin.rep_eq fmember.rep_eq
+    len_leq_iff Abs_fset_inverse bounded_nat_set_is_finite fset_inverse
+    elim: exI[of _ "Abs_fset P" for P, OF conjI, rotated])
+
+lemma
+  fixes I :: interp
+  and x y X :: nat
+  and \<phi> \<psi> :: formula
+  shows
+  "I \<Turnstile> T \<longleftrightarrow> True"
+  "I \<Turnstile> F \<longleftrightarrow> False"
+  "I \<Turnstile> (FO x) \<longleftrightarrow> I[x]\<^sub>1 \<noteq> {}"
+  "I \<Turnstile> (x < y) \<longleftrightarrow> Min (I[x]\<^sub>1) < Min (I[y]\<^sub>1) \<and> I[x]\<^sub>1 \<noteq> {} \<and> I[y]\<^sub>1 \<noteq> {}"
+  "I \<Turnstile> (x \<in> X) \<longleftrightarrow> Min (I[x]\<^sub>1) \<in> I[X]\<^sub>2 \<and> I[x]\<^sub>1 \<noteq> {} \<and> finite (I[X]\<^sub>2)"
+  "I \<Turnstile> (\<not> \<phi>) \<longleftrightarrow> \<not> (I \<Turnstile> \<phi>)"
+  "I \<Turnstile> (\<phi> \<or> \<psi>) \<longleftrightarrow> (I \<Turnstile> \<phi> \<or> I \<Turnstile> \<psi>)"
+  "I \<Turnstile> (FAnd \<phi> \<psi>) \<longleftrightarrow> (I \<Turnstile> \<phi> \<and> I \<Turnstile> \<psi>)"
+  "I \<Turnstile> (\<exists>\<^sub>1 \<phi>) \<longleftrightarrow> (\<exists>p. p::\<^sub>1I \<Turnstile> \<phi>)"
+  "I \<Turnstile> (\<exists>\<^sub>2 \<phi>) \<longleftrightarrow> (\<exists>P. finite P \<and> P::\<^sub>2I \<Turnstile> \<phi>)"
+  by (auto simp add: Let_def fMin.rep_eq fmember.rep_eq)
+
+lemma
+  fixes I :: interp
+  and x y X :: nat
+  and \<phi> \<psi> :: formula
+  shows
+  "I \<Turnstile>\<^sub>< T \<longleftrightarrow> True"
+  "I \<Turnstile>\<^sub>< F \<longleftrightarrow> False"
+  "I \<Turnstile>\<^sub>< (FO x) \<longleftrightarrow> I[x]\<^sub>1 \<noteq> {}"
+  "I \<Turnstile>\<^sub>< (x < y) \<longleftrightarrow> Min (I[x]\<^sub>1) < Min (I[y]\<^sub>1) \<and> I[x]\<^sub>1 \<noteq> {} \<and> I[y]\<^sub>1 \<noteq> {}"
+  "I \<Turnstile>\<^sub>< (x \<in> X) \<longleftrightarrow> Min (I[x]\<^sub>1) \<in> I[X]\<^sub>2 \<and> I[x]\<^sub>1 \<noteq> {} \<and> finite (I[X]\<^sub>2)"
+  "I \<Turnstile>\<^sub>< (\<not> \<phi>) \<longleftrightarrow> \<not> (I \<Turnstile>\<^sub>< \<phi>)"
+  "I \<Turnstile>\<^sub>< (\<phi> \<or> \<psi>) \<longleftrightarrow> (I \<Turnstile>\<^sub>< \<phi> \<or> I \<Turnstile>\<^sub>< \<psi>)"
+  "I \<Turnstile>\<^sub>< (\<exists>\<^sub>1 \<phi>) \<longleftrightarrow> (\<exists>p <# I. p::\<^sub>1I \<Turnstile>\<^sub>< \<phi>)"
+  "I \<Turnstile>\<^sub>< (\<exists>\<^sub>2 \<phi>) \<longleftrightarrow> (\<exists>P. (\<forall>p \<in> P. p <# I) \<and> P::\<^sub>2I \<Turnstile>\<^sub>< \<phi>)"
   by (auto simp add: Let_def fMin.rep_eq fmember.rep_eq)
    
 
@@ -84,7 +84,7 @@ theorem Theorem1:
   shows "L \<sim> K \<Longrightarrow> L = K"
   by (coinduction arbitrary: K L) auto
 
-lemma Lemma2:
+lemma Theorem2:
   fixes \<Sigma> :: "'a list"
   and L :: "'t \<Rightarrow> 'a language"
   and L' :: "'s \<Rightarrow> 'a language"
@@ -128,8 +128,8 @@ lemma Theorem3:
   and a :: "bool list \<times> bool list"
   assumes "wf (#\<^sub>V I) \<phi>"
   and "#\<^sub>V I = |a|"
-  shows "I \<Turnstile> \<delta> a \<phi> \<longleftrightarrow> CONS a I \<Turnstile> \<phi>"
-  and "I \<Turnstile>\<^sub>< \<delta> a \<phi> \<longleftrightarrow> CONS a I \<Turnstile>\<^sub>< \<phi>"
+  shows "I \<TTurnstile> \<delta> a \<phi> \<longleftrightarrow> CONS a I \<TTurnstile> \<phi>"
+  and "I \<TTurnstile>\<^sub>< \<delta> a \<phi> \<longleftrightarrow> CONS a I \<TTurnstile>\<^sub>< \<phi>"
   by (rule WS1S.satisfies_lderiv[OF assms], rule WS1S.satisfies_bounded_lderiv[OF assms])
 
 lemma Theorem4:
@@ -155,7 +155,7 @@ lemma Theorem6:
   and a :: "bool list \<times> bool list"
   assumes "wf (#\<^sub>V I) \<phi>"
   and "#\<^sub>V I = |a|"
-  shows "I \<Turnstile>\<^sub>< \<rho> a \<phi> \<longleftrightarrow> SNOC a I \<Turnstile>\<^sub>< \<phi>"
+  shows "I \<TTurnstile>\<^sub>< \<rho> a \<phi> \<longleftrightarrow> SNOC a I \<TTurnstile>\<^sub>< \<phi>"
   by (rule WS1S.satisfies_bounded_rderiv[OF assms])
 
 lemma Theorem71:
@@ -163,22 +163,22 @@ lemma Theorem71:
   and I :: interp
   assumes "wf (#\<^sub>V I) \<phi>" 
   and "#I = 0"
-  shows "\<o>\<^sub>< \<phi> \<longleftrightarrow> I \<Turnstile>\<^sub>< \<phi>"
+  shows "\<o>\<^sub>< \<phi> \<longleftrightarrow> I \<TTurnstile>\<^sub>< \<phi>"
   using assms by (auto simp: WS1S.nullable_satisfies_bounded)
 
 lemma Theorem72:
   fixes \<phi> :: formula
   and I :: interp
   assumes "wf (#\<^sub>V I) \<phi>" 
-  shows "I \<Turnstile>\<^sub>< futurize (#\<^sub>V I) \<phi> \<longleftrightarrow>
-    (\<exists>k. (SNOC (zero (#\<^sub>V I)) ^^ k) I \<Turnstile>\<^sub>< \<phi>)"
+  shows "I \<TTurnstile>\<^sub>< futurize (#\<^sub>V I) \<phi> \<longleftrightarrow>
+    (\<exists>k. (SNOC (zero (#\<^sub>V I)) ^^ k) I \<TTurnstile>\<^sub>< \<phi>)"
   using assms by (auto simp: WS1S.satisfies_bounded_fut)
 
 lemma Theorem73:
   fixes \<phi> :: formula
   and I :: interp
   assumes "wf (#\<^sub>V I) \<phi>" 
-  shows "I \<Turnstile>\<^sub>< \<lfloor>\<phi>\<rfloor>\<^bsub>(#\<^sub>V I)\<^esub> \<longleftrightarrow> I \<Turnstile> \<phi>"
+  shows "I \<TTurnstile>\<^sub>< \<lfloor>\<phi>\<rfloor>\<^bsub>(#\<^sub>V I)\<^esub> \<longleftrightarrow> I \<TTurnstile> \<phi>"
   using assms by (auto simp: WS1S.finalize_satisfies)
 
 lemma Theorem74:
@@ -186,25 +186,37 @@ lemma Theorem74:
   and I :: interp
   assumes "wf (#\<^sub>V I) \<phi>" 
   and "#I = 0"
-  shows "\<o> (#\<^sub>V I) \<phi> \<longleftrightarrow> I \<Turnstile> \<phi>"
+  shows "\<o> (#\<^sub>V I) \<phi> \<longleftrightarrow> I \<TTurnstile> \<phi>"
   using assms by (auto simp: WS1S.final_satisfies)
 
 (*<*)
-notation WS1S.language ("L")
-notation WS1S.language\<^sub>b ("L\<^sub><")
+notation WS1S.language ("\<L>")
+notation WS1S.language\<^sub>b ("\<L>\<^sub><")
+notation WS1S.lang ("L")
+notation WS1S.lang\<^sub>b ("L\<^sub><")
 (*>*)
 
 
 lemma language_def:
-  "L n \<phi> = {enc I | I. I \<TTurnstile> \<phi> \<and> (\<forall>x\<in>FOV \<phi>. I[x]\<^sub>1 \<noteq> {}) \<and> #\<^sub>V I = n}"
-  "L\<^sub>< n \<phi> = {enc I | I. I \<TTurnstile>\<^sub>< \<phi> \<and> (\<forall>x\<in>FOV \<phi>. I[x]\<^sub>1 \<noteq> {}) \<and> #\<^sub>V I = n}"
-  unfolding WS1S.language_def WS1S.language\<^sub>b_def sat_alt sat\<^sub>b_alt by simp_all
+  "L n \<phi> = {enc I | I. I \<TTurnstile> \<phi> \<and> #\<^sub>V I = n}"
+  "L\<^sub>< n \<phi> = {enc I | I. I \<TTurnstile>\<^sub>< \<phi> \<and> #\<^sub>V I = n}"
+  "\<L> n \<phi> = {enc I | I. I \<Turnstile> \<phi> \<and> (\<forall>x\<in>FOV \<phi>. I[x]\<^sub>1 \<noteq> {}) \<and> #\<^sub>V I = n}"
+  "\<L>\<^sub>< n \<phi> = {enc I | I. I \<Turnstile>\<^sub>< \<phi> \<and> (\<forall>x\<in>FOV \<phi>. I[x]\<^sub>1 \<noteq> {}) \<and> #\<^sub>V I = n}"
+  unfolding WS1S.language_def WS1S.language\<^sub>b_def sat_alt sat\<^sub>b_alt
+    WS1S.lang_def WS1S.lang\<^sub>b_def by simp_all
 
 lemma Theorem8:
+  "L n (RESTRICT \<phi>) = \<L> n \<phi>"
+  "L\<^sub>< n (RESTRICT \<phi>) = \<L>\<^sub>< n \<phi>"
+  unfolding  WS1S.lang_def WS1S.lang\<^sub>b_def 
+    WS1S.language\<^sub>b_lang\<^sub>b_RESTRICT WS1S.language_lang_RESTRICT
+    by simp_all
+
+lemma Theorem9:
   fixes \<phi> \<psi> :: formula
   and n :: interp_size
-  shows "eqv n \<phi> \<psi> \<Longrightarrow> L n \<phi> = L n \<psi>"
-  and "eqv\<^sub>< n \<phi> \<psi> \<Longrightarrow> L\<^sub>< n \<phi> = L\<^sub>< n \<psi>"
+  shows "eqv n \<phi> \<psi> \<Longrightarrow> \<L> n \<phi> = \<L> n \<psi>"
+  and "eqv\<^sub>< n \<phi> \<psi> \<Longrightarrow> \<L>\<^sub>< n \<phi> = \<L>\<^sub>< n \<psi>"
   unfolding check_eqv_def bounded_check_eqv_def
   by (drule WS1S.soundness, erule injD[OF bij_is_inj[OF to_language_bij]])
      (drule WS1S.bounded.soundness, erule injD[OF bij_is_inj[OF to_language_bij]])

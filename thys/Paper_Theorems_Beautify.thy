@@ -186,23 +186,23 @@ lemma %invisible len_leq_iff: "len P \<le> n \<longleftrightarrow> (\<forall>p \
   unfolding len_def
   by (auto simp: Suc_le_eq fmember.rep_eq[symmetric] Ball_def intro: fMax_boundedD(1) fMax_in)
 
-primrec satisfies :: "interp \<Rightarrow> formula \<Rightarrow> bool" (infix "\<TTurnstile>" 50) where
-  "I \<TTurnstile> (FBool b) = b"
-| "I \<TTurnstile> (FBase a) = satisfies0 I a"
-| "I \<TTurnstile> (FNot \<phi>) = (\<not> I \<TTurnstile> \<phi>)"
-| "I \<TTurnstile> (FOr \<phi>\<^sub>1 \<phi>\<^sub>2) = (I \<TTurnstile> \<phi>\<^sub>1 \<or> I \<TTurnstile> \<phi>\<^sub>2)"
-| "I \<TTurnstile> (FAnd \<phi>\<^sub>1 \<phi>\<^sub>2) = (I \<TTurnstile> \<phi>\<^sub>1 \<and> I \<TTurnstile> \<phi>\<^sub>2)"
-| "I \<TTurnstile> (FEx k \<phi>) = (case k of WS1S_Formula.FO \<Rightarrow> \<exists>p. p::\<^sub>1I \<TTurnstile> \<phi> | SO \<Rightarrow> \<exists>P. finite P \<and> P::\<^sub>2I \<TTurnstile> \<phi>)"
-| "I \<TTurnstile> (FAll k \<phi>) = (case k of WS1S_Formula.FO \<Rightarrow> \<forall>p. p::\<^sub>1I \<TTurnstile> \<phi> | SO \<Rightarrow> \<forall>P. finite P \<longrightarrow> P::\<^sub>2I \<TTurnstile> \<phi>)"
+primrec satisfies :: "interp \<Rightarrow> formula \<Rightarrow> bool" (infix "\<Turnstile>" 50) where
+  "I \<Turnstile> (FBool b) = b"
+| "I \<Turnstile> (FBase a) = satisfies0 I a"
+| "I \<Turnstile> (FNot \<phi>) = (\<not> I \<Turnstile> \<phi>)"
+| "I \<Turnstile> (FOr \<phi>\<^sub>1 \<phi>\<^sub>2) = (I \<Turnstile> \<phi>\<^sub>1 \<or> I \<Turnstile> \<phi>\<^sub>2)"
+| "I \<Turnstile> (FAnd \<phi>\<^sub>1 \<phi>\<^sub>2) = (I \<Turnstile> \<phi>\<^sub>1 \<and> I \<Turnstile> \<phi>\<^sub>2)"
+| "I \<Turnstile> (FEx k \<phi>) = (case k of WS1S_Formula.FO \<Rightarrow> \<exists>p. p::\<^sub>1I \<Turnstile> \<phi> | SO \<Rightarrow> \<exists>P. finite P \<and> P::\<^sub>2I \<Turnstile> \<phi>)"
+| "I \<Turnstile> (FAll k \<phi>) = (case k of WS1S_Formula.FO \<Rightarrow> \<forall>p. p::\<^sub>1I \<Turnstile> \<phi> | SO \<Rightarrow> \<forall>P. finite P \<longrightarrow> P::\<^sub>2I \<Turnstile> \<phi>)"
 
-primrec satisfies_bounded :: "interp \<Rightarrow> formula \<Rightarrow> bool" (infix "\<TTurnstile>\<^sub><" 50) where
-  "I \<TTurnstile>\<^sub>< (FBool b) = b"
-| "I \<TTurnstile>\<^sub>< (FBase a) = satisfies0 I a"
-| "I \<TTurnstile>\<^sub>< (FNot \<phi>) = (\<not> I \<TTurnstile>\<^sub>< \<phi>)"
-| "I \<TTurnstile>\<^sub>< (FOr \<phi>\<^sub>1 \<phi>\<^sub>2) = (I \<TTurnstile>\<^sub>< \<phi>\<^sub>1 \<or> I \<TTurnstile>\<^sub>< \<phi>\<^sub>2)"
-| "I \<TTurnstile>\<^sub>< (FAnd \<phi>\<^sub>1 \<phi>\<^sub>2) = (I \<TTurnstile>\<^sub>< \<phi>\<^sub>1 \<and> I \<TTurnstile>\<^sub>< \<phi>\<^sub>2)"
-| "I \<TTurnstile>\<^sub>< (FEx k \<phi>) = (case k of WS1S_Formula.FO \<Rightarrow> \<exists>p<#I. p::\<^sub>1I \<TTurnstile>\<^sub>< \<phi> | SO \<Rightarrow> \<exists>P. (\<forall>p \<in> P. p < #I) \<and> P::\<^sub>2I \<TTurnstile>\<^sub>< \<phi>)"
-| "I \<TTurnstile>\<^sub>< (FAll k \<phi>) = (case k of WS1S_Formula.FO \<Rightarrow> \<forall>p<#I. p::\<^sub>1I \<TTurnstile>\<^sub>< \<phi> | SO \<Rightarrow> \<forall>P. (\<forall>p \<in> P. p < #I) \<longrightarrow> P::\<^sub>2I \<TTurnstile>\<^sub>< \<phi>)"
+primrec satisfies_bounded :: "interp \<Rightarrow> formula \<Rightarrow> bool" (infix "\<Turnstile>\<^sub><" 50) where
+  "I \<Turnstile>\<^sub>< (FBool b) = b"
+| "I \<Turnstile>\<^sub>< (FBase a) = satisfies0 I a"
+| "I \<Turnstile>\<^sub>< (FNot \<phi>) = (\<not> I \<Turnstile>\<^sub>< \<phi>)"
+| "I \<Turnstile>\<^sub>< (FOr \<phi>\<^sub>1 \<phi>\<^sub>2) = (I \<Turnstile>\<^sub>< \<phi>\<^sub>1 \<or> I \<Turnstile>\<^sub>< \<phi>\<^sub>2)"
+| "I \<Turnstile>\<^sub>< (FAnd \<phi>\<^sub>1 \<phi>\<^sub>2) = (I \<Turnstile>\<^sub>< \<phi>\<^sub>1 \<and> I \<Turnstile>\<^sub>< \<phi>\<^sub>2)"
+| "I \<Turnstile>\<^sub>< (FEx k \<phi>) = (case k of WS1S_Formula.FO \<Rightarrow> \<exists>p<#I. p::\<^sub>1I \<Turnstile>\<^sub>< \<phi> | SO \<Rightarrow> \<exists>P. (\<forall>p \<in> P. p < #I) \<and> P::\<^sub>2I \<Turnstile>\<^sub>< \<phi>)"
+| "I \<Turnstile>\<^sub>< (FAll k \<phi>) = (case k of WS1S_Formula.FO \<Rightarrow> \<forall>p<#I. p::\<^sub>1I \<Turnstile>\<^sub>< \<phi> | SO \<Rightarrow> \<forall>P. (\<forall>p \<in> P. p < #I) \<longrightarrow> P::\<^sub>2I \<Turnstile>\<^sub>< \<phi>)"
 
 lemma %invisible sat_def:
   fixes I :: interp
@@ -320,7 +320,7 @@ lemma %invisible sat\<^sub>b_def:
   done
 
 lemma %invisible sat_alt:
-  "I \<turnstile> \<phi> \<longleftrightarrow> (I \<TTurnstile> \<phi> \<and> (\<forall>x \<in> FOV \<phi>. I[x]\<^sub>1 \<noteq> {}))"
+  "I \<turnstile> \<phi> \<longleftrightarrow> (I \<Turnstile> \<phi> \<and> (\<forall>x \<in> FOV \<phi>. I[x]\<^sub>1 \<noteq> {}))"
   apply (induct \<phi> arbitrary: I)
   apply (auto simp add: Formula_Operations.sat_def Formula_Operations.FV.simps
      FV_def restrict_def dec_def Let_def fMin.rep_eq fmember.rep_eq split: order.splits prod.splits) [2]
@@ -344,7 +344,7 @@ lemma %invisible sat_alt:
   done
 
 lemma %invisible sat\<^sub>b_alt:
-  "I \<turnstile>\<^sub>< \<phi> \<longleftrightarrow> (I \<TTurnstile>\<^sub>< \<phi> \<and> (\<forall>x \<in> FOV \<phi>. I[x]\<^sub>1 \<noteq> {}))"
+  "I \<turnstile>\<^sub>< \<phi> \<longleftrightarrow> (I \<Turnstile>\<^sub>< \<phi> \<and> (\<forall>x \<in> FOV \<phi>. I[x]\<^sub>1 \<noteq> {}))"
   apply (induct \<phi> arbitrary: I)
   apply (auto simp add: Formula_Operations.sat\<^sub>b_def Formula_Operations.FV.simps
      FV_def restrict_def dec_def Let_def fMin.rep_eq fmember.rep_eq split: order.splits prod.splits) [2]
@@ -369,8 +369,8 @@ lemma %invisible sat\<^sub>b_alt:
   apply (auto 0 3 simp: image_iff split: prod.splits) []
   done
 
-notation WS1S.satisfies (infix "\<Turnstile>" 65)
-notation WS1S.satisfies_bounded (infix "\<Turnstile>\<^sub><" 65)
+notation WS1S.satisfies (infix "\<TTurnstile>" 65)
+notation WS1S.satisfies_bounded (infix "\<TTurnstile>\<^sub><" 65)
 (*>*)
 
 end

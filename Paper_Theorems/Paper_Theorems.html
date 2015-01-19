@@ -26,43 +26,6 @@
   <span class="keyword2">and</span> x y X <span class="delimiter">::</span> nat
   <span class="keyword2">and</span> &phi; &psi; <span class="delimiter">::</span> formula
   <span class="keyword2">shows</span>
-  <span class="string">&quot;I \&lt;Turnstile&gt; T &lt;-&gt; True&quot;</span>
-  <span class="string">&quot;I \&lt;Turnstile&gt; F &lt;-&gt; False&quot;</span>
-  <span class="string">&quot;I \&lt;Turnstile&gt; (FO x) &lt;-&gt; I[x]<span class="hidden">&#8681;</span><sub>1</sub> &ne; {}&quot;</span>
-  <span class="string">&quot;I \&lt;Turnstile&gt; (x &lt; y) &lt;-&gt; Min (I[x]<span class="hidden">&#8681;</span><sub>1</sub>) &lt; Min (I[y]<span class="hidden">&#8681;</span><sub>1</sub>) &and; I[x]<span class="hidden">&#8681;</span><sub>1</sub> &ne; {} &and; I[y]<span class="hidden">&#8681;</span><sub>1</sub> &ne; {}&quot;</span>
-  <span class="string">&quot;I \&lt;Turnstile&gt; (x &isin; X) &lt;-&gt; Min (I[x]<span class="hidden">&#8681;</span><sub>1</sub>) &isin; I[X]<span class="hidden">&#8681;</span><sub>2</sub> &and; I[x]<span class="hidden">&#8681;</span><sub>1</sub> &ne; {} &and; finite (I[X]<span class="hidden">&#8681;</span><sub>2</sub>)&quot;</span>
-  <span class="string">&quot;I \&lt;Turnstile&gt; (&not; &phi;) &lt;-&gt; &not; (I \&lt;Turnstile&gt; &phi;)&quot;</span>
-  <span class="string">&quot;I \&lt;Turnstile&gt; (&phi; &or; &psi;) &lt;-&gt; (I \&lt;Turnstile&gt; &phi; &or; I \&lt;Turnstile&gt; &psi;)&quot;</span>
-  <span class="string">&quot;I \&lt;Turnstile&gt; (FAnd &phi; &psi;) &lt;-&gt; (I \&lt;Turnstile&gt; &phi; &and; I \&lt;Turnstile&gt; &psi;)&quot;</span>
-  <span class="string">&quot;I \&lt;Turnstile&gt; (&exist;<span class="hidden">&#8681;</span><sub>1</sub> &phi;) &lt;-&gt; (&exist;P. finite P &and; P::<span class="hidden">&#8681;</span><sub>1</sub><span class="hidden">&#8681;</span><sub>a</sub><span class="hidden">&#8681;</span><sub>s</sub><span class="hidden">&#8681;</span><sub>2</sub>I \&lt;Turnstile&gt; &phi;)&quot;</span>
-  <span class="string">&quot;I \&lt;Turnstile&gt; (&exist;<span class="hidden">&#8681;</span><sub>2</sub> &phi;) &lt;-&gt; (&exist;P. finite P &and; P::<span class="hidden">&#8681;</span><sub>2</sub>I \&lt;Turnstile&gt; &phi;)&quot;</span>
-  <span class="command">by</span> <span class="delimiter">(</span>auto 0 2 simp<span class="delimiter">:</span> Let_def fMin.rep_eq fmember.rep_eq
-    fset_inverse intro<span class="delimiter">:</span> exI<span class="delimiter">[</span>of _ <span class="string">&quot;fset P&quot;</span> <span class="keyword2">for</span> P<span class="delimiter">]</span><span class="delimiter">)</span>
-
-<span class="command">lemma</span>
-  <span class="keyword2">fixes</span> I <span class="delimiter">::</span> interp
-  <span class="keyword2">and</span> x y X <span class="delimiter">::</span> nat
-  <span class="keyword2">and</span> &phi; &psi; <span class="delimiter">::</span> formula
-  <span class="keyword2">shows</span>
-  <span class="string">&quot;I \&lt;Turnstile&gt;<span class="hidden">&#8681;</span><sub>&lt;</sub> T &lt;-&gt; True&quot;</span>
-  <span class="string">&quot;I \&lt;Turnstile&gt;<span class="hidden">&#8681;</span><sub>&lt;</sub> F &lt;-&gt; False&quot;</span>
-  <span class="string">&quot;I \&lt;Turnstile&gt;<span class="hidden">&#8681;</span><sub>&lt;</sub> (FO x) &lt;-&gt; I[x]<span class="hidden">&#8681;</span><sub>1</sub> &ne; {}&quot;</span>
-  <span class="string">&quot;I \&lt;Turnstile&gt;<span class="hidden">&#8681;</span><sub>&lt;</sub> (x &lt; y) &lt;-&gt; Min (I[x]<span class="hidden">&#8681;</span><sub>1</sub>) &lt; Min (I[y]<span class="hidden">&#8681;</span><sub>1</sub>) &and; I[x]<span class="hidden">&#8681;</span><sub>1</sub> &ne; {} &and; I[y]<span class="hidden">&#8681;</span><sub>1</sub> &ne; {}&quot;</span>
-  <span class="string">&quot;I \&lt;Turnstile&gt;<span class="hidden">&#8681;</span><sub>&lt;</sub> (x &isin; X) &lt;-&gt; Min (I[x]<span class="hidden">&#8681;</span><sub>1</sub>) &isin; I[X]<span class="hidden">&#8681;</span><sub>2</sub> &and; I[x]<span class="hidden">&#8681;</span><sub>1</sub> &ne; {} &and; finite (I[X]<span class="hidden">&#8681;</span><sub>2</sub>)&quot;</span>
-  <span class="string">&quot;I \&lt;Turnstile&gt;<span class="hidden">&#8681;</span><sub>&lt;</sub> (&not; &phi;) &lt;-&gt; &not; (I \&lt;Turnstile&gt;<span class="hidden">&#8681;</span><sub>&lt;</sub> &phi;)&quot;</span>
-  <span class="string">&quot;I \&lt;Turnstile&gt;<span class="hidden">&#8681;</span><sub>&lt;</sub> (&phi; &or; &psi;) &lt;-&gt; (I \&lt;Turnstile&gt;<span class="hidden">&#8681;</span><sub>&lt;</sub> &phi; &or; I \&lt;Turnstile&gt;<span class="hidden">&#8681;</span><sub>&lt;</sub> &psi;)&quot;</span>
-  <span class="string">&quot;I \&lt;Turnstile&gt;<span class="hidden">&#8681;</span><sub>&lt;</sub> (FAnd &phi; &psi;) &lt;-&gt; (I \&lt;Turnstile&gt;<span class="hidden">&#8681;</span><sub>&lt;</sub> &phi; &and; I \&lt;Turnstile&gt;<span class="hidden">&#8681;</span><sub>&lt;</sub> &psi;)&quot;</span>
-  <span class="string">&quot;I \&lt;Turnstile&gt;<span class="hidden">&#8681;</span><sub>&lt;</sub> (&exist;<span class="hidden">&#8681;</span><sub>1</sub> &phi;) &lt;-&gt; (&exist;P. (&forall;p &isin; P. p &lt;# I) &and; P::<span class="hidden">&#8681;</span><sub>1</sub><span class="hidden">&#8681;</span><sub>a</sub><span class="hidden">&#8681;</span><sub>s</sub><span class="hidden">&#8681;</span><sub>2</sub>I \&lt;Turnstile&gt;<span class="hidden">&#8681;</span><sub>&lt;</sub> &phi;)&quot;</span>
-  <span class="string">&quot;I \&lt;Turnstile&gt;<span class="hidden">&#8681;</span><sub>&lt;</sub> (&exist;<span class="hidden">&#8681;</span><sub>2</sub> &phi;) &lt;-&gt; (&exist;P. (&forall;p &isin; P. p &lt;# I) &and; P::<span class="hidden">&#8681;</span><sub>2</sub>I \&lt;Turnstile&gt;<span class="hidden">&#8681;</span><sub>&lt;</sub> &phi;)&quot;</span>
-  <span class="command">by</span> <span class="delimiter">(</span>auto 0 2 simp<span class="delimiter">:</span> Let_def fMin.rep_eq fmember.rep_eq
-    len_leq_iff Abs_fset_inverse bounded_nat_set_is_finite fset_inverse
-    elim<span class="delimiter">:</span> exI<span class="delimiter">[</span>of _ <span class="string">&quot;Abs_fset P&quot;</span> <span class="keyword2">for</span> P<span class="delimiter">,</span> OF conjI<span class="delimiter">,</span> rotated<span class="delimiter">]</span><span class="delimiter">)</span>
-
-<span class="command">lemma</span>
-  <span class="keyword2">fixes</span> I <span class="delimiter">::</span> interp
-  <span class="keyword2">and</span> x y X <span class="delimiter">::</span> nat
-  <span class="keyword2">and</span> &phi; &psi; <span class="delimiter">::</span> formula
-  <span class="keyword2">shows</span>
   <span class="string">&quot;I \&lt;TTurnstile&gt; T &lt;-&gt; True&quot;</span>
   <span class="string">&quot;I \&lt;TTurnstile&gt; F &lt;-&gt; False&quot;</span>
   <span class="string">&quot;I \&lt;TTurnstile&gt; (FO x) &lt;-&gt; I[x]<span class="hidden">&#8681;</span><sub>1</sub> &ne; {}&quot;</span>
@@ -71,9 +34,10 @@
   <span class="string">&quot;I \&lt;TTurnstile&gt; (&not; &phi;) &lt;-&gt; &not; (I \&lt;TTurnstile&gt; &phi;)&quot;</span>
   <span class="string">&quot;I \&lt;TTurnstile&gt; (&phi; &or; &psi;) &lt;-&gt; (I \&lt;TTurnstile&gt; &phi; &or; I \&lt;TTurnstile&gt; &psi;)&quot;</span>
   <span class="string">&quot;I \&lt;TTurnstile&gt; (FAnd &phi; &psi;) &lt;-&gt; (I \&lt;TTurnstile&gt; &phi; &and; I \&lt;TTurnstile&gt; &psi;)&quot;</span>
-  <span class="string">&quot;I \&lt;TTurnstile&gt; (&exist;<span class="hidden">&#8681;</span><sub>1</sub> &phi;) &lt;-&gt; (&exist;p. p::<span class="hidden">&#8681;</span><sub>1</sub>I \&lt;TTurnstile&gt; &phi;)&quot;</span>
+  <span class="string">&quot;I \&lt;TTurnstile&gt; (&exist;<span class="hidden">&#8681;</span><sub>1</sub> &phi;) &lt;-&gt; (&exist;P. finite P &and; P::<span class="hidden">&#8681;</span><sub>1</sub><span class="hidden">&#8681;</span><sub>a</sub><span class="hidden">&#8681;</span><sub>s</sub><span class="hidden">&#8681;</span><sub>2</sub>I \&lt;TTurnstile&gt; &phi;)&quot;</span>
   <span class="string">&quot;I \&lt;TTurnstile&gt; (&exist;<span class="hidden">&#8681;</span><sub>2</sub> &phi;) &lt;-&gt; (&exist;P. finite P &and; P::<span class="hidden">&#8681;</span><sub>2</sub>I \&lt;TTurnstile&gt; &phi;)&quot;</span>
-  <span class="command">by</span> <span class="delimiter">(</span>auto simp add<span class="delimiter">:</span> Let_def fMin.rep_eq fmember.rep_eq<span class="delimiter">)</span>
+  <span class="command">by</span> <span class="delimiter">(</span>auto 0 2 simp<span class="delimiter">:</span> Let_def fMin.rep_eq fmember.rep_eq
+    fset_inverse intro<span class="delimiter">:</span> exI<span class="delimiter">[</span>of _ <span class="string">&quot;fset P&quot;</span> <span class="keyword2">for</span> P<span class="delimiter">]</span><span class="delimiter">)</span>
 
 <span class="command">lemma</span>
   <span class="keyword2">fixes</span> I <span class="delimiter">::</span> interp
@@ -87,8 +51,44 @@
   <span class="string">&quot;I \&lt;TTurnstile&gt;<span class="hidden">&#8681;</span><sub>&lt;</sub> (x &isin; X) &lt;-&gt; Min (I[x]<span class="hidden">&#8681;</span><sub>1</sub>) &isin; I[X]<span class="hidden">&#8681;</span><sub>2</sub> &and; I[x]<span class="hidden">&#8681;</span><sub>1</sub> &ne; {} &and; finite (I[X]<span class="hidden">&#8681;</span><sub>2</sub>)&quot;</span>
   <span class="string">&quot;I \&lt;TTurnstile&gt;<span class="hidden">&#8681;</span><sub>&lt;</sub> (&not; &phi;) &lt;-&gt; &not; (I \&lt;TTurnstile&gt;<span class="hidden">&#8681;</span><sub>&lt;</sub> &phi;)&quot;</span>
   <span class="string">&quot;I \&lt;TTurnstile&gt;<span class="hidden">&#8681;</span><sub>&lt;</sub> (&phi; &or; &psi;) &lt;-&gt; (I \&lt;TTurnstile&gt;<span class="hidden">&#8681;</span><sub>&lt;</sub> &phi; &or; I \&lt;TTurnstile&gt;<span class="hidden">&#8681;</span><sub>&lt;</sub> &psi;)&quot;</span>
-  <span class="string">&quot;I \&lt;TTurnstile&gt;<span class="hidden">&#8681;</span><sub>&lt;</sub> (&exist;<span class="hidden">&#8681;</span><sub>1</sub> &phi;) &lt;-&gt; (&exist;p &lt;# I. p::<span class="hidden">&#8681;</span><sub>1</sub>I \&lt;TTurnstile&gt;<span class="hidden">&#8681;</span><sub>&lt;</sub> &phi;)&quot;</span>
+  <span class="string">&quot;I \&lt;TTurnstile&gt;<span class="hidden">&#8681;</span><sub>&lt;</sub> (FAnd &phi; &psi;) &lt;-&gt; (I \&lt;TTurnstile&gt;<span class="hidden">&#8681;</span><sub>&lt;</sub> &phi; &and; I \&lt;TTurnstile&gt;<span class="hidden">&#8681;</span><sub>&lt;</sub> &psi;)&quot;</span>
+  <span class="string">&quot;I \&lt;TTurnstile&gt;<span class="hidden">&#8681;</span><sub>&lt;</sub> (&exist;<span class="hidden">&#8681;</span><sub>1</sub> &phi;) &lt;-&gt; (&exist;P. (&forall;p &isin; P. p &lt;# I) &and; P::<span class="hidden">&#8681;</span><sub>1</sub><span class="hidden">&#8681;</span><sub>a</sub><span class="hidden">&#8681;</span><sub>s</sub><span class="hidden">&#8681;</span><sub>2</sub>I \&lt;TTurnstile&gt;<span class="hidden">&#8681;</span><sub>&lt;</sub> &phi;)&quot;</span>
   <span class="string">&quot;I \&lt;TTurnstile&gt;<span class="hidden">&#8681;</span><sub>&lt;</sub> (&exist;<span class="hidden">&#8681;</span><sub>2</sub> &phi;) &lt;-&gt; (&exist;P. (&forall;p &isin; P. p &lt;# I) &and; P::<span class="hidden">&#8681;</span><sub>2</sub>I \&lt;TTurnstile&gt;<span class="hidden">&#8681;</span><sub>&lt;</sub> &phi;)&quot;</span>
+  <span class="command">by</span> <span class="delimiter">(</span>auto 0 2 simp<span class="delimiter">:</span> Let_def fMin.rep_eq fmember.rep_eq
+    len_leq_iff Abs_fset_inverse bounded_nat_set_is_finite fset_inverse
+    elim<span class="delimiter">:</span> exI<span class="delimiter">[</span>of _ <span class="string">&quot;Abs_fset P&quot;</span> <span class="keyword2">for</span> P<span class="delimiter">,</span> OF conjI<span class="delimiter">,</span> rotated<span class="delimiter">]</span><span class="delimiter">)</span>
+
+<span class="command">lemma</span>
+  <span class="keyword2">fixes</span> I <span class="delimiter">::</span> interp
+  <span class="keyword2">and</span> x y X <span class="delimiter">::</span> nat
+  <span class="keyword2">and</span> &phi; &psi; <span class="delimiter">::</span> formula
+  <span class="keyword2">shows</span>
+  <span class="string">&quot;I \&lt;Turnstile&gt; T &lt;-&gt; True&quot;</span>
+  <span class="string">&quot;I \&lt;Turnstile&gt; F &lt;-&gt; False&quot;</span>
+  <span class="string">&quot;I \&lt;Turnstile&gt; (FO x) &lt;-&gt; I[x]<span class="hidden">&#8681;</span><sub>1</sub> &ne; {}&quot;</span>
+  <span class="string">&quot;I \&lt;Turnstile&gt; (x &lt; y) &lt;-&gt; Min (I[x]<span class="hidden">&#8681;</span><sub>1</sub>) &lt; Min (I[y]<span class="hidden">&#8681;</span><sub>1</sub>) &and; I[x]<span class="hidden">&#8681;</span><sub>1</sub> &ne; {} &and; I[y]<span class="hidden">&#8681;</span><sub>1</sub> &ne; {}&quot;</span>
+  <span class="string">&quot;I \&lt;Turnstile&gt; (x &isin; X) &lt;-&gt; Min (I[x]<span class="hidden">&#8681;</span><sub>1</sub>) &isin; I[X]<span class="hidden">&#8681;</span><sub>2</sub> &and; I[x]<span class="hidden">&#8681;</span><sub>1</sub> &ne; {} &and; finite (I[X]<span class="hidden">&#8681;</span><sub>2</sub>)&quot;</span>
+  <span class="string">&quot;I \&lt;Turnstile&gt; (&not; &phi;) &lt;-&gt; &not; (I \&lt;Turnstile&gt; &phi;)&quot;</span>
+  <span class="string">&quot;I \&lt;Turnstile&gt; (&phi; &or; &psi;) &lt;-&gt; (I \&lt;Turnstile&gt; &phi; &or; I \&lt;Turnstile&gt; &psi;)&quot;</span>
+  <span class="string">&quot;I \&lt;Turnstile&gt; (FAnd &phi; &psi;) &lt;-&gt; (I \&lt;Turnstile&gt; &phi; &and; I \&lt;Turnstile&gt; &psi;)&quot;</span>
+  <span class="string">&quot;I \&lt;Turnstile&gt; (&exist;<span class="hidden">&#8681;</span><sub>1</sub> &phi;) &lt;-&gt; (&exist;p. p::<span class="hidden">&#8681;</span><sub>1</sub>I \&lt;Turnstile&gt; &phi;)&quot;</span>
+  <span class="string">&quot;I \&lt;Turnstile&gt; (&exist;<span class="hidden">&#8681;</span><sub>2</sub> &phi;) &lt;-&gt; (&exist;P. finite P &and; P::<span class="hidden">&#8681;</span><sub>2</sub>I \&lt;Turnstile&gt; &phi;)&quot;</span>
+  <span class="command">by</span> <span class="delimiter">(</span>auto simp add<span class="delimiter">:</span> Let_def fMin.rep_eq fmember.rep_eq<span class="delimiter">)</span>
+
+<span class="command">lemma</span>
+  <span class="keyword2">fixes</span> I <span class="delimiter">::</span> interp
+  <span class="keyword2">and</span> x y X <span class="delimiter">::</span> nat
+  <span class="keyword2">and</span> &phi; &psi; <span class="delimiter">::</span> formula
+  <span class="keyword2">shows</span>
+  <span class="string">&quot;I \&lt;Turnstile&gt;<span class="hidden">&#8681;</span><sub>&lt;</sub> T &lt;-&gt; True&quot;</span>
+  <span class="string">&quot;I \&lt;Turnstile&gt;<span class="hidden">&#8681;</span><sub>&lt;</sub> F &lt;-&gt; False&quot;</span>
+  <span class="string">&quot;I \&lt;Turnstile&gt;<span class="hidden">&#8681;</span><sub>&lt;</sub> (FO x) &lt;-&gt; I[x]<span class="hidden">&#8681;</span><sub>1</sub> &ne; {}&quot;</span>
+  <span class="string">&quot;I \&lt;Turnstile&gt;<span class="hidden">&#8681;</span><sub>&lt;</sub> (x &lt; y) &lt;-&gt; Min (I[x]<span class="hidden">&#8681;</span><sub>1</sub>) &lt; Min (I[y]<span class="hidden">&#8681;</span><sub>1</sub>) &and; I[x]<span class="hidden">&#8681;</span><sub>1</sub> &ne; {} &and; I[y]<span class="hidden">&#8681;</span><sub>1</sub> &ne; {}&quot;</span>
+  <span class="string">&quot;I \&lt;Turnstile&gt;<span class="hidden">&#8681;</span><sub>&lt;</sub> (x &isin; X) &lt;-&gt; Min (I[x]<span class="hidden">&#8681;</span><sub>1</sub>) &isin; I[X]<span class="hidden">&#8681;</span><sub>2</sub> &and; I[x]<span class="hidden">&#8681;</span><sub>1</sub> &ne; {} &and; finite (I[X]<span class="hidden">&#8681;</span><sub>2</sub>)&quot;</span>
+  <span class="string">&quot;I \&lt;Turnstile&gt;<span class="hidden">&#8681;</span><sub>&lt;</sub> (&not; &phi;) &lt;-&gt; &not; (I \&lt;Turnstile&gt;<span class="hidden">&#8681;</span><sub>&lt;</sub> &phi;)&quot;</span>
+  <span class="string">&quot;I \&lt;Turnstile&gt;<span class="hidden">&#8681;</span><sub>&lt;</sub> (&phi; &or; &psi;) &lt;-&gt; (I \&lt;Turnstile&gt;<span class="hidden">&#8681;</span><sub>&lt;</sub> &phi; &or; I \&lt;Turnstile&gt;<span class="hidden">&#8681;</span><sub>&lt;</sub> &psi;)&quot;</span>
+  <span class="string">&quot;I \&lt;Turnstile&gt;<span class="hidden">&#8681;</span><sub>&lt;</sub> (&exist;<span class="hidden">&#8681;</span><sub>1</sub> &phi;) &lt;-&gt; (&exist;p &lt;# I. p::<span class="hidden">&#8681;</span><sub>1</sub>I \&lt;Turnstile&gt;<span class="hidden">&#8681;</span><sub>&lt;</sub> &phi;)&quot;</span>
+  <span class="string">&quot;I \&lt;Turnstile&gt;<span class="hidden">&#8681;</span><sub>&lt;</sub> (&exist;<span class="hidden">&#8681;</span><sub>2</sub> &phi;) &lt;-&gt; (&exist;P. (&forall;p &isin; P. p &lt;# I) &and; P::<span class="hidden">&#8681;</span><sub>2</sub>I \&lt;Turnstile&gt;<span class="hidden">&#8681;</span><sub>&lt;</sub> &phi;)&quot;</span>
   <span class="command">by</span> <span class="delimiter">(</span>auto simp add<span class="delimiter">:</span> Let_def fMin.rep_eq fmember.rep_eq<span class="delimiter">)</span>
    
 
@@ -101,7 +101,7 @@
   <span class="keyword2">shows</span> <span class="string">&quot;L &sim; K ==&gt; L = K&quot;</span>
   <span class="command">by</span> <span class="delimiter">(</span>coinduction arbitrary<span class="delimiter">:</span> K L<span class="delimiter">)</span> auto
 
-<span class="command">lemma</span> Lemma2<span class="delimiter">:</span>
+<span class="command">lemma</span> Theorem2<span class="delimiter">:</span>
   <span class="keyword2">fixes</span> &Sigma; <span class="delimiter">::</span> <span class="string">&quot;&#39;a list&quot;</span>
   <span class="keyword2">and</span> L <span class="delimiter">::</span> <span class="string">&quot;&#39;t =&gt; &#39;a language&quot;</span>
   <span class="keyword2">and</span> L&#39; <span class="delimiter">::</span> <span class="string">&quot;&#39;s =&gt; &#39;a language&quot;</span>
@@ -145,8 +145,8 @@
   <span class="keyword2">and</span> a <span class="delimiter">::</span> <span class="string">&quot;bool list &times; bool list&quot;</span>
   <span class="keyword2">assumes</span> <span class="string">&quot;wf (#<span class="hidden">&#8681;</span><sub>V</sub> I) &phi;&quot;</span>
   <span class="keyword2">and</span> <span class="string">&quot;#<span class="hidden">&#8681;</span><sub>V</sub> I = |a|&quot;</span>
-  <span class="keyword2">shows</span> <span class="string">&quot;I \&lt;Turnstile&gt; &delta; a &phi; &lt;-&gt; CONS a I \&lt;Turnstile&gt; &phi;&quot;</span>
-  <span class="keyword2">and</span> <span class="string">&quot;I \&lt;Turnstile&gt;<span class="hidden">&#8681;</span><sub>&lt;</sub> &delta; a &phi; &lt;-&gt; CONS a I \&lt;Turnstile&gt;<span class="hidden">&#8681;</span><sub>&lt;</sub> &phi;&quot;</span>
+  <span class="keyword2">shows</span> <span class="string">&quot;I \&lt;TTurnstile&gt; &delta; a &phi; &lt;-&gt; CONS a I \&lt;TTurnstile&gt; &phi;&quot;</span>
+  <span class="keyword2">and</span> <span class="string">&quot;I \&lt;TTurnstile&gt;<span class="hidden">&#8681;</span><sub>&lt;</sub> &delta; a &phi; &lt;-&gt; CONS a I \&lt;TTurnstile&gt;<span class="hidden">&#8681;</span><sub>&lt;</sub> &phi;&quot;</span>
   <span class="command">by</span> <span class="delimiter">(</span>rule WS1S.satisfies_lderiv<span class="delimiter">[</span>OF assms<span class="delimiter">]</span><span class="delimiter">,</span> rule WS1S.satisfies_bounded_lderiv<span class="delimiter">[</span>OF assms<span class="delimiter">]</span><span class="delimiter">)</span>
 
 <span class="command">lemma</span> Theorem4<span class="delimiter">:</span>
@@ -172,7 +172,7 @@
   <span class="keyword2">and</span> a <span class="delimiter">::</span> <span class="string">&quot;bool list &times; bool list&quot;</span>
   <span class="keyword2">assumes</span> <span class="string">&quot;wf (#<span class="hidden">&#8681;</span><sub>V</sub> I) &phi;&quot;</span>
   <span class="keyword2">and</span> <span class="string">&quot;#<span class="hidden">&#8681;</span><sub>V</sub> I = |a|&quot;</span>
-  <span class="keyword2">shows</span> <span class="string">&quot;I \&lt;Turnstile&gt;<span class="hidden">&#8681;</span><sub>&lt;</sub> &rho; a &phi; &lt;-&gt; SNOC a I \&lt;Turnstile&gt;<span class="hidden">&#8681;</span><sub>&lt;</sub> &phi;&quot;</span>
+  <span class="keyword2">shows</span> <span class="string">&quot;I \&lt;TTurnstile&gt;<span class="hidden">&#8681;</span><sub>&lt;</sub> &rho; a &phi; &lt;-&gt; SNOC a I \&lt;TTurnstile&gt;<span class="hidden">&#8681;</span><sub>&lt;</sub> &phi;&quot;</span>
   <span class="command">by</span> <span class="delimiter">(</span>rule WS1S.satisfies_bounded_rderiv<span class="delimiter">[</span>OF assms<span class="delimiter">]</span><span class="delimiter">)</span>
 
 <span class="command">lemma</span> Theorem71<span class="delimiter">:</span>
@@ -180,22 +180,22 @@
   <span class="keyword2">and</span> I <span class="delimiter">::</span> interp
   <span class="keyword2">assumes</span> <span class="string">&quot;wf (#<span class="hidden">&#8681;</span><sub>V</sub> I) &phi;&quot;</span> 
   <span class="keyword2">and</span> <span class="string">&quot;#I = 0&quot;</span>
-  <span class="keyword2">shows</span> <span class="string">&quot;\&lt;o&gt;<span class="hidden">&#8681;</span><sub>&lt;</sub> &phi; &lt;-&gt; I \&lt;Turnstile&gt;<span class="hidden">&#8681;</span><sub>&lt;</sub> &phi;&quot;</span>
+  <span class="keyword2">shows</span> <span class="string">&quot;\&lt;o&gt;<span class="hidden">&#8681;</span><sub>&lt;</sub> &phi; &lt;-&gt; I \&lt;TTurnstile&gt;<span class="hidden">&#8681;</span><sub>&lt;</sub> &phi;&quot;</span>
   <span class="command">using</span> assms <span class="command">by</span> <span class="delimiter">(</span>auto simp<span class="delimiter">:</span> WS1S.nullable_satisfies_bounded<span class="delimiter">)</span>
 
 <span class="command">lemma</span> Theorem72<span class="delimiter">:</span>
   <span class="keyword2">fixes</span> &phi; <span class="delimiter">::</span> formula
   <span class="keyword2">and</span> I <span class="delimiter">::</span> interp
   <span class="keyword2">assumes</span> <span class="string">&quot;wf (#<span class="hidden">&#8681;</span><sub>V</sub> I) &phi;&quot;</span> 
-  <span class="keyword2">shows</span> <span class="string">&quot;I \&lt;Turnstile&gt;<span class="hidden">&#8681;</span><sub>&lt;</sub> futurize (#<span class="hidden">&#8681;</span><sub>V</sub> I) &phi; &lt;-&gt;
-    (&exist;k. (SNOC (zero (#<span class="hidden">&#8681;</span><sub>V</sub> I)) ^^ k) I \&lt;Turnstile&gt;<span class="hidden">&#8681;</span><sub>&lt;</sub> &phi;)&quot;</span>
+  <span class="keyword2">shows</span> <span class="string">&quot;I \&lt;TTurnstile&gt;<span class="hidden">&#8681;</span><sub>&lt;</sub> futurize (#<span class="hidden">&#8681;</span><sub>V</sub> I) &phi; &lt;-&gt;
+    (&exist;k. (SNOC (zero (#<span class="hidden">&#8681;</span><sub>V</sub> I)) ^^ k) I \&lt;TTurnstile&gt;<span class="hidden">&#8681;</span><sub>&lt;</sub> &phi;)&quot;</span>
   <span class="command">using</span> assms <span class="command">by</span> <span class="delimiter">(</span>auto simp<span class="delimiter">:</span> WS1S.satisfies_bounded_fut<span class="delimiter">)</span>
 
 <span class="command">lemma</span> Theorem73<span class="delimiter">:</span>
   <span class="keyword2">fixes</span> &phi; <span class="delimiter">::</span> formula
   <span class="keyword2">and</span> I <span class="delimiter">::</span> interp
   <span class="keyword2">assumes</span> <span class="string">&quot;wf (#<span class="hidden">&#8681;</span><sub>V</sub> I) &phi;&quot;</span> 
-  <span class="keyword2">shows</span> <span class="string">&quot;I \&lt;Turnstile&gt;<span class="hidden">&#8681;</span><sub>&lt;</sub> &lfloor;&phi;&rfloor;<span class="hidden">&#8664;</span><sub>(#<span class="hidden">&#8681;</span><sub>V</sub> I)<span class="hidden">&#8665;</span></sub> &lt;-&gt; I \&lt;Turnstile&gt; &phi;&quot;</span>
+  <span class="keyword2">shows</span> <span class="string">&quot;I \&lt;TTurnstile&gt;<span class="hidden">&#8681;</span><sub>&lt;</sub> &lfloor;&phi;&rfloor;<span class="hidden">&#8664;</span><sub>(#<span class="hidden">&#8681;</span><sub>V</sub> I)<span class="hidden">&#8665;</span></sub> &lt;-&gt; I \&lt;TTurnstile&gt; &phi;&quot;</span>
   <span class="command">using</span> assms <span class="command">by</span> <span class="delimiter">(</span>auto simp<span class="delimiter">:</span> WS1S.finalize_satisfies<span class="delimiter">)</span>
 
 <span class="command">lemma</span> Theorem74<span class="delimiter">:</span>
@@ -203,25 +203,37 @@
   <span class="keyword2">and</span> I <span class="delimiter">::</span> interp
   <span class="keyword2">assumes</span> <span class="string">&quot;wf (#<span class="hidden">&#8681;</span><sub>V</sub> I) &phi;&quot;</span> 
   <span class="keyword2">and</span> <span class="string">&quot;#I = 0&quot;</span>
-  <span class="keyword2">shows</span> <span class="string">&quot;\&lt;o&gt; (#<span class="hidden">&#8681;</span><sub>V</sub> I) &phi; &lt;-&gt; I \&lt;Turnstile&gt; &phi;&quot;</span>
+  <span class="keyword2">shows</span> <span class="string">&quot;\&lt;o&gt; (#<span class="hidden">&#8681;</span><sub>V</sub> I) &phi; &lt;-&gt; I \&lt;TTurnstile&gt; &phi;&quot;</span>
   <span class="command">using</span> assms <span class="command">by</span> <span class="delimiter">(</span>auto simp<span class="delimiter">:</span> WS1S.final_satisfies<span class="delimiter">)</span>
 
 <span class="comment">(*&lt;*)</span>
-<span class="command">notation</span> WS1S.language <span class="delimiter">(</span><span class="string">&quot;L&quot;</span><span class="delimiter">)</span>
-<span class="command">notation</span> WS1S.language<span class="hidden">&#8681;</span><sub>b</sub> <span class="delimiter">(</span><span class="string">&quot;L<span class="hidden">&#8681;</span><sub>&lt;</sub>&quot;</span><span class="delimiter">)</span>
+<span class="command">notation</span> WS1S.language <span class="delimiter">(</span><span class="string">&quot;\&lt;L&gt;&quot;</span><span class="delimiter">)</span>
+<span class="command">notation</span> WS1S.language<span class="hidden">&#8681;</span><sub>b</sub> <span class="delimiter">(</span><span class="string">&quot;\&lt;L&gt;<span class="hidden">&#8681;</span><sub>&lt;</sub>&quot;</span><span class="delimiter">)</span>
+<span class="command">notation</span> WS1S.lang <span class="delimiter">(</span><span class="string">&quot;L&quot;</span><span class="delimiter">)</span>
+<span class="command">notation</span> WS1S.lang<span class="hidden">&#8681;</span><sub>b</sub> <span class="delimiter">(</span><span class="string">&quot;L<span class="hidden">&#8681;</span><sub>&lt;</sub>&quot;</span><span class="delimiter">)</span>
 <span class="comment">(*&gt;*)</span>
 
 
 <span class="command">lemma</span> language_def<span class="delimiter">:</span>
-  <span class="string">&quot;L n &phi; = {enc I | I. I \&lt;TTurnstile&gt; &phi; &and; (&forall;x&isin;FOV &phi;. I[x]<span class="hidden">&#8681;</span><sub>1</sub> &ne; {}) &and; #<span class="hidden">&#8681;</span><sub>V</sub> I = n}&quot;</span>
-  <span class="string">&quot;L<span class="hidden">&#8681;</span><sub>&lt;</sub> n &phi; = {enc I | I. I \&lt;TTurnstile&gt;<span class="hidden">&#8681;</span><sub>&lt;</sub> &phi; &and; (&forall;x&isin;FOV &phi;. I[x]<span class="hidden">&#8681;</span><sub>1</sub> &ne; {}) &and; #<span class="hidden">&#8681;</span><sub>V</sub> I = n}&quot;</span>
-  <span class="command">unfolding</span> WS1S.language_def WS1S.language<span class="hidden">&#8681;</span><sub>b</sub>_def sat_alt sat<span class="hidden">&#8681;</span><sub>b</sub>_alt <span class="command">by</span> simp_all
+  <span class="string">&quot;L n &phi; = {enc I | I. I \&lt;TTurnstile&gt; &phi; &and; #<span class="hidden">&#8681;</span><sub>V</sub> I = n}&quot;</span>
+  <span class="string">&quot;L<span class="hidden">&#8681;</span><sub>&lt;</sub> n &phi; = {enc I | I. I \&lt;TTurnstile&gt;<span class="hidden">&#8681;</span><sub>&lt;</sub> &phi; &and; #<span class="hidden">&#8681;</span><sub>V</sub> I = n}&quot;</span>
+  <span class="string">&quot;\&lt;L&gt; n &phi; = {enc I | I. I \&lt;Turnstile&gt; &phi; &and; (&forall;x&isin;FOV &phi;. I[x]<span class="hidden">&#8681;</span><sub>1</sub> &ne; {}) &and; #<span class="hidden">&#8681;</span><sub>V</sub> I = n}&quot;</span>
+  <span class="string">&quot;\&lt;L&gt;<span class="hidden">&#8681;</span><sub>&lt;</sub> n &phi; = {enc I | I. I \&lt;Turnstile&gt;<span class="hidden">&#8681;</span><sub>&lt;</sub> &phi; &and; (&forall;x&isin;FOV &phi;. I[x]<span class="hidden">&#8681;</span><sub>1</sub> &ne; {}) &and; #<span class="hidden">&#8681;</span><sub>V</sub> I = n}&quot;</span>
+  <span class="command">unfolding</span> WS1S.language_def WS1S.language<span class="hidden">&#8681;</span><sub>b</sub>_def sat_alt sat<span class="hidden">&#8681;</span><sub>b</sub>_alt
+    WS1S.lang_def WS1S.lang<span class="hidden">&#8681;</span><sub>b</sub>_def <span class="command">by</span> simp_all
 
 <span class="command">lemma</span> Theorem8<span class="delimiter">:</span>
+  <span class="string">&quot;L n (RESTRICT &phi;) = \&lt;L&gt; n &phi;&quot;</span>
+  <span class="string">&quot;L<span class="hidden">&#8681;</span><sub>&lt;</sub> n (RESTRICT &phi;) = \&lt;L&gt;<span class="hidden">&#8681;</span><sub>&lt;</sub> n &phi;&quot;</span>
+  <span class="command">unfolding</span>  WS1S.lang_def WS1S.lang<span class="hidden">&#8681;</span><sub>b</sub>_def 
+    WS1S.language<span class="hidden">&#8681;</span><sub>b</sub>_lang<span class="hidden">&#8681;</span><sub>b</sub>_RESTRICT WS1S.language_lang_RESTRICT
+    <span class="command">by</span> simp_all
+
+<span class="command">lemma</span> Theorem9<span class="delimiter">:</span>
   <span class="keyword2">fixes</span> &phi; &psi; <span class="delimiter">::</span> formula
   <span class="keyword2">and</span> n <span class="delimiter">::</span> interp_size
-  <span class="keyword2">shows</span> <span class="string">&quot;eqv n &phi; &psi; ==&gt; L n &phi; = L n &psi;&quot;</span>
-  <span class="keyword2">and</span> <span class="string">&quot;eqv<span class="hidden">&#8681;</span><sub>&lt;</sub> n &phi; &psi; ==&gt; L<span class="hidden">&#8681;</span><sub>&lt;</sub> n &phi; = L<span class="hidden">&#8681;</span><sub>&lt;</sub> n &psi;&quot;</span>
+  <span class="keyword2">shows</span> <span class="string">&quot;eqv n &phi; &psi; ==&gt; \&lt;L&gt; n &phi; = \&lt;L&gt; n &psi;&quot;</span>
+  <span class="keyword2">and</span> <span class="string">&quot;eqv<span class="hidden">&#8681;</span><sub>&lt;</sub> n &phi; &psi; ==&gt; \&lt;L&gt;<span class="hidden">&#8681;</span><sub>&lt;</sub> n &phi; = \&lt;L&gt;<span class="hidden">&#8681;</span><sub>&lt;</sub> n &psi;&quot;</span>
   <span class="command">unfolding</span> check_eqv_def bounded_check_eqv_def
   <span class="command">by</span> <span class="delimiter">(</span>drule WS1S.soundness<span class="delimiter">,</span> erule injD<span class="delimiter">[</span>OF bij_is_inj<span class="delimiter">[</span>OF to_language_bij<span class="delimiter">]</span><span class="delimiter">]</span><span class="delimiter">)</span>
      <span class="delimiter">(</span>drule WS1S.bounded.soundness<span class="delimiter">,</span> erule injD<span class="delimiter">[</span>OF bij_is_inj<span class="delimiter">[</span>OF to_language_bij<span class="delimiter">]</span><span class="delimiter">]</span><span class="delimiter">)</span>
