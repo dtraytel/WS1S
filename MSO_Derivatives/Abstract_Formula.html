@@ -1,0 +1,1300 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+<html xmlns="http://www.w3.org/1999/xhtml">
+<head>
+<meta http-equiv="Content-Type" content="text/html; charset=utf-8"/>
+<title>Theory Abstract_Formula (Isabelle2014: August 2014)</title>
+<link media="all" rel="stylesheet" type="text/css" href="isabelle.css"/>
+</head>
+
+<body>
+<div class="head"><h1>Theory Abstract_Formula</h1>
+
+<span class="command">theory</span> <span class="name">Abstract_Formula</span><br/>
+<span class="keyword">imports</span> <a href="Automaton.html"><span class="name">Automaton</span></a> <a href="Order_Generator.html"><span class="name">Order_Generator</span></a> <a href="List_Index.html"><span class="name">List_Index</span></a> <a href="Code_Target_Nat.html"><span class="name">Code_Target_Nat</span></a> <a href="While_Default.html"><span class="name">While_Default</span></a><br/>
+
+</div>
+<div class="source">
+<pre><span class="comment">(* Author: Dmitriy Traytel *)</span>
+
+<span class="comment">(*&lt;*)</span>
+<span class="command">theory</span> Abstract_Formula
+<span class="keyword2">imports</span>
+  Automaton
+  <span class="string">&quot;$AFP/Datatype_Order_Generator/Order_Generator&quot;</span>
+  <span class="string">&quot;$AFP/List-Index/List_Index&quot;</span>
+  <span class="string">&quot;~~/src/HOL/Library/Code_Target_Nat&quot;</span>
+  While_Default
+<span class="keyword2">begin</span>
+<span class="comment">(*&gt;*)</span>
+
+<span class="command">section</span> <span class="cartouche">&#8249;Preliminaries&#8250;</span>
+
+<span class="command">lemma</span> pred_Diff_0<span class="delimiter">[</span>simp<span class="delimiter">]</span><span class="delimiter">:</span> <span class="string">&quot;0 &notin; A ==&gt; i &isin; (&lambda;x. x - Suc 0) ` A &lt;-&gt; Suc i &isin; A&quot;</span>
+  <span class="command">by</span> <span class="delimiter">(</span>cases i<span class="delimiter">)</span> <span class="delimiter">(</span>fastforce simp<span class="delimiter">:</span> image_iff le_Suc_eq  elim<span class="delimiter">:</span> contrapos_np<span class="delimiter">)</span><span class="delimiter">+</span>
+
+<span class="command">lemma</span> funpow_cycle_mult<span class="delimiter">:</span> <span class="string">&quot;(f ^^ k) x = x ==&gt; (f ^^ (m * k)) x = x&quot;</span>
+  <span class="command">by</span> <span class="delimiter">(</span>induct m<span class="delimiter">)</span> <span class="delimiter">(</span>auto simp<span class="delimiter">:</span> funpow_add<span class="delimiter">)</span>
+
+<span class="command">lemma</span> funpow_cycle<span class="delimiter">:</span> <span class="string">&quot;(f ^^ k) x = x ==&gt; (f ^^ l) x = (f ^^ (l mod k)) x&quot;</span>
+  <span class="command">by</span> <span class="delimiter">(</span>subst mod_div_equality<span class="delimiter">[</span>symmetric<span class="delimiter">,</span> of l k<span class="delimiter">]</span><span class="delimiter">)</span>
+    <span class="delimiter">(</span>simp only<span class="delimiter">:</span> add.commute funpow_add funpow_cycle_mult o_apply<span class="delimiter">)</span>
+
+<span class="command">lemma</span> funpow_cycle_offset<span class="delimiter">:</span>
+  <span class="keyword2">fixes</span> f <span class="delimiter">::</span> <span class="string">&quot;&#39;a =&gt; &#39;a&quot;</span>
+  <span class="keyword2">assumes</span> <span class="string">&quot;(f ^^ k) x = (f ^^ i) x&quot;</span> <span class="string">&quot;i &le; k&quot;</span> <span class="string">&quot;i &le; l&quot;</span>
+  <span class="keyword2">shows</span> <span class="string">&quot;(f ^^ l) x = (f ^^ ((l - i) mod (k - i) + i)) x&quot;</span>
+<span class="command">proof</span> -
+  <span class="command">from</span> assms <span class="command">have</span>
+    <span class="string">&quot;(f ^^ (k - i)) ((f ^^ i) x) = ((f ^^ i) x)&quot;</span>
+    <span class="string">&quot;(f ^^ l) x = (f ^^ (l - i)) ((f ^^ i) x)&quot;</span>
+    <span class="command">unfolding</span> fun_cong<span class="delimiter">[</span>OF funpow_add<span class="delimiter">[</span>symmetric<span class="delimiter">,</span> unfolded o_def<span class="delimiter">]</span><span class="delimiter">]</span> <span class="command">by</span> simp_all
+  <span class="command">from</span> funpow_cycle<span class="delimiter">[</span>OF this<span class="delimiter">(</span>1<span class="delimiter">)</span><span class="delimiter">,</span> of <span class="string">&quot;l - i&quot;</span><span class="delimiter">]</span> this<span class="delimiter">(</span>2<span class="delimiter">)</span> <span class="command">show</span> <span class="var">?thesis</span>
+    <span class="command">by</span> <span class="delimiter">(</span>simp add<span class="delimiter">:</span> funpow_add<span class="delimiter">)</span>
+<span class="command">qed</span>
+
+<span class="command">definition</span> <span class="string">&quot;dec k m = (if m &gt; k then m - Suc 0 else m :: nat)&quot;</span>
+
+
+<span class="command">section</span> <span class="cartouche">&#8249;Abstract formulas&#8250;</span>
+
+<span class="command">datatype_new</span> <span class="delimiter">(</span>discs_sels<span class="delimiter">)</span> <span class="delimiter">(</span><span class="tfree">&#39;a</span><span class="delimiter">,</span> <span class="tfree">&#39;k</span><span class="delimiter">)</span> aformula <span class="delimiter">=</span>
+  FBool bool
+<span class="delimiter">|</span> FBase <span class="tfree">&#39;a</span>
+<span class="delimiter">|</span> FNot <span class="string">&quot;(&#39;a, &#39;k) aformula&quot;</span>
+<span class="delimiter">|</span> FOr <span class="string">&quot;(&#39;a, &#39;k) aformula&quot;</span> <span class="string">&quot;(&#39;a, &#39;k) aformula&quot;</span>
+<span class="delimiter">|</span> FAnd <span class="string">&quot;(&#39;a, &#39;k) aformula&quot;</span> <span class="string">&quot;(&#39;a, &#39;k) aformula&quot;</span>
+<span class="delimiter">|</span> FEx <span class="tfree">&#39;k</span> <span class="string">&quot;(&#39;a, &#39;k) aformula&quot;</span>
+<span class="delimiter">|</span> FAll <span class="tfree">&#39;k</span> <span class="string">&quot;(&#39;a, &#39;k) aformula&quot;</span>
+<span class="command">datatype_compat</span> aformula
+<span class="command">derive</span> linorder aformula
+
+<span class="command">fun</span> nFOR <span class="keyword2">where</span>
+  <span class="string">&quot;nFOR [] = FBool False&quot;</span>
+<span class="delimiter">|</span> <span class="string">&quot;nFOR [x] = x&quot;</span>
+<span class="delimiter">|</span> <span class="string">&quot;nFOR (x # xs) = FOr x (nFOR xs)&quot;</span>
+
+<span class="command">fun</span> nFAND <span class="keyword2">where</span>
+  <span class="string">&quot;nFAND [] = FBool True&quot;</span>
+<span class="delimiter">|</span> <span class="string">&quot;nFAND [x] = x&quot;</span>
+<span class="delimiter">|</span> <span class="string">&quot;nFAND (x # xs) = FAnd x (nFAND xs)&quot;</span>
+
+<span class="command">definition</span> <span class="string">&quot;NFOR = nFOR o sorted_list_of_set&quot;</span>
+<span class="command">definition</span> <span class="string">&quot;NFAND = nFAND o sorted_list_of_set&quot;</span>
+
+<span class="command">fun</span> disjuncts <span class="keyword2">where</span>
+  <span class="string">&quot;disjuncts (FOr &phi; &psi;) = disjuncts &phi; &cup; disjuncts &psi;&quot;</span>
+<span class="delimiter">|</span> <span class="string">&quot;disjuncts &phi; = {&phi;}&quot;</span>
+
+<span class="command">fun</span> conjuncts <span class="keyword2">where</span>
+  <span class="string">&quot;conjuncts (FAnd &phi; &psi;) = conjuncts &phi; &cup; conjuncts &psi;&quot;</span>
+<span class="delimiter">|</span> <span class="string">&quot;conjuncts &phi; = {&phi;}&quot;</span>
+
+<span class="command">fun</span> disjuncts_list <span class="keyword2">where</span>
+  <span class="string">&quot;disjuncts_list (FOr &phi; &psi;) = disjuncts_list &phi; @ disjuncts_list &psi;&quot;</span>
+<span class="delimiter">|</span> <span class="string">&quot;disjuncts_list &phi; = [&phi;]&quot;</span>
+
+<span class="command">fun</span> conjuncts_list <span class="keyword2">where</span>
+  <span class="string">&quot;conjuncts_list (FAnd &phi; &psi;) = conjuncts_list &phi; @ conjuncts_list &psi;&quot;</span>
+<span class="delimiter">|</span> <span class="string">&quot;conjuncts_list &phi; = [&phi;]&quot;</span>
+
+<span class="command">lemma</span> finite_juncts<span class="delimiter">:</span> <span class="string">&quot;finite (disjuncts &phi;)&quot;</span> <span class="string">&quot;finite (conjuncts &phi;)&quot;</span>
+  <span class="keyword2">and</span> nonempty_juncts<span class="delimiter">:</span> <span class="string">&quot;disjuncts &phi; &ne; {}&quot;</span> <span class="string">&quot;conjuncts &phi; &ne; {}&quot;</span>
+  <span class="command">by</span> <span class="delimiter">(</span>induct &phi;<span class="delimiter">)</span> auto
+
+<span class="command">lemma</span> juncts_eq_set_juncts_list<span class="delimiter">:</span>
+  <span class="string">&quot;disjuncts &phi; = set (disjuncts_list &phi;)&quot;</span>
+  <span class="string">&quot;conjuncts &phi; = set (conjuncts_list &phi;)&quot;</span>
+  <span class="command">by</span> <span class="delimiter">(</span>induct &phi;<span class="delimiter">)</span> auto
+
+<span class="command">lemma</span> notin_juncts<span class="delimiter">:</span>
+  <span class="string">&quot;[|&psi; &isin; disjuncts &phi;; is_FOr &psi;|] ==&gt; False&quot;</span>
+  <span class="string">&quot;[|&psi; &isin; conjuncts &phi;; is_FAnd &psi;|] ==&gt; False&quot;</span>
+  <span class="command">by</span> <span class="delimiter">(</span>induct &phi;<span class="delimiter">)</span> auto
+
+<span class="command">lemma</span> juncts_list_singleton<span class="delimiter">:</span>
+  <span class="string">&quot;&not; is_FOr &phi; ==&gt; disjuncts_list &phi; = [&phi;]&quot;</span>
+  <span class="string">&quot;&not; is_FAnd &phi; ==&gt; conjuncts_list &phi; = [&phi;]&quot;</span>
+  <span class="command">by</span> <span class="delimiter">(</span>induct &phi;<span class="delimiter">)</span> auto
+
+<span class="command">lemma</span> nonempty_juncts_list<span class="delimiter">:</span> <span class="string">&quot;conjuncts_list &phi; &ne; []&quot;</span> <span class="string">&quot;disjuncts_list &phi; &ne; []&quot;</span>
+  <span class="command">using</span> nonempty_juncts<span class="delimiter">[</span>of &phi;<span class="delimiter">]</span> <span class="command">by</span> <span class="delimiter">(</span>auto simp<span class="delimiter">:</span> Suc_le_eq juncts_eq_set_juncts_list<span class="delimiter">)</span>
+
+<span class="command">primrec</span> norm_ACI <span class="delimiter">(</span><span class="string">&quot;&lang;_&rang;&quot;</span><span class="delimiter">)</span> <span class="keyword2">where</span>
+  <span class="string">&quot;&lang;FBool b&rang; = FBool b&quot;</span>
+<span class="delimiter">|</span> <span class="string">&quot;&lang;FBase a&rang; = FBase a&quot;</span>
+<span class="delimiter">|</span> <span class="string">&quot;&lang;FNot &phi;&rang; = FNot &lang;&phi;&rang;&quot;</span>
+<span class="delimiter">|</span> <span class="string">&quot;&lang;FOr &phi; &psi;&rang; = NFOR (disjuncts (FOr &lang;&phi;&rang; &lang;&psi;&rang;))&quot;</span>
+<span class="delimiter">|</span> <span class="string">&quot;&lang;FAnd &phi; &psi;&rang; = NFAND (conjuncts (FAnd &lang;&phi;&rang; &lang;&psi;&rang;))&quot;</span>
+<span class="delimiter">|</span> <span class="string">&quot;&lang;FEx k &phi;&rang; = FEx k &lang;&phi;&rang;&quot;</span>
+<span class="delimiter">|</span> <span class="string">&quot;&lang;FAll k &phi;&rang; = FAll k &lang;&phi;&rang;&quot;</span>
+
+<span class="command">fun</span> nf_ACI <span class="keyword2">where</span>
+  <span class="string">&quot;nf_ACI (FOr &psi;1 &psi;2) = (&not; is_FOr &psi;1 &and; (let &phi;s = &psi;1 # disjuncts_list &psi;2 in
+    sorted &phi;s &and; distinct &phi;s &and; nf_ACI &psi;1 &and; nf_ACI &psi;2))&quot;</span>
+<span class="delimiter">|</span> <span class="string">&quot;nf_ACI (FAnd &psi;1 &psi;2) = (&not; is_FAnd &psi;1 &and; (let &phi;s = &psi;1 # conjuncts_list &psi;2 in
+    sorted &phi;s &and; distinct &phi;s &and; nf_ACI &psi;1 &and; nf_ACI &psi;2))&quot;</span>
+<span class="delimiter">|</span> <span class="string">&quot;nf_ACI (FNot &phi;) = nf_ACI &phi;&quot;</span>
+<span class="delimiter">|</span> <span class="string">&quot;nf_ACI (FEx k &phi;) = nf_ACI &phi;&quot;</span>
+<span class="delimiter">|</span> <span class="string">&quot;nf_ACI (FAll k &phi;) = nf_ACI &phi;&quot;</span>
+<span class="delimiter">|</span> <span class="string">&quot;nf_ACI &phi; = True&quot;</span>
+
+<span class="command">lemma</span> nf_ACI_D<span class="delimiter">:</span>
+  <span class="string">&quot;nf_ACI &phi; ==&gt; sorted (disjuncts_list &phi;)&quot;</span>
+  <span class="string">&quot;nf_ACI &phi; ==&gt; sorted (conjuncts_list &phi;)&quot;</span>
+  <span class="string">&quot;nf_ACI &phi; ==&gt; distinct (disjuncts_list &phi;)&quot;</span>
+  <span class="string">&quot;nf_ACI &phi; ==&gt; distinct (conjuncts_list &phi;)&quot;</span>
+  <span class="string">&quot;nf_ACI &phi; ==&gt; list_all nf_ACI (disjuncts_list &phi;)&quot;</span>
+  <span class="string">&quot;nf_ACI &phi; ==&gt; list_all nf_ACI (conjuncts_list &phi;)&quot;</span>
+  <span class="command">by</span> <span class="delimiter">(</span>induct &phi;<span class="delimiter">)</span> <span class="delimiter">(</span>auto simp<span class="delimiter">:</span> juncts_list_singleton<span class="delimiter">)</span>
+
+<span class="command">lemma</span> disjuncts_list_nFOR<span class="delimiter">:</span>
+  <span class="string">&quot;[|list_all (&lambda;x. &not; is_FOr x) &phi;s; &phi;s &ne; []|] ==&gt; disjuncts_list (nFOR &phi;s) = &phi;s&quot;</span>
+  <span class="command">by</span> <span class="delimiter">(</span>induct &phi;s rule<span class="delimiter">:</span> nFOR.induct<span class="delimiter">)</span> <span class="delimiter">(</span>auto simp<span class="delimiter">:</span> juncts_list_singleton<span class="delimiter">)</span>
+
+<span class="command">lemma</span> conjuncts_list_nFAND<span class="delimiter">:</span>
+  <span class="string">&quot;[|list_all (&lambda;x. &not; is_FAnd x) &phi;s; &phi;s &ne; []|] ==&gt; conjuncts_list (nFAND &phi;s) = &phi;s&quot;</span>
+  <span class="command">by</span> <span class="delimiter">(</span>induct &phi;s rule<span class="delimiter">:</span> nFAND.induct<span class="delimiter">)</span> <span class="delimiter">(</span>auto simp<span class="delimiter">:</span> juncts_list_singleton<span class="delimiter">)</span>
+
+<span class="command">lemma</span> disjuncts_NFOR<span class="delimiter">:</span>
+  <span class="string">&quot;[|finite X; X &ne; {}; &forall;x &isin; X. &not; is_FOr x|] ==&gt; disjuncts (NFOR X) = X&quot;</span>
+  <span class="command">unfolding</span> NFOR_def <span class="command">by</span> <span class="delimiter">(</span>auto simp<span class="delimiter">:</span> juncts_eq_set_juncts_list list_all_iff disjuncts_list_nFOR<span class="delimiter">)</span>
+
+<span class="command">lemma</span> conjuncts_NFAND<span class="delimiter">:</span>
+  <span class="string">&quot;[|finite X; X &ne; {}; &forall;x &isin; X. &not; is_FAnd x|] ==&gt; conjuncts (NFAND X) = X&quot;</span>
+  <span class="command">unfolding</span> NFAND_def <span class="command">by</span> <span class="delimiter">(</span>auto simp<span class="delimiter">:</span> juncts_eq_set_juncts_list list_all_iff conjuncts_list_nFAND<span class="delimiter">)</span>
+
+<span class="command">lemma</span> nf_ACI_nFOR<span class="delimiter">:</span> 
+  <span class="string">&quot;[|sorted &phi;s; distinct &phi;s; list_all nf_ACI &phi;s; list_all (&lambda;x. &not; is_FOr x) &phi;s|] ==&gt; nf_ACI (nFOR &phi;s)&quot;</span>
+  <span class="command">by</span> <span class="delimiter">(</span>induct &phi;s rule<span class="delimiter">:</span> nFOR.induct<span class="delimiter">)</span>
+    <span class="delimiter">(</span>auto simp<span class="delimiter">:</span> juncts_list_singleton disjuncts_list_nFOR nf_ACI_D<span class="delimiter">)</span>
+
+<span class="command">lemma</span> nf_ACI_nFAND<span class="delimiter">:</span> 
+  <span class="string">&quot;[|sorted &phi;s; distinct &phi;s; list_all nf_ACI &phi;s; list_all (&lambda;x. &not; is_FAnd x) &phi;s|] ==&gt; nf_ACI (nFAND &phi;s)&quot;</span>
+  <span class="command">by</span> <span class="delimiter">(</span>induct &phi;s rule<span class="delimiter">:</span> nFAND.induct<span class="delimiter">)</span>
+    <span class="delimiter">(</span>auto simp<span class="delimiter">:</span> juncts_list_singleton conjuncts_list_nFAND nf_ACI_D<span class="delimiter">)</span>
+
+<span class="command">lemma</span> nf_ACI_juncts<span class="delimiter">:</span>
+  <span class="string">&quot;[|&psi; &isin; disjuncts &phi;; nf_ACI &phi;|] ==&gt; nf_ACI &psi;&quot;</span>
+  <span class="string">&quot;[|&psi; &isin; conjuncts &phi;; nf_ACI &phi;|] ==&gt; nf_ACI &psi;&quot;</span>
+  <span class="command">by</span> <span class="delimiter">(</span>induct &phi;<span class="delimiter">)</span> auto
+
+<span class="command">lemma</span> nf_ACI_norm_ACI<span class="delimiter">:</span> <span class="string">&quot;nf_ACI &lang;&phi;&rang;&quot;</span>
+  <span class="command">by</span> <span class="delimiter">(</span>induct &phi;<span class="delimiter">)</span>
+    <span class="delimiter">(</span>force simp<span class="delimiter">:</span> NFOR_def NFAND_def finite_juncts list_all_iff
+      intro<span class="delimiter">!</span><span class="delimiter">:</span> nf_ACI_nFOR nf_ACI_nFAND elim<span class="delimiter">:</span> nf_ACI_juncts notin_juncts<span class="delimiter">)</span><span class="delimiter">+</span>
+
+<span class="command">lemma</span> nFOR_Cons<span class="delimiter">:</span> <span class="string">&quot;nFOR (x # xs) = (if xs = [] then x else FOr x (nFOR xs))&quot;</span>
+  <span class="command">by</span> <span class="delimiter">(</span>cases xs<span class="delimiter">)</span> simp_all
+
+<span class="command">lemma</span> nFAND_Cons<span class="delimiter">:</span> <span class="string">&quot;nFAND (x # xs) = (if xs = [] then x else FAnd x (nFAND xs))&quot;</span>
+  <span class="command">by</span> <span class="delimiter">(</span>cases xs<span class="delimiter">)</span> simp_all
+
+<span class="command">lemma</span> nFOR_disjuncts<span class="delimiter">:</span> <span class="string">&quot;nf_ACI &psi; ==&gt; nFOR (disjuncts_list &psi;) = &psi;&quot;</span>
+  <span class="command">by</span> <span class="delimiter">(</span>induct &psi;<span class="delimiter">)</span> <span class="delimiter">(</span>auto simp<span class="delimiter">:</span> juncts_list_singleton nFOR_Cons<span class="delimiter">)</span>
+
+<span class="command">lemma</span> nFAND_conjuncts<span class="delimiter">:</span> <span class="string">&quot;nf_ACI &psi; ==&gt; nFAND (conjuncts_list &psi;) = &psi;&quot;</span>
+  <span class="command">by</span> <span class="delimiter">(</span>induct &psi;<span class="delimiter">)</span> <span class="delimiter">(</span>auto simp<span class="delimiter">:</span> juncts_list_singleton nFAND_Cons<span class="delimiter">)</span>
+
+<span class="command">lemma</span> NFOR_disjuncts<span class="delimiter">:</span> <span class="string">&quot;nf_ACI &psi; ==&gt; NFOR (disjuncts &psi;) = &psi;&quot;</span>
+  <span class="command">using</span> nFOR_disjuncts<span class="delimiter">[</span>of &psi;<span class="delimiter">]</span> <span class="command">unfolding</span> NFOR_def o_apply juncts_eq_set_juncts_list
+  <span class="command">by</span> <span class="delimiter">(</span>metis finite_set finite_sorted_distinct_unique nf_ACI_D<span class="delimiter">(</span>1<span class="delimiter">,</span>3<span class="delimiter">)</span> sorted_list_of_set<span class="delimiter">)</span>
+
+<span class="command">lemma</span> NFAND_conjuncts<span class="delimiter">:</span> <span class="string">&quot;nf_ACI &psi; ==&gt; NFAND (conjuncts &psi;) = &psi;&quot;</span>
+  <span class="command">using</span> nFAND_conjuncts<span class="delimiter">[</span>of &psi;<span class="delimiter">]</span> <span class="command">unfolding</span> NFAND_def o_apply juncts_eq_set_juncts_list
+  <span class="command">by</span> <span class="delimiter">(</span>metis finite_set finite_sorted_distinct_unique nf_ACI_D<span class="delimiter">(</span>2<span class="delimiter">,</span>4<span class="delimiter">)</span> sorted_list_of_set<span class="delimiter">)</span>
+
+<span class="command">lemma</span> norm_ACI_if_nf_ACI<span class="delimiter">:</span> <span class="string">&quot;nf_ACI &phi; ==&gt; &lang;&phi;&rang; = &phi;&quot;</span>
+  <span class="command">by</span> <span class="delimiter">(</span>induct &phi;<span class="delimiter">)</span>
+    <span class="delimiter">(</span>auto simp<span class="delimiter">:</span> juncts_list_singleton juncts_eq_set_juncts_list nonempty_juncts_list
+      NFOR_def NFAND_def nFOR_Cons nFAND_Cons nFOR_disjuncts nFAND_conjuncts
+      sorted_Cons sorted_list_of_set_sort_remdups distinct_remdups_id sorted_sort_id insort_is_Cons<span class="delimiter">)</span>
+
+<span class="command">lemma</span> norm_ACI_idem<span class="delimiter">:</span> <span class="string">&quot;&lang;&lang;&phi;&rang;&rang; = &lang;&phi;&rang;&quot;</span>
+  <span class="command">by</span> <span class="delimiter">(</span>metis nf_ACI_norm_ACI norm_ACI_if_nf_ACI<span class="delimiter">)</span>
+
+<span class="command">lemma</span> norm_ACI_juncts<span class="delimiter">:</span>
+  <span class="string">&quot;nf_ACI &phi; ==&gt; norm_ACI ` disjuncts &phi; = disjuncts &phi;&quot;</span>
+  <span class="string">&quot;nf_ACI &phi; ==&gt; norm_ACI ` conjuncts &phi; = conjuncts &phi;&quot;</span>
+  <span class="command">by</span> <span class="delimiter">(</span>drule nf_ACI_D<span class="delimiter">(</span>5<span class="delimiter">,</span>6<span class="delimiter">)</span><span class="delimiter">,</span> force simp<span class="delimiter">:</span> list_all_iff juncts_eq_set_juncts_list norm_ACI_if_nf_ACI<span class="delimiter">)</span><span class="delimiter">+</span>
+
+<span class="command">lemma</span>
+  norm_ACI_NFOR<span class="delimiter">:</span> <span class="string">&quot;nf_ACI &phi; ==&gt; &phi; = NFOR (norm_ACI ` disjuncts &phi;)&quot;</span> <span class="keyword2">and</span>
+  norm_ACI_NFAND<span class="delimiter">:</span> <span class="string">&quot;nf_ACI &phi; ==&gt; &phi; = NFAND (norm_ACI ` conjuncts &phi;)&quot;</span>
+  <span class="command">by</span> <span class="delimiter">(</span>simp_all add<span class="delimiter">:</span> norm_ACI_juncts NFOR_disjuncts NFAND_conjuncts<span class="delimiter">)</span>
+
+<span class="comment">(*
+&#39;al - left atomic formula
+&#39;ar - right atomic formula
+&#39;i - interpretation
+&#39;k - kind of quantifier
+&#39;n - De Brujin index
+&#39;x - alphabet element
+&#39;v - valuation
+*)</span>
+<span class="command">locale</span> Formula_Operations <span class="delimiter">=</span>
+  <span class="keyword2">fixes</span> TYPEVARS <span class="delimiter">::</span> <span class="string">&quot;&#39;a :: linorder &times; &#39;i &times; &#39;k :: linorder &times; &#39;n &times; &#39;x &times; &#39;v&quot;</span>
+
+  <span class="comment">(* De Bruijn indices abstractly *)</span>
+  <span class="keyword2">and</span> SUC <span class="delimiter">::</span> <span class="string">&quot;&#39;k =&gt; &#39;n =&gt; &#39;n&quot;</span>
+  <span class="keyword2">and</span> LESS <span class="delimiter">::</span> <span class="string">&quot;&#39;k =&gt; nat =&gt; &#39;n =&gt; bool&quot;</span>
+
+  <span class="comment">(* Interpratations *)</span>
+  <span class="keyword2">and</span> assigns <span class="delimiter">::</span> <span class="string">&quot;nat =&gt; &#39;i =&gt; &#39;k =&gt; &#39;v&quot;</span> <span class="delimiter">(</span><span class="string">&quot;_<span class="hidden">&#8663;</span><sup>_<span class="hidden">&#8662;</span></sup>_&quot;</span> <span class="delimiter">[</span>900<span class="delimiter">,</span> 999<span class="delimiter">,</span> 999<span class="delimiter">]</span> 999<span class="delimiter">)</span>
+  <span class="keyword2">and</span> nvars <span class="delimiter">::</span> <span class="string">&quot;&#39;i =&gt; &#39;n&quot;</span> <span class="delimiter">(</span><span class="string">&quot;#<span class="hidden">&#8681;</span><sub>V</sub> _&quot;</span> <span class="delimiter">[</span>1000<span class="delimiter">]</span> 900<span class="delimiter">)</span>
+  <span class="keyword2">and</span> Extend <span class="delimiter">::</span> <span class="string">&quot;&#39;k =&gt; nat =&gt; &#39;i =&gt; &#39;v =&gt; &#39;i&quot;</span>
+  <span class="keyword2">and</span> CONS <span class="delimiter">::</span> <span class="string">&quot;&#39;x =&gt; &#39;i =&gt; &#39;i&quot;</span>
+  <span class="keyword2">and</span> SNOC <span class="delimiter">::</span> <span class="string">&quot;&#39;x =&gt; &#39;i =&gt; &#39;i&quot;</span>
+  <span class="keyword2">and</span> Length <span class="delimiter">::</span> <span class="string">&quot;&#39;i =&gt; nat&quot;</span>
+
+  <span class="comment">(* Alphabet elements *)</span>
+  <span class="keyword2">and</span> extend <span class="delimiter">::</span> <span class="string">&quot;&#39;k =&gt; bool =&gt; &#39;x =&gt; &#39;x&quot;</span>
+  <span class="keyword2">and</span> size <span class="delimiter">::</span> <span class="string">&quot;&#39;x =&gt; &#39;n&quot;</span>
+  <span class="keyword2">and</span> zero <span class="delimiter">::</span> <span class="string">&quot;&#39;n =&gt; &#39;x&quot;</span>
+
+  <span class="comment">(* Valuations *)</span>
+  <span class="keyword2">and</span> eval <span class="delimiter">::</span> <span class="string">&quot;&#39;v =&gt; nat =&gt; bool&quot;</span>
+  <span class="keyword2">and</span> downshift <span class="delimiter">::</span> <span class="string">&quot;&#39;v =&gt; &#39;v&quot;</span>
+  <span class="keyword2">and</span> upshift <span class="delimiter">::</span> <span class="string">&quot;&#39;v =&gt; &#39;v&quot;</span>
+  <span class="keyword2">and</span> add <span class="delimiter">::</span> <span class="string">&quot;nat =&gt; &#39;v =&gt; &#39;v&quot;</span>
+  <span class="keyword2">and</span> cut <span class="delimiter">::</span> <span class="string">&quot;nat =&gt; &#39;v =&gt; &#39;v&quot;</span>
+  <span class="keyword2">and</span> len <span class="delimiter">::</span> <span class="string">&quot;&#39;v =&gt; nat&quot;</span>
+
+  <span class="comment">(* Restrictions *)</span>
+  <span class="keyword2">and</span> restrict <span class="delimiter">::</span> <span class="string">&quot;&#39;k =&gt; &#39;v =&gt; bool&quot;</span>
+  <span class="keyword2">and</span> Restrict <span class="delimiter">::</span> <span class="string">&quot;&#39;k =&gt; nat =&gt; (&#39;a, &#39;k) aformula&quot;</span>
+
+  <span class="comment">(* Function extensions for the base cases *)</span>
+  <span class="keyword2">and</span> left_formula0 <span class="delimiter">::</span> <span class="string">&quot;&#39;a =&gt; bool&quot;</span>
+  <span class="keyword2">and</span> FV0 <span class="delimiter">::</span> <span class="string">&quot;&#39;a =&gt; (&#39;k &times; nat) list&quot;</span>
+  <span class="keyword2">and</span> find0 <span class="delimiter">::</span> <span class="string">&quot;&#39;k =&gt; nat =&gt; &#39;a =&gt; bool&quot;</span>
+  <span class="keyword2">and</span> wf0 <span class="delimiter">::</span> <span class="string">&quot;&#39;n =&gt; &#39;a =&gt; bool&quot;</span>
+  <span class="keyword2">and</span> decr0 <span class="delimiter">::</span> <span class="string">&quot;&#39;k =&gt; nat =&gt; &#39;a =&gt; &#39;a&quot;</span>
+  <span class="keyword2">and</span> satisfies0 <span class="delimiter">::</span> <span class="string">&quot;&#39;i =&gt; &#39;a =&gt; bool&quot;</span> <span class="delimiter">(</span><span class="keyword2">infix</span> <span class="string">&quot;\&lt;Turnstile&gt;<span class="hidden">&#8681;</span><sub>0</sub>&quot;</span> 50<span class="delimiter">)</span>
+  <span class="keyword2">and</span> nullable0 <span class="delimiter">::</span> <span class="string">&quot;&#39;a =&gt; bool&quot;</span>
+  <span class="keyword2">and</span> lderiv0 <span class="delimiter">::</span> <span class="string">&quot;&#39;x =&gt; &#39;a =&gt; (&#39;a, &#39;k) aformula&quot;</span>
+  <span class="keyword2">and</span> rderiv0 <span class="delimiter">::</span> <span class="string">&quot;&#39;x =&gt; &#39;a =&gt; (&#39;a, &#39;k) aformula&quot;</span>
+<span class="keyword2">begin</span>
+
+<span class="command">abbreviation</span> <span class="string">&quot;LEQ k l n &equiv; LESS k l (SUC k n)&quot;</span>
+
+<span class="command">primrec</span> FV <span class="keyword2">where</span>
+  <span class="string">&quot;FV (FBool _) = []&quot;</span>
+<span class="delimiter">|</span> <span class="string">&quot;FV (FBase a) = FV0 a&quot;</span>
+<span class="delimiter">|</span> <span class="string">&quot;FV (FNot &phi;) = FV &phi;&quot;</span>
+<span class="delimiter">|</span> <span class="string">&quot;FV (FOr &phi; &psi;) = List.union (FV &phi;) (FV &psi;)&quot;</span>
+<span class="delimiter">|</span> <span class="string">&quot;FV (FAnd &phi; &psi;) = List.union (FV &phi;) (FV &psi;)&quot;</span>
+<span class="delimiter">|</span> <span class="string">&quot;FV (FEx k &phi;) = map (&lambda;(k&#39;, x). (k&#39;, if k = k&#39; then x - 1 else x)) (List.remove1 (k, 0) (FV &phi;))&quot;</span>
+<span class="delimiter">|</span> <span class="string">&quot;FV (FAll k &phi;) = map (&lambda;(k&#39;, x). (k&#39;, if k = k&#39; then x - 1 else x)) (List.remove1 (k, 0) (FV &phi;))&quot;</span>
+
+<span class="command">primrec</span> find <span class="keyword2">where</span>
+  <span class="string">&quot;find k l (FBool _) = False&quot;</span>
+<span class="delimiter">|</span> <span class="string">&quot;find k l (FBase a) = find0 k l a&quot;</span>
+<span class="delimiter">|</span> <span class="string">&quot;find k l (FNot &phi;) = find k l &phi;&quot;</span>
+<span class="delimiter">|</span> <span class="string">&quot;find k l (FOr &phi; &psi;) = (find k l &phi; &or; find k l &psi;)&quot;</span>
+<span class="delimiter">|</span> <span class="string">&quot;find k l (FAnd &phi; &psi;) = (find k l &phi; &or; find k l &psi;)&quot;</span>
+<span class="delimiter">|</span> <span class="string">&quot;find k l (FEx k&#39; &phi;) = find k (if k = k&#39; then Suc l else l) &phi;&quot;</span>
+<span class="delimiter">|</span> <span class="string">&quot;find k l (FAll k&#39; &phi;) = find k (if k = k&#39; then Suc l else l) &phi;&quot;</span>
+
+<span class="command">primrec</span> wf <span class="delimiter">::</span> <span class="string">&quot;&#39;n =&gt; (&#39;a, &#39;k) aformula =&gt; bool&quot;</span> <span class="keyword2">where</span>
+  <span class="string">&quot;wf n (FBool _) = True&quot;</span>
+<span class="delimiter">|</span> <span class="string">&quot;wf n (FBase a) = wf0 n a&quot;</span>
+<span class="delimiter">|</span> <span class="string">&quot;wf n (FNot &phi;) = wf n &phi;&quot;</span>
+<span class="delimiter">|</span> <span class="string">&quot;wf n (FOr &phi; &psi;) = (wf n &phi; &and; wf n &psi;)&quot;</span>
+<span class="delimiter">|</span> <span class="string">&quot;wf n (FAnd &phi; &psi;) = (wf n &phi; &and; wf n &psi;)&quot;</span>
+<span class="delimiter">|</span> <span class="string">&quot;wf n (FEx k &phi;) = wf (SUC k n) &phi;&quot;</span>
+<span class="delimiter">|</span> <span class="string">&quot;wf n (FAll k &phi;) = wf (SUC k n) &phi;&quot;</span>
+
+<span class="command">primrec</span> left_formula <span class="delimiter">::</span> <span class="string">&quot;(&#39;a, &#39;k) aformula =&gt; bool&quot;</span> <span class="keyword2">where</span>
+  <span class="string">&quot;left_formula (FBool _) = True&quot;</span>
+<span class="delimiter">|</span> <span class="string">&quot;left_formula (FBase a) = left_formula0 a&quot;</span>
+<span class="delimiter">|</span> <span class="string">&quot;left_formula (FNot &phi;) = left_formula &phi;&quot;</span>
+<span class="delimiter">|</span> <span class="string">&quot;left_formula (FOr &phi; &psi;) = (left_formula &phi; &and; left_formula &psi;)&quot;</span>
+<span class="delimiter">|</span> <span class="string">&quot;left_formula (FAnd &phi; &psi;) = (left_formula &phi; &and; left_formula &psi;)&quot;</span>
+<span class="delimiter">|</span> <span class="string">&quot;left_formula (FEx k &phi;) = left_formula &phi;&quot;</span>
+<span class="delimiter">|</span> <span class="string">&quot;left_formula (FAll k &phi;) = left_formula &phi;&quot;</span>
+
+<span class="command">primrec</span> decr <span class="delimiter">::</span> <span class="string">&quot;&#39;k =&gt; nat =&gt; (&#39;a, &#39;k) aformula =&gt; (&#39;a, &#39;k) aformula&quot;</span> <span class="keyword2">where</span>
+  <span class="string">&quot;decr k l (FBool b) = FBool b&quot;</span>
+<span class="delimiter">|</span> <span class="string">&quot;decr k l (FBase a) = FBase (decr0 k l a)&quot;</span>
+<span class="delimiter">|</span> <span class="string">&quot;decr k l (FNot &phi;) = FNot (decr k l &phi;)&quot;</span>
+<span class="delimiter">|</span> <span class="string">&quot;decr k l (FOr &phi; &psi;) = FOr (decr k l &phi;) (decr k l &psi;)&quot;</span>
+<span class="delimiter">|</span> <span class="string">&quot;decr k l (FAnd &phi; &psi;) = FAnd (decr k l &phi;) (decr k l &psi;)&quot;</span>
+<span class="delimiter">|</span> <span class="string">&quot;decr k l (FEx k&#39; &phi;) = FEx k&#39; (decr k (if k = k&#39; then Suc l else l) &phi;)&quot;</span>
+<span class="delimiter">|</span> <span class="string">&quot;decr k l (FAll k&#39; &phi;) = FAll k&#39; (decr k (if k = k&#39; then Suc l else l) &phi;)&quot;</span>
+
+<span class="command">primrec</span> satisfies_gen <span class="delimiter">::</span> <span class="string">&quot;(&#39;k =&gt; &#39;v =&gt; nat =&gt; bool) =&gt; &#39;i =&gt; (&#39;a, &#39;k) aformula =&gt; bool&quot;</span> <span class="keyword2">where</span>
+  <span class="string">&quot;satisfies_gen r \&lt;AA&gt; (FBool b) = b&quot;</span>
+<span class="delimiter">|</span> <span class="string">&quot;satisfies_gen r \&lt;AA&gt; (FBase a) = (\&lt;AA&gt; \&lt;Turnstile&gt;<span class="hidden">&#8681;</span><sub>0</sub> a)&quot;</span>
+<span class="delimiter">|</span> <span class="string">&quot;satisfies_gen r \&lt;AA&gt; (FNot &phi;) = (&not; satisfies_gen r \&lt;AA&gt; &phi;)&quot;</span>
+<span class="delimiter">|</span> <span class="string">&quot;satisfies_gen r \&lt;AA&gt; (FOr &phi;<span class="hidden">&#8681;</span><sub>1</sub> &phi;<span class="hidden">&#8681;</span><sub>2</sub>) = (satisfies_gen r \&lt;AA&gt; &phi;<span class="hidden">&#8681;</span><sub>1</sub> &or; satisfies_gen r \&lt;AA&gt; &phi;<span class="hidden">&#8681;</span><sub>2</sub>)&quot;</span>
+<span class="delimiter">|</span> <span class="string">&quot;satisfies_gen r \&lt;AA&gt; (FAnd &phi;<span class="hidden">&#8681;</span><sub>1</sub> &phi;<span class="hidden">&#8681;</span><sub>2</sub>) = (satisfies_gen r \&lt;AA&gt; &phi;<span class="hidden">&#8681;</span><sub>1</sub> &and; satisfies_gen r \&lt;AA&gt; &phi;<span class="hidden">&#8681;</span><sub>2</sub>)&quot;</span>
+<span class="delimiter">|</span> <span class="string">&quot;satisfies_gen r \&lt;AA&gt; (FEx k &phi;) = (&exist;P. r k P (Length \&lt;AA&gt;) &and; satisfies_gen r (Extend k 0 \&lt;AA&gt; P) &phi;)&quot;</span>
+<span class="delimiter">|</span> <span class="string">&quot;satisfies_gen r \&lt;AA&gt; (FAll k &phi;) = (&forall;P. r k P (Length \&lt;AA&gt;) --&gt; satisfies_gen r (Extend k 0 \&lt;AA&gt; P) &phi;)&quot;</span>
+
+<span class="command">abbreviation</span> satisfies <span class="delimiter">(</span><span class="keyword2">infix</span> <span class="string">&quot;\&lt;Turnstile&gt;&quot;</span> 50<span class="delimiter">)</span> <span class="keyword2">where</span>
+  <span class="string">&quot;\&lt;AA&gt; \&lt;Turnstile&gt; &phi; &equiv; satisfies_gen (&lambda;_ _ _. True) \&lt;AA&gt; &phi;&quot;</span>
+
+<span class="command">abbreviation</span> satisfies_bounded <span class="delimiter">(</span><span class="keyword2">infix</span> <span class="string">&quot;\&lt;Turnstile&gt;<span class="hidden">&#8681;</span><sub>b</sub>&quot;</span> 50<span class="delimiter">)</span> <span class="keyword2">where</span>
+  <span class="string">&quot;\&lt;AA&gt; \&lt;Turnstile&gt;<span class="hidden">&#8681;</span><sub>b</sub> &phi; &equiv; satisfies_gen (&lambda;_ P n. len P &le; n) \&lt;AA&gt; &phi;&quot;</span>
+
+<span class="command">abbreviation</span> sat_vars_gen <span class="keyword2">where</span>
+  <span class="string">&quot;sat_vars_gen r V \&lt;AA&gt; &phi; &equiv;
+    satisfies_gen (&lambda;k P n. restrict k P &and; r k P n) \&lt;AA&gt; &phi; &and; (&forall;(k, x) &isin; set V. restrict k (x<span class="hidden">&#8663;</span><sup>\&lt;AA&gt;<span class="hidden">&#8662;</span></sup>k))&quot;</span>
+
+<span class="command">definition</span> sat <span class="keyword2">where</span>
+  <span class="string">&quot;sat \&lt;AA&gt; &phi; &equiv; sat_vars_gen (&lambda;_ _ _. True) (FV &phi;) \&lt;AA&gt; &phi;&quot;</span>
+
+<span class="command">definition</span> sat<span class="hidden">&#8681;</span><sub>b</sub> <span class="keyword2">where</span>
+  <span class="string">&quot;sat<span class="hidden">&#8681;</span><sub>b</sub> \&lt;AA&gt; &phi; &equiv; sat_vars_gen (&lambda;_ P n. len P &le; n) (FV &phi;) \&lt;AA&gt; &phi;&quot;</span>
+
+<span class="command">fun</span> RESTR <span class="keyword2">where</span>
+  <span class="string">&quot;RESTR (FOr &phi; &psi;) = FOr (RESTR &phi;) (RESTR &psi;)&quot;</span>
+<span class="delimiter">|</span> <span class="string">&quot;RESTR (FAnd &phi; &psi;) = FAnd (RESTR &phi;) (RESTR &psi;)&quot;</span>
+<span class="delimiter">|</span> <span class="string">&quot;RESTR (FNot &phi;) = FNot (RESTR &phi;)&quot;</span>
+<span class="delimiter">|</span> <span class="string">&quot;RESTR (FEx k &phi;) = FEx k (FAnd (Restrict k 0) (RESTR &phi;))&quot;</span>
+<span class="delimiter">|</span> <span class="string">&quot;RESTR (FAll k &phi;) = FAll k (FOr (FNot (Restrict k 0)) (RESTR &phi;))&quot;</span>
+<span class="delimiter">|</span> <span class="string">&quot;RESTR &phi; = &phi;&quot;</span>
+
+<span class="command">abbreviation</span> RESTRICT_VARS <span class="keyword2">where</span>
+  <span class="string">&quot;RESTRICT_VARS vs &phi; &equiv; foldr (&lambda;(k, x) &phi;. FAnd (Restrict k x) &phi;) vs (RESTR &phi;)&quot;</span>
+
+<span class="command">definition</span> RESTRICT <span class="keyword2">where</span>
+  <span class="string">&quot;RESTRICT &phi; &equiv; RESTRICT_VARS (FV &phi;) &phi;&quot;</span>
+
+<span class="command">primrec</span> nullable <span class="delimiter">::</span> <span class="string">&quot;(&#39;a, &#39;k) aformula =&gt; bool&quot;</span> <span class="keyword2">where</span>
+  <span class="string">&quot;nullable (FBool b) = b&quot;</span>
+<span class="delimiter">|</span> <span class="string">&quot;nullable (FBase a) = nullable0 a&quot;</span>
+<span class="delimiter">|</span> <span class="string">&quot;nullable (FNot &phi;) = (&not; nullable &phi;)&quot;</span>
+<span class="delimiter">|</span> <span class="string">&quot;nullable (FOr &phi; &psi;) = (nullable &phi; &or; nullable &psi;)&quot;</span>
+<span class="delimiter">|</span> <span class="string">&quot;nullable (FAnd &phi; &psi;) = (nullable &phi; &and; nullable &psi;)&quot;</span>
+<span class="delimiter">|</span> <span class="string">&quot;nullable (FEx k &phi;) = nullable &phi;&quot;</span>
+<span class="delimiter">|</span> <span class="string">&quot;nullable (FAll k &phi;) = nullable &phi;&quot;</span>
+
+<span class="command">fun</span> nFOr <span class="delimiter">::</span> <span class="string">&quot;(&#39;a, &#39;k) aformula =&gt; (&#39;a, &#39;k) aformula =&gt; (&#39;a, &#39;k) aformula&quot;</span> <span class="keyword2">where</span>
+  <span class="string">&quot;nFOr (FBool b1) (FBool b2) = FBool (b1 &or; b2)&quot;</span>
+<span class="delimiter">|</span> <span class="string">&quot;nFOr (FBool b) &psi; = (if b then FBool True else &psi;)&quot;</span>
+<span class="delimiter">|</span> <span class="string">&quot;nFOr &phi; (FBool b) = (if b then FBool True else &phi;)&quot;</span>
+<span class="delimiter">|</span> <span class="string">&quot;nFOr (FOr &phi;1 &phi;2) &psi; = nFOr &phi;1 (nFOr &phi;2 &psi;)&quot;</span>
+<span class="delimiter">|</span> <span class="string">&quot;nFOr &phi; (FOr &psi;1 &psi;2) =
+  (if &phi; = &psi;1 then FOr &psi;1 &psi;2
+  else if &phi; &lt; &psi;1 then FOr &phi; (FOr &psi;1 &psi;2)
+  else FOr &psi;1 (nFOr &phi; &psi;2))&quot;</span>
+<span class="delimiter">|</span> <span class="string">&quot;nFOr &phi; &psi; =
+  (if &phi; = &psi; then &phi;
+  else if &phi; &lt; &psi; then FOr &phi; &psi;
+  else FOr &psi; &phi;)&quot;</span>
+
+<span class="command">fun</span> nFAnd <span class="delimiter">::</span> <span class="string">&quot;(&#39;a, &#39;k) aformula =&gt; (&#39;a, &#39;k) aformula =&gt; (&#39;a, &#39;k) aformula&quot;</span> <span class="keyword2">where</span>
+  <span class="string">&quot;nFAnd (FBool b1) (FBool b2) = FBool (b1 &and; b2)&quot;</span>
+<span class="delimiter">|</span> <span class="string">&quot;nFAnd (FBool b) &psi; = (if b then &psi; else FBool False)&quot;</span>
+<span class="delimiter">|</span> <span class="string">&quot;nFAnd &phi; (FBool b) = (if b then &phi; else FBool False)&quot;</span>
+<span class="delimiter">|</span> <span class="string">&quot;nFAnd (FAnd &phi;1 &phi;2) &psi; = nFAnd &phi;1 (nFAnd &phi;2 &psi;)&quot;</span>
+<span class="delimiter">|</span> <span class="string">&quot;nFAnd &phi; (FAnd &psi;1 &psi;2) =
+  (if &phi; = &psi;1 then FAnd &psi;1 &psi;2
+  else if &phi; &lt; &psi;1 then FAnd &phi; (FAnd &psi;1 &psi;2)
+  else FAnd &psi;1 (nFAnd &phi; &psi;2))&quot;</span>
+<span class="delimiter">|</span> <span class="string">&quot;nFAnd &phi; &psi; =
+  (if &phi; = &psi; then &phi;
+  else if &phi; &lt; &psi; then FAnd &phi; &psi;
+  else FAnd &psi; &phi;)&quot;</span>
+
+<span class="command">fun</span> nFNot <span class="delimiter">::</span> <span class="string">&quot;(&#39;a, &#39;k) aformula =&gt; (&#39;a, &#39;k) aformula&quot;</span> <span class="keyword2">where</span>
+  <span class="string">&quot;nFNot (FNot &phi;) = &phi;&quot;</span>
+<span class="delimiter">|</span> <span class="string">&quot;nFNot (FOr &phi; &psi;) = nFAnd (nFNot &phi;) (nFNot &psi;)&quot;</span>
+<span class="delimiter">|</span> <span class="string">&quot;nFNot (FAnd &phi; &psi;) = nFOr (nFNot &phi;) (nFNot &psi;)&quot;</span>
+<span class="delimiter">|</span> <span class="string">&quot;nFNot (FEx b &phi;) = FAll b (nFNot &phi;)&quot;</span>
+<span class="delimiter">|</span> <span class="string">&quot;nFNot (FAll b &phi;) = FEx b (nFNot &phi;)&quot;</span>
+<span class="delimiter">|</span> <span class="string">&quot;nFNot (FBool b) = FBool (&not; b)&quot;</span>
+<span class="delimiter">|</span> <span class="string">&quot;nFNot &phi; = FNot &phi;&quot;</span>
+
+<span class="command">fun</span> nFEx <span class="delimiter">::</span> <span class="string">&quot;&#39;k =&gt; (&#39;a, &#39;k) aformula =&gt; (&#39;a, &#39;k) aformula&quot;</span> <span class="keyword2">where</span>
+  <span class="string">&quot;nFEx k (FOr &phi; &psi;) = nFOr (nFEx k &phi;) (nFEx k &psi;)&quot;</span>
+<span class="delimiter">|</span> <span class="string">&quot;nFEx k &phi; = (if find k 0 &phi; then FEx k &phi; else decr k 0 &phi;)&quot;</span>
+
+<span class="command">fun</span> nFAll <span class="keyword2">where</span>
+  <span class="string">&quot;nFAll k (FAnd &phi; &psi;) = nFAnd (nFAll k &phi;) (nFAll k &psi;)&quot;</span>
+<span class="delimiter">|</span> <span class="string">&quot;nFAll k &phi; = (if find k 0 &phi; then FAll k &phi; else decr k 0 &phi;)&quot;</span>
+
+<span class="command">fun</span> norm <span class="keyword2">where</span>
+  <span class="string">&quot;norm (FOr &phi; &psi;) = nFOr (norm &phi;) (norm &psi;)&quot;</span>
+<span class="delimiter">|</span> <span class="string">&quot;norm (FAnd &phi; &psi;) = nFAnd (norm &phi;) (norm &psi;)&quot;</span>
+<span class="delimiter">|</span> <span class="string">&quot;norm (FNot &phi;) = nFNot (norm &phi;)&quot;</span>
+<span class="delimiter">|</span> <span class="string">&quot;norm (FEx k &phi;) = nFEx k (norm &phi;)&quot;</span>
+<span class="delimiter">|</span> <span class="string">&quot;norm (FAll k &phi;) = nFAll k (norm &phi;)&quot;</span>
+<span class="delimiter">|</span> <span class="string">&quot;norm &phi; = &phi;&quot;</span>
+
+<span class="command">context</span>
+<span class="keyword2">fixes</span> deriv0 <span class="delimiter">::</span> <span class="string">&quot;&#39;x =&gt; &#39;a =&gt; (&#39;a, &#39;k) aformula&quot;</span>
+<span class="keyword2">begin</span>
+
+<span class="command">primrec</span> deriv <span class="delimiter">::</span> <span class="string">&quot;&#39;x =&gt; (&#39;a, &#39;k) aformula =&gt; (&#39;a, &#39;k) aformula&quot;</span> <span class="keyword2">where</span>
+  <span class="string">&quot;deriv x (FBool b) = FBool b&quot;</span>
+<span class="delimiter">|</span> <span class="string">&quot;deriv x (FBase a) = deriv0 x a&quot;</span>
+<span class="delimiter">|</span> <span class="string">&quot;deriv x (FNot &phi;) = FNot (deriv x &phi;)&quot;</span>
+<span class="delimiter">|</span> <span class="string">&quot;deriv x (FOr &phi; &psi;) = FOr (deriv x &phi;) (deriv x &psi;)&quot;</span>
+<span class="delimiter">|</span> <span class="string">&quot;deriv x (FAnd &phi; &psi;) = FAnd (deriv x &phi;) (deriv x &psi;)&quot;</span>
+<span class="delimiter">|</span> <span class="string">&quot;deriv x (FEx k &phi;) = FEx k (FOr (deriv (extend k True x) &phi;) (deriv (extend k False x) &phi;))&quot;</span>
+<span class="delimiter">|</span> <span class="string">&quot;deriv x (FAll k &phi;) = FAll k (FAnd (deriv (extend k True x) &phi;) (deriv (extend k False x) &phi;))&quot;</span>
+
+<span class="command">end</span>
+
+<span class="command">abbreviation</span> <span class="string">&quot;lderiv &equiv; deriv lderiv0&quot;</span>
+<span class="command">abbreviation</span> <span class="string">&quot;rderiv &equiv; deriv rderiv0&quot;</span>
+
+
+
+<span class="command">lemma</span> fold_deriv_FBool<span class="delimiter">:</span> <span class="string">&quot;fold (deriv d0) xs (FBool b) = FBool b&quot;</span>
+  <span class="command">by</span> <span class="delimiter">(</span>induct xs<span class="delimiter">)</span> auto
+
+<span class="command">lemma</span> fold_deriv_FNot<span class="delimiter">:</span>
+  <span class="string">&quot;fold (deriv d0) xs (FNot &phi;) = FNot (fold (deriv d0) xs &phi;)&quot;</span>
+  <span class="command">by</span> <span class="delimiter">(</span>induct xs arbitrary<span class="delimiter">:</span> &phi;<span class="delimiter">)</span> auto
+
+<span class="command">lemma</span> fold_deriv_FOr<span class="delimiter">:</span>
+  <span class="string">&quot;fold (deriv d0) xs (FOr &phi; &psi;) = FOr (fold (deriv d0) xs &phi;) (fold (deriv d0) xs &psi;)&quot;</span>
+  <span class="command">by</span> <span class="delimiter">(</span>induct xs arbitrary<span class="delimiter">:</span> &phi; &psi;<span class="delimiter">)</span> auto
+
+<span class="command">lemma</span> fold_deriv_FAnd<span class="delimiter">:</span>
+  <span class="string">&quot;fold (deriv d0) xs (FAnd &phi; &psi;) = FAnd (fold (deriv d0) xs &phi;) (fold (deriv d0) xs &psi;)&quot;</span>
+  <span class="command">by</span> <span class="delimiter">(</span>induct xs arbitrary<span class="delimiter">:</span> &phi; &psi;<span class="delimiter">)</span> auto
+
+<span class="command">lemma</span> fold_deriv_FEx<span class="delimiter">:</span>
+  <span class="string">&quot;{&lang;fold (deriv d0) xs (FEx k &phi;)&rang; | xs. True} &sube;
+    {FEx k &psi; | &psi;. nf_ACI &psi; &and; disjuncts &psi; &sube; (\&lt;Union&gt;xs. disjuncts &lang;fold (deriv d0) xs &phi;&rang;)}&quot;</span>
+<span class="command">proof</span> -
+  <span class="command">{</span> <span class="command">fix</span> xs
+    <span class="command">have</span> <span class="string">&quot;&exist;&psi;. &lang;fold (deriv d0) xs (FEx k &phi;)&rang; = FEx k &psi; &and;
+      nf_ACI &psi; &and; disjuncts &psi; &sube; (\&lt;Union&gt;xs. disjuncts &lang;fold (deriv d0) xs &phi;&rang;)&quot;</span>
+    <span class="command">proof</span> <span class="delimiter">(</span>induct xs arbitrary<span class="delimiter">:</span> &phi;<span class="delimiter">)</span>
+      <span class="command">case</span> <span class="delimiter">(</span>Cons x xs<span class="delimiter">)</span>
+      <span class="command">let</span> <span class="var">?&phi;</span> <span class="delimiter">=</span> <span class="string">&quot;FOr (deriv d0 (extend k True x) &phi;) (deriv d0 (extend k False x) &phi;)&quot;</span>
+      <span class="command">from</span> Cons<span class="delimiter">[</span>of <span class="var">?&phi;</span><span class="delimiter">]</span> <span class="command">obtain</span> &psi; <span class="keyword2">where</span> <span class="string">&quot;&lang;fold (deriv d0) xs (FEx k ?&phi;)&rang; = FEx k &psi;&quot;</span>
+        <span class="string">&quot;nf_ACI &psi;&quot;</span> <span class="keyword2">and</span> *<span class="delimiter">:</span> <span class="string">&quot;disjuncts &psi; &sube; (\&lt;Union&gt;xs. disjuncts &lang;fold (deriv d0) xs ?&phi;&rang;)&quot;</span> <span class="command">by</span> blast<span class="delimiter">+</span>
+      <span class="command">then</span> <span class="command">show</span> <span class="var">?case</span>
+      <span class="command">proof</span> <span class="delimiter">(</span>intro exI conjI<span class="delimiter">)</span>
+        <span class="command">have</span> <span class="string">&quot;(\&lt;Union&gt;xs. disjuncts &lang;fold (deriv d0) xs ?&phi;&rang;) &sube;
+          (\&lt;Union&gt;xs. disjuncts &lang;fold (Formula_Operations.deriv extend d0) xs &phi;&rang;)&quot;</span>
+        <span class="command">by</span> <span class="delimiter">(</span>force simp<span class="delimiter">:</span> fold_deriv_FOr finite_juncts nonempty_juncts nf_ACI_juncts nf_ACI_norm_ACI
+          dest<span class="delimiter">:</span> notin_juncts set_mp<span class="delimiter">[</span>OF equalityD1<span class="delimiter">[</span>OF disjuncts_NFOR<span class="delimiter">]</span><span class="delimiter">,</span> rotated -1<span class="delimiter">]</span>
+          intro<span class="delimiter">:</span> exI<span class="delimiter">[</span>of _ <span class="string">&quot;extend k b x # xs&quot;</span> <span class="keyword2">for</span> b xs<span class="delimiter">]</span><span class="delimiter">)</span>
+        <span class="command">with</span> * <span class="command">show</span> <span class="string">&quot;disjuncts &psi; &sube; &hellip;&quot;</span> <span class="command">by</span> blast
+      <span class="command">qed</span> simp_all
+    <span class="command">qed</span> <span class="delimiter">(</span>auto simp<span class="delimiter">:</span> nf_ACI_norm_ACI intro<span class="delimiter">!</span><span class="delimiter">:</span> exI<span class="delimiter">[</span>of _ <span class="string">&quot;[]&quot;</span><span class="delimiter">]</span><span class="delimiter">)</span>
+  <span class="command">}</span>
+  <span class="command">then</span> <span class="command">show</span> <span class="var">?thesis</span> <span class="command">by</span> blast
+<span class="command">qed</span>
+
+<span class="command">lemma</span> fold_deriv_FAll<span class="delimiter">:</span>
+  <span class="string">&quot;{&lang;fold (deriv d0) xs (FAll k &phi;)&rang; | xs. True} &sube;
+    {FAll k &psi; | &psi;. nf_ACI &psi; &and; conjuncts &psi; &sube; (\&lt;Union&gt;xs. conjuncts &lang;fold (deriv d0) xs &phi;&rang;)}&quot;</span>
+<span class="command">proof</span> -
+  <span class="command">{</span> <span class="command">fix</span> xs
+    <span class="command">have</span> <span class="string">&quot;&exist;&psi;. &lang;fold (deriv d0) xs (FAll k &phi;)&rang; = FAll k &psi; &and;
+      nf_ACI &psi; &and; conjuncts &psi; &sube; (\&lt;Union&gt;xs. conjuncts &lang;fold (deriv d0) xs &phi;&rang;)&quot;</span>
+    <span class="command">proof</span> <span class="delimiter">(</span>induct xs arbitrary<span class="delimiter">:</span> &phi;<span class="delimiter">)</span>
+      <span class="command">case</span> <span class="delimiter">(</span>Cons x xs<span class="delimiter">)</span>
+      <span class="command">let</span> <span class="var">?&phi;</span> <span class="delimiter">=</span> <span class="string">&quot;FAnd (deriv d0 (extend k True x) &phi;) (deriv d0 (extend k False x) &phi;)&quot;</span>
+      <span class="command">from</span> Cons<span class="delimiter">[</span>of <span class="var">?&phi;</span><span class="delimiter">]</span> <span class="command">obtain</span> &psi; <span class="keyword2">where</span> <span class="string">&quot;&lang;fold (deriv d0) xs (FAll k ?&phi;)&rang; = FAll k &psi;&quot;</span>
+        <span class="string">&quot;nf_ACI &psi;&quot;</span> <span class="keyword2">and</span> *<span class="delimiter">:</span> <span class="string">&quot;conjuncts &psi; &sube; (\&lt;Union&gt;xs. conjuncts &lang;fold (deriv d0) xs ?&phi;&rang;)&quot;</span> <span class="command">by</span> blast<span class="delimiter">+</span>
+      <span class="command">then</span> <span class="command">show</span> <span class="var">?case</span>
+      <span class="command">proof</span> <span class="delimiter">(</span>intro exI conjI<span class="delimiter">)</span>
+        <span class="command">have</span> <span class="string">&quot;(\&lt;Union&gt;xs. conjuncts &lang;fold (deriv d0) xs ?&phi;&rang;) &sube;
+          (\&lt;Union&gt;xs. conjuncts &lang;fold (Formula_Operations.deriv extend d0) xs &phi;&rang;)&quot;</span>
+        <span class="command">by</span> <span class="delimiter">(</span>force simp<span class="delimiter">:</span> fold_deriv_FAnd finite_juncts nonempty_juncts nf_ACI_juncts nf_ACI_norm_ACI
+          dest<span class="delimiter">:</span> notin_juncts set_mp<span class="delimiter">[</span>OF equalityD1<span class="delimiter">[</span>OF conjuncts_NFAND<span class="delimiter">]</span><span class="delimiter">,</span> rotated -1<span class="delimiter">]</span>
+          intro<span class="delimiter">:</span> exI<span class="delimiter">[</span>of _ <span class="string">&quot;extend k b x # xs&quot;</span> <span class="keyword2">for</span> b xs<span class="delimiter">]</span><span class="delimiter">)</span>
+        <span class="command">with</span> * <span class="command">show</span> <span class="string">&quot;conjuncts &psi; &sube; &hellip;&quot;</span> <span class="command">by</span> blast
+      <span class="command">qed</span> simp_all
+    <span class="command">qed</span> <span class="delimiter">(</span>auto simp<span class="delimiter">:</span> nf_ACI_norm_ACI intro<span class="delimiter">!</span><span class="delimiter">:</span> exI<span class="delimiter">[</span>of _ <span class="string">&quot;[]&quot;</span><span class="delimiter">]</span><span class="delimiter">)</span>
+  <span class="command">}</span>
+  <span class="command">then</span> <span class="command">show</span> <span class="var">?thesis</span> <span class="command">by</span> blast
+<span class="command">qed</span>
+
+<span class="command">lemma</span> finite_norm_ACI_juncts<span class="delimiter">:</span>
+  <span class="keyword2">fixes</span> f <span class="delimiter">::</span> <span class="string">&quot;(&#39;a, &#39;k) aformula =&gt; (&#39;a, &#39;k) aformula&quot;</span>
+  <span class="keyword2">shows</span> <span class="string">&quot;finite B ==&gt; finite {f &phi; | &phi;. nf_ACI &phi; &and; disjuncts &phi; &sube; B}&quot;</span>
+        <span class="string">&quot;finite B ==&gt; finite {f &phi; | &phi;. nf_ACI &phi; &and; conjuncts &phi; &sube; B}&quot;</span>
+  <span class="command">by</span> <span class="delimiter">(</span>elim finite_surj<span class="delimiter">[</span>OF iffD2<span class="delimiter">[</span>OF finite_Pow_iff<span class="delimiter">]</span><span class="delimiter">,</span> of _ _ <span class="string">&quot;f o NFOR o image norm_ACI&quot;</span><span class="delimiter">]</span>
+    finite_surj<span class="delimiter">[</span>OF iffD2<span class="delimiter">[</span>OF finite_Pow_iff<span class="delimiter">]</span><span class="delimiter">,</span> of _ _ <span class="string">&quot;f o NFAND o image norm_ACI&quot;</span><span class="delimiter">]</span><span class="delimiter">,</span>
+    force simp<span class="delimiter">:</span> Pow_def image_Collect intro<span class="delimiter">:</span> arg_cong<span class="delimiter">[</span>OF norm_ACI_NFOR<span class="delimiter">]</span> arg_cong<span class="delimiter">[</span>OF norm_ACI_NFAND<span class="delimiter">]</span><span class="delimiter">)</span><span class="delimiter">+</span>
+
+<span class="command">end</span>
+
+<span class="command">locale</span> Formula <span class="delimiter">=</span> Formula_Operations
+  <span class="keyword2">where</span> TYPEVARS <span class="delimiter">=</span> TYPEVARS
+  <span class="keyword2">for</span> TYPEVARS <span class="delimiter">::</span> <span class="string">&quot;&#39;a(*l*) :: linorder (*&times; &#39;ar :: linorder*)&times; &#39;i &times; &#39;k :: linorder &times; &#39;n &times; &#39;x &times; &#39;v&quot;</span> <span class="delimiter">+</span>
+  <span class="comment">(* De Bruijn indices abstractly *)</span>
+  <span class="keyword2">assumes</span> SUC_SUC<span class="delimiter">:</span> <span class="string">&quot;SUC k (SUC k&#39; idx) = SUC k&#39; (SUC k idx)&quot;</span>
+  <span class="keyword2">and</span> LEQ_0<span class="delimiter">:</span> <span class="string">&quot;LEQ k 0 idx&quot;</span>
+  <span class="keyword2">and</span> LESS_SUC<span class="delimiter">:</span> <span class="string">&quot;LEQ k (Suc l) idx = LESS k l idx&quot;</span>
+    <span class="string">&quot;k &ne; k&#39; ==&gt; LESS k l (SUC k&#39; idx) = LESS k l idx&quot;</span>
+
+  <span class="comment">(* Interpretations *)</span>
+  <span class="keyword2">and</span> nvars_Extend<span class="delimiter">:</span> <span class="string">&quot;#<span class="hidden">&#8681;</span><sub>V</sub> (Extend k i \&lt;AA&gt; P) = SUC k (#<span class="hidden">&#8681;</span><sub>V</sub> \&lt;AA&gt;)&quot;</span>
+  <span class="keyword2">and</span> Length_Extend<span class="delimiter">:</span> <span class="string">&quot;Length (Extend k i \&lt;AA&gt; P) = max (Length \&lt;AA&gt;) (len P)&quot;</span>
+  <span class="keyword2">and</span> Length_0_inj<span class="delimiter">:</span> <span class="string">&quot;[|Length \&lt;AA&gt; = 0; Length \&lt;BB&gt; = 0; #<span class="hidden">&#8681;</span><sub>V</sub> \&lt;AA&gt; = #<span class="hidden">&#8681;</span><sub>V</sub> \&lt;BB&gt;|] ==&gt; \&lt;AA&gt; = \&lt;BB&gt;&quot;</span>
+  <span class="keyword2">and</span> ex_Length_0<span class="delimiter">:</span> <span class="string">&quot;&exist;\&lt;AA&gt;. Length \&lt;AA&gt; = 0 &and; #<span class="hidden">&#8681;</span><sub>V</sub> \&lt;AA&gt; = idx&quot;</span>
+  <span class="keyword2">and</span> Extend_commute_safe<span class="delimiter">:</span> <span class="string">&quot;[|j &le; i; LEQ k i (#<span class="hidden">&#8681;</span><sub>V</sub> \&lt;AA&gt;)|] ==&gt;
+      Extend k j (Extend k i \&lt;AA&gt; P) Q = Extend k (Suc i) (Extend k j \&lt;AA&gt; Q) P&quot;</span>
+  <span class="keyword2">and</span> Extend_commute_unsafe<span class="delimiter">:</span> <span class="string">&quot;k &ne; k&#39; ==&gt;
+      Extend k j (Extend k&#39; i \&lt;AA&gt; P) Q = Extend k&#39; i (Extend k j \&lt;AA&gt; Q) P&quot;</span>
+  <span class="keyword2">and</span> assigns_Extend<span class="delimiter">:</span>  <span class="string">&quot;LEQ ord i (#<span class="hidden">&#8681;</span><sub>V</sub> \&lt;AA&gt;) ==&gt;
+    m<span class="hidden">&#8663;</span><sup>Extend ord i \&lt;AA&gt; P<span class="hidden">&#8662;</span></sup>ord&#39; = (if ord = ord&#39; then (if m = i then P else dec i m<span class="hidden">&#8663;</span><sup>\&lt;AA&gt;<span class="hidden">&#8662;</span></sup>ord) else m<span class="hidden">&#8663;</span><sup>\&lt;AA&gt;<span class="hidden">&#8662;</span></sup>ord&#39;)&quot;</span>
+  <span class="keyword2">and</span> assigns_SNOC_zero<span class="delimiter">:</span> <span class="string">&quot;LESS ord m (#<span class="hidden">&#8681;</span><sub>V</sub> \&lt;AA&gt;) ==&gt; m<span class="hidden">&#8663;</span><sup>SNOC (zero (#<span class="hidden">&#8681;</span><sub>V</sub> \&lt;AA&gt;)) \&lt;AA&gt;<span class="hidden">&#8662;</span></sup>ord = m<span class="hidden">&#8663;</span><sup>\&lt;AA&gt;<span class="hidden">&#8662;</span></sup>ord&quot;</span>
+  <span class="keyword2">and</span> Length_CONS<span class="delimiter">:</span> <span class="string">&quot;Length (CONS x \&lt;AA&gt;) = Length \&lt;AA&gt; + 1&quot;</span>
+  <span class="keyword2">and</span> Length_SNOC<span class="delimiter">:</span> <span class="string">&quot;Length (SNOC x \&lt;AA&gt;) = Suc (Length \&lt;AA&gt;)&quot;</span>
+  <span class="keyword2">and</span> nvars_CONS<span class="delimiter">:</span> <span class="string">&quot;#<span class="hidden">&#8681;</span><sub>V</sub> (CONS x \&lt;AA&gt;) = #<span class="hidden">&#8681;</span><sub>V</sub> \&lt;AA&gt;&quot;</span>
+  <span class="keyword2">and</span> nvars_SNOC<span class="delimiter">:</span> <span class="string">&quot;#<span class="hidden">&#8681;</span><sub>V</sub> (SNOC x \&lt;AA&gt;) = #<span class="hidden">&#8681;</span><sub>V</sub> \&lt;AA&gt;&quot;</span>
+  <span class="keyword2">and</span> Extend_CONS<span class="delimiter">:</span> <span class="string">&quot;#<span class="hidden">&#8681;</span><sub>V</sub> \&lt;AA&gt; = size x ==&gt; Extend k 0 (CONS x \&lt;AA&gt;) P =
+      CONS (extend k (if eval P 0 then True else False) x) (Extend k 0 \&lt;AA&gt; (downshift P))&quot;</span>
+  <span class="keyword2">and</span> Extend_SNOC_cut<span class="delimiter">:</span> <span class="string">&quot;#<span class="hidden">&#8681;</span><sub>V</sub> \&lt;AA&gt; = size x ==&gt; len P &le; Length (SNOC x \&lt;AA&gt;) ==&gt;
+    Extend ord 0 (SNOC x \&lt;AA&gt;) P =
+    SNOC (extend ord (if eval P (Length \&lt;AA&gt;) then True else False) x) (Extend ord 0 \&lt;AA&gt; (cut (Length \&lt;AA&gt;) P))&quot;</span>
+
+
+  <span class="comment">(* Alphabet elements *)</span>
+  <span class="keyword2">and</span> size_zero<span class="delimiter">:</span> <span class="string">&quot;size (zero idx) = idx&quot;</span>
+  <span class="keyword2">and</span> size_extend<span class="delimiter">:</span> <span class="string">&quot;size (extend k b x) = SUC k (size x)&quot;</span>
+
+  <span class="comment">(* Valuations *)</span>
+  <span class="keyword2">and</span> downshift_upshift<span class="delimiter">:</span> <span class="string">&quot;downshift (upshift P) = P&quot;</span>
+  <span class="keyword2">and</span> downshift_add_zero<span class="delimiter">:</span> <span class="string">&quot;downshift (add 0 P) = downshift P&quot;</span>
+  <span class="keyword2">and</span> eval_add<span class="delimiter">:</span> <span class="string">&quot;eval (add n P) n&quot;</span>
+  <span class="keyword2">and</span> eval_upshift<span class="delimiter">:</span> <span class="string">&quot;&not; eval (upshift P) 0&quot;</span>
+  <span class="keyword2">and</span> eval_ge_len<span class="delimiter">:</span> <span class="string">&quot;p &ge; len P ==&gt; &not; eval P p&quot;</span>
+  <span class="keyword2">and</span> len_cut_le<span class="delimiter">:</span> <span class="string">&quot;len (cut n P) &le; n&quot;</span>
+  <span class="keyword2">and</span> len_cut<span class="delimiter">:</span> <span class="string">&quot;len P &le; n ==&gt; cut n P = P&quot;</span>
+  <span class="keyword2">and</span> cut_add<span class="delimiter">:</span> <span class="string">&quot;cut n (add m P) = (if m &ge; n then cut n P else add m (cut n P))&quot;</span>
+  <span class="keyword2">and</span> len_add<span class="delimiter">:</span> <span class="string">&quot;len (add m P) = max (Suc m) (len P)&quot;</span>
+  <span class="keyword2">and</span> len_upshift<span class="delimiter">:</span> <span class="string">&quot;len (upshift P) = (case len P of 0 =&gt; 0 | n =&gt; Suc n)&quot;</span>
+  <span class="keyword2">and</span> len_downshift<span class="delimiter">:</span> <span class="string">&quot;len (downshift P) = (case len P of 0 =&gt; 0 | Suc n =&gt; n)&quot;</span>
+
+  <span class="comment">(* Function extensions for the base cases *)</span>
+  <span class="keyword2">and</span> wf0_decr0<span class="delimiter">:</span> <span class="string">&quot;[|wf0 (SUC k idx) a; LESS k l (SUC k idx); &not; find0 k l a|] ==&gt; wf0 idx (decr0 k l a)&quot;</span>
+  <span class="keyword2">and</span> left_formula0_decr0<span class="delimiter">:</span> <span class="string">&quot;left_formula0 &phi; ==&gt; left_formula0 (decr0 k l &phi;)&quot;</span>
+  <span class="keyword2">and</span> Extend_satisfies0<span class="delimiter">:</span> <span class="string">&quot;[|&not; find0 k i a; LESS k i (SUC k (#<span class="hidden">&#8681;</span><sub>V</sub> \&lt;AA&gt;))|] ==&gt;
+      Extend k i \&lt;AA&gt; P \&lt;Turnstile&gt;<span class="hidden">&#8681;</span><sub>0</sub> a &lt;-&gt; \&lt;AA&gt; \&lt;Turnstile&gt;<span class="hidden">&#8681;</span><sub>0</sub> decr0 k i a&quot;</span>
+  <span class="keyword2">and</span> nullable0_satisfies0<span class="delimiter">:</span> <span class="string">&quot;Length \&lt;AA&gt; = 0 ==&gt; nullable0 a &lt;-&gt; \&lt;AA&gt; \&lt;Turnstile&gt;<span class="hidden">&#8681;</span><sub>0</sub> a&quot;</span>
+  <span class="keyword2">and</span> satisfies0_eqI<span class="delimiter">:</span> <span class="string">&quot;wf0 (#<span class="hidden">&#8681;</span><sub>V</sub> \&lt;BB&gt;) a ==&gt; #<span class="hidden">&#8681;</span><sub>V</sub> \&lt;AA&gt; = #<span class="hidden">&#8681;</span><sub>V</sub> \&lt;BB&gt; ==&gt; left_formula0 a ==&gt;
+    (!!m k. LESS k m (#<span class="hidden">&#8681;</span><sub>V</sub> \&lt;BB&gt;) ==&gt; m<span class="hidden">&#8663;</span><sup>\&lt;AA&gt;<span class="hidden">&#8662;</span></sup>k = m<span class="hidden">&#8663;</span><sup>\&lt;BB&gt;<span class="hidden">&#8662;</span></sup>k) ==&gt; \&lt;AA&gt; \&lt;Turnstile&gt;<span class="hidden">&#8681;</span><sub>0</sub> a &lt;-&gt; \&lt;BB&gt; \&lt;Turnstile&gt;<span class="hidden">&#8681;</span><sub>0</sub> a&quot;</span>
+  <span class="keyword2">and</span> wf_lderiv0<span class="delimiter">:</span> <span class="string">&quot;wf0 idx a ==&gt; wf idx (lderiv0 x a)&quot;</span>
+  <span class="keyword2">and</span> left_formula_lderiv0<span class="delimiter">:</span> <span class="string">&quot;left_formula0 a ==&gt; left_formula (lderiv0 x a)&quot;</span>
+  <span class="keyword2">and</span> wf_rderiv0<span class="delimiter">:</span> <span class="string">&quot;wf0 idx a ==&gt; wf idx (rderiv0 x a)&quot;</span>
+  <span class="keyword2">and</span> satisfies_lderiv0<span class="delimiter">:</span> <span class="string">&quot;[|wf0 (#<span class="hidden">&#8681;</span><sub>V</sub> \&lt;AA&gt;) a; #<span class="hidden">&#8681;</span><sub>V</sub> \&lt;AA&gt; = size x|] ==&gt; \&lt;AA&gt; \&lt;Turnstile&gt; lderiv0 x a &lt;-&gt; CONS x \&lt;AA&gt; \&lt;Turnstile&gt;<span class="hidden">&#8681;</span><sub>0</sub> a&quot;</span>
+  <span class="keyword2">and</span> satisfies_bounded_lderiv0<span class="delimiter">:</span> <span class="string">&quot;[|wf0 (#<span class="hidden">&#8681;</span><sub>V</sub> \&lt;AA&gt;) a; #<span class="hidden">&#8681;</span><sub>V</sub> \&lt;AA&gt; = size x|] ==&gt; \&lt;AA&gt; \&lt;Turnstile&gt;<span class="hidden">&#8681;</span><sub>b</sub> lderiv0 x a &lt;-&gt; CONS x \&lt;AA&gt; \&lt;Turnstile&gt;<span class="hidden">&#8681;</span><sub>0</sub> a&quot;</span>
+  <span class="keyword2">and</span> satisfies_bounded_rderiv0<span class="delimiter">:</span> <span class="string">&quot;[|wf0 (#<span class="hidden">&#8681;</span><sub>V</sub> \&lt;AA&gt;) a; #<span class="hidden">&#8681;</span><sub>V</sub> \&lt;AA&gt; = size x|] ==&gt; \&lt;AA&gt; \&lt;Turnstile&gt;<span class="hidden">&#8681;</span><sub>b</sub> rderiv0 x a &lt;-&gt; SNOC x \&lt;AA&gt; \&lt;Turnstile&gt;<span class="hidden">&#8681;</span><sub>0</sub> a&quot;</span>
+  <span class="keyword2">and</span> find0_FV0<span class="delimiter">:</span> <span class="string">&quot;find0 k l a &lt;-&gt; (k, l) &isin; set (FV0 a)&quot;</span>
+  <span class="keyword2">and</span> distinct_FV0<span class="delimiter">:</span> <span class="string">&quot;distinct (FV0 a)&quot;</span>
+  <span class="keyword2">and</span> wf0_FV0_LESS<span class="delimiter">:</span> <span class="string">&quot;[|wf0 idx a; (k, v) &isin; set (FV0 a)|] ==&gt; LESS k v idx&quot;</span>
+  <span class="keyword2">and</span> restrict_Restrict<span class="delimiter">:</span> <span class="string">&quot;i<span class="hidden">&#8663;</span><sup>\&lt;AA&gt;<span class="hidden">&#8662;</span></sup>k = P ==&gt; restrict k P &lt;-&gt; \&lt;AA&gt; \&lt;Turnstile&gt; Restrict k i&quot;</span>
+  <span class="keyword2">and</span> restrict_Restrict<span class="hidden">&#8681;</span><sub>b</sub><span class="delimiter">:</span> <span class="string">&quot;i<span class="hidden">&#8663;</span><sup>\&lt;AA&gt;<span class="hidden">&#8662;</span></sup>k = P ==&gt; restrict k P &lt;-&gt; \&lt;AA&gt; \&lt;Turnstile&gt;<span class="hidden">&#8681;</span><sub>b</sub> Restrict k i&quot;</span>
+  <span class="keyword2">and</span> wf_Restrict<span class="delimiter">:</span> <span class="string">&quot;LESS k i idx ==&gt; wf idx (Restrict k i)&quot;</span>
+  <span class="keyword2">and</span> left_formula_Restrict<span class="delimiter">:</span> <span class="string">&quot;left_formula (Restrict k i)&quot;</span>
+  <span class="keyword2">and</span> finite_lderiv0<span class="delimiter">:</span> <span class="string">&quot;finite {fold lderiv xs (FBase a) | xs. True}&quot;</span>
+  <span class="keyword2">and</span> finite_rderiv0<span class="delimiter">:</span> <span class="string">&quot;finite {fold rderiv xs (FBase a) | xs. True}&quot;</span>
+
+<span class="command">locale</span> Word_Formula <span class="delimiter">=</span> Formula
+  <span class="keyword2">where</span> TYPEVARS <span class="delimiter">=</span> TYPEVARS
+  <span class="keyword2">for</span> TYPEVARS <span class="delimiter">::</span> <span class="string">&quot;&#39;a :: linorder &times; &#39;i &times; &#39;k :: linorder &times; &#39;n &times; &#39;x &times; &#39;v&quot;</span> <span class="delimiter">+</span>
+  <span class="keyword2">fixes</span> enc <span class="delimiter">::</span> <span class="string">&quot;&#39;i =&gt; &#39;x list&quot;</span>
+  <span class="keyword2">and</span> alphabet <span class="delimiter">::</span> <span class="string">&quot;&#39;n =&gt; &#39;x list&quot;</span>
+  <span class="keyword2">and</span> ZERO <span class="delimiter">::</span> <span class="tfree">&#39;n</span>
+
+  <span class="keyword2">assumes</span> enc_inj<span class="delimiter">:</span> <span class="string">&quot;#<span class="hidden">&#8681;</span><sub>V</sub> \&lt;AA&gt; = #<span class="hidden">&#8681;</span><sub>V</sub> \&lt;BB&gt; ==&gt; enc \&lt;AA&gt; = enc \&lt;BB&gt; &lt;-&gt; \&lt;AA&gt; = \&lt;BB&gt;&quot;</span>
+  <span class="keyword2">and</span> length_enc<span class="delimiter">:</span> <span class="string">&quot;length (enc \&lt;AA&gt;) = Length \&lt;AA&gt;&quot;</span>
+  <span class="keyword2">and</span> enc_CONS<span class="delimiter">:</span> <span class="string">&quot;#<span class="hidden">&#8681;</span><sub>V</sub> \&lt;AA&gt; = size x ==&gt; enc (CONS x \&lt;AA&gt;) = x # enc \&lt;AA&gt;&quot;</span>
+  <span class="keyword2">and</span> in_set_encD<span class="delimiter">:</span> <span class="string">&quot;x &isin; set (enc \&lt;AA&gt;) ==&gt; size x = #<span class="hidden">&#8681;</span><sub>V</sub> \&lt;AA&gt;&quot;</span>
+  <span class="keyword2">and</span> alphabet_size<span class="delimiter">:</span> <span class="string">&quot;x &isin; set (alphabet idx) &lt;-&gt; size x = idx&quot;</span>
+
+<span class="command">context</span> Formula
+<span class="keyword2">begin</span>
+
+<span class="command">lemma</span> satisfies_eqI<span class="delimiter">:</span>
+  <span class="string">&quot;[|wf (#<span class="hidden">&#8681;</span><sub>V</sub> \&lt;AA&gt;) &phi;; #<span class="hidden">&#8681;</span><sub>V</sub> \&lt;AA&gt; = #<span class="hidden">&#8681;</span><sub>V</sub> \&lt;BB&gt;; !!m k. LESS k m (#<span class="hidden">&#8681;</span><sub>V</sub> \&lt;AA&gt;) ==&gt; m<span class="hidden">&#8663;</span><sup>\&lt;AA&gt;<span class="hidden">&#8662;</span></sup>k = m<span class="hidden">&#8663;</span><sup>\&lt;BB&gt;<span class="hidden">&#8662;</span></sup>k; left_formula &phi;|] ==&gt;
+   \&lt;AA&gt; \&lt;Turnstile&gt; &phi; &lt;-&gt; \&lt;BB&gt; \&lt;Turnstile&gt; &phi;&quot;</span>
+<span class="command">proof</span> <span class="delimiter">(</span>induct &phi; arbitrary<span class="delimiter">:</span> \&lt;AA&gt; \&lt;BB&gt;<span class="delimiter">)</span>
+  <span class="command">case</span> <span class="delimiter">(</span>FEx k &phi;<span class="delimiter">)</span>
+  <span class="command">from</span> FEx.prems <span class="command">have</span> <span class="string">&quot;!!P. (Extend k 0 \&lt;AA&gt; P \&lt;Turnstile&gt; &phi;) &lt;-&gt; (Extend k 0 \&lt;BB&gt; P \&lt;Turnstile&gt; &phi;)&quot;</span>
+    <span class="command">by</span> <span class="delimiter">(</span>intro FEx.hyps<span class="delimiter">)</span> <span class="delimiter">(</span>auto simp<span class="delimiter">:</span> nvars_Extend assigns_Extend dec_def gr0_conv_Suc LEQ_0 LESS_SUC<span class="delimiter">)</span>
+  <span class="command">then</span> <span class="command">show</span> <span class="var">?case</span> <span class="command">by</span> simp
+<span class="command">next</span>
+  <span class="command">case</span> <span class="delimiter">(</span>FAll k &phi;<span class="delimiter">)</span>
+  <span class="command">from</span> FAll.prems <span class="command">have</span> <span class="string">&quot;!!P. (Extend k 0 \&lt;AA&gt; P \&lt;Turnstile&gt; &phi;) &lt;-&gt; (Extend k 0 \&lt;BB&gt; P \&lt;Turnstile&gt; &phi;)&quot;</span>
+    <span class="command">by</span> <span class="delimiter">(</span>intro FAll.hyps<span class="delimiter">)</span> <span class="delimiter">(</span>auto simp<span class="delimiter">:</span> nvars_Extend assigns_Extend dec_def gr0_conv_Suc LEQ_0 LESS_SUC<span class="delimiter">)</span>
+  <span class="command">then</span> <span class="command">show</span> <span class="var">?case</span> <span class="command">by</span> simp
+<span class="command">next</span>
+  <span class="command">case</span> <span class="delimiter">(</span>FNot &phi;<span class="delimiter">)</span>
+  <span class="command">from</span> FNot.prems <span class="command">have</span> <span class="string">&quot;(\&lt;AA&gt; \&lt;Turnstile&gt; &phi;) &lt;-&gt; (\&lt;BB&gt; \&lt;Turnstile&gt; &phi;)&quot;</span> <span class="command">by</span> <span class="delimiter">(</span>intro FNot.hyps<span class="delimiter">)</span> simp_all
+  <span class="command">then</span> <span class="command">show</span> <span class="var">?case</span> <span class="command">by</span> simp
+<span class="command">qed</span> <span class="delimiter">(</span>auto dest<span class="delimiter">:</span> satisfies0_eqI<span class="delimiter">)</span>
+
+<span class="command">lemma</span> wf_decr<span class="delimiter">:</span>
+  <span class="string">&quot;[|wf (SUC k idx) &phi;; LEQ k l idx; &not; find k l &phi;|] ==&gt; wf idx (decr k l &phi;)&quot;</span>
+  <span class="command">by</span> <span class="delimiter">(</span>induct &phi; arbitrary<span class="delimiter">:</span> idx l<span class="delimiter">)</span> <span class="delimiter">(</span>auto simp<span class="delimiter">:</span> wf0_decr0 LESS_SUC SUC_SUC<span class="delimiter">)</span>
+
+<span class="command">lemma</span> left_formula_decr<span class="delimiter">:</span>
+  <span class="string">&quot;left_formula &phi; ==&gt; left_formula (decr k l &phi;)&quot;</span>
+  <span class="command">by</span> <span class="delimiter">(</span>induct &phi; arbitrary<span class="delimiter">:</span> l<span class="delimiter">)</span> <span class="delimiter">(</span>auto simp<span class="delimiter">:</span> left_formula0_decr0<span class="delimiter">)</span>
+
+<span class="command">lemma</span> Extend_satisfies_decr<span class="delimiter">:</span>
+  <span class="string">&quot;[|&not; find k i &phi;; LEQ k i (#<span class="hidden">&#8681;</span><sub>V</sub> \&lt;AA&gt;)|] ==&gt; Extend k i \&lt;AA&gt; P \&lt;Turnstile&gt; &phi; &lt;-&gt; \&lt;AA&gt; \&lt;Turnstile&gt; decr k i &phi;&quot;</span>
+  <span class="command">by</span> <span class="delimiter">(</span>induct &phi; arbitrary<span class="delimiter">:</span> i \&lt;AA&gt;<span class="delimiter">)</span>
+    <span class="delimiter">(</span>auto simp<span class="delimiter">:</span> Extend_commute_unsafe<span class="delimiter">[</span>of _ k 0 _ _ P<span class="delimiter">]</span> Extend_commute_safe
+      Extend_satisfies0 nvars_Extend LESS_SUC SUC_SUC split<span class="delimiter">:</span> bool.splits<span class="delimiter">)</span>
+
+<span class="command">lemma</span> LEQ_SUC<span class="delimiter">:</span> <span class="string">&quot;k &ne; k&#39; ==&gt; LEQ k i (SUC k&#39; idx) = LEQ k i idx&quot;</span>
+  <span class="command">by</span> <span class="delimiter">(</span>metis LESS_SUC<span class="delimiter">(</span>2<span class="delimiter">)</span> SUC_SUC<span class="delimiter">)</span>
+
+<span class="command">lemma</span> Extend_satisfies_bounded_decr<span class="delimiter">:</span>
+  <span class="string">&quot;[|&not; find k i &phi;; LEQ k i (#<span class="hidden">&#8681;</span><sub>V</sub> \&lt;AA&gt;); len P &le; Length \&lt;AA&gt;|] ==&gt;
+   Extend k i \&lt;AA&gt; P \&lt;Turnstile&gt;<span class="hidden">&#8681;</span><sub>b</sub> &phi; &lt;-&gt; \&lt;AA&gt; \&lt;Turnstile&gt;<span class="hidden">&#8681;</span><sub>b</sub> decr k i &phi;&quot;</span>
+<span class="command">proof</span> <span class="delimiter">(</span>induct &phi; arbitrary<span class="delimiter">:</span> i \&lt;AA&gt; P<span class="delimiter">)</span>
+  <span class="command">case</span> <span class="delimiter">(</span>FEx k&#39; &phi;<span class="delimiter">)</span>
+  <span class="command">show</span> <span class="var">?case</span>
+  <span class="command">proof</span> <span class="delimiter">(</span>cases <span class="string">&quot;k = k&#39;&quot;</span><span class="delimiter">)</span>
+    <span class="command">case</span> True
+    <span class="command">with</span> FEx<span class="delimiter">(</span>2<span class="delimiter">,</span>3<span class="delimiter">,</span>4<span class="delimiter">)</span> <span class="command">show</span> <span class="var">?thesis</span>
+      <span class="command">using</span> FEx<span class="delimiter">(</span>1<span class="delimiter">)</span><span class="delimiter">[</span>of <span class="string">&quot;Suc i&quot;</span> <span class="string">&quot;Extend k&#39; 0 \&lt;AA&gt; Q&quot;</span> P <span class="keyword2">for</span> Q j<span class="delimiter">]</span>
+      <span class="command">by</span> <span class="delimiter">(</span>auto simp<span class="delimiter">:</span> Extend_commute_safe LESS_SUC Length_Extend nvars_Extend max_def<span class="delimiter">)</span>
+  <span class="command">next</span>
+    <span class="command">case</span> False
+    <span class="command">with</span> FEx<span class="delimiter">(</span>2<span class="delimiter">,</span>3<span class="delimiter">,</span>4<span class="delimiter">)</span> <span class="command">show</span> <span class="var">?thesis</span>
+      <span class="command">using</span> FEx<span class="delimiter">(</span>1<span class="delimiter">)</span><span class="delimiter">[</span>of <span class="string">&quot;i&quot;</span> <span class="string">&quot;Extend k&#39; j \&lt;AA&gt; Q&quot;</span> P <span class="keyword2">for</span> Q j<span class="delimiter">]</span>
+      <span class="command">by</span> <span class="delimiter">(</span>auto simp<span class="delimiter">:</span> Extend_commute_unsafe LEQ_SUC Length_Extend nvars_Extend max_def<span class="delimiter">)</span>
+  <span class="command">qed</span>
+<span class="command">next</span>
+  <span class="command">case</span> <span class="delimiter">(</span>FAll k&#39; &phi;<span class="delimiter">)</span>  <span class="command">show</span> <span class="var">?case</span>
+  <span class="command">proof</span> <span class="delimiter">(</span>cases <span class="string">&quot;k = k&#39;&quot;</span><span class="delimiter">)</span>
+    <span class="command">case</span> True
+    <span class="command">with</span> FAll<span class="delimiter">(</span>2<span class="delimiter">,</span>3<span class="delimiter">,</span>4<span class="delimiter">)</span> <span class="command">show</span> <span class="var">?thesis</span>
+      <span class="command">using</span> FAll<span class="delimiter">(</span>1<span class="delimiter">)</span><span class="delimiter">[</span>of <span class="string">&quot;Suc i&quot;</span> <span class="string">&quot;Extend k&#39; 0 \&lt;AA&gt; Q&quot;</span> P <span class="keyword2">for</span> Q j<span class="delimiter">]</span>
+      <span class="command">by</span> <span class="delimiter">(</span>auto simp<span class="delimiter">:</span> Extend_commute_safe LESS_SUC Length_Extend nvars_Extend max_def<span class="delimiter">)</span>
+  <span class="command">next</span>
+    <span class="command">case</span> False
+    <span class="command">with</span> FAll<span class="delimiter">(</span>2<span class="delimiter">,</span>3<span class="delimiter">,</span>4<span class="delimiter">)</span> <span class="command">show</span> <span class="var">?thesis</span>
+      <span class="command">using</span> FAll<span class="delimiter">(</span>1<span class="delimiter">)</span><span class="delimiter">[</span>of <span class="string">&quot;i&quot;</span> <span class="string">&quot;Extend k&#39; j \&lt;AA&gt; Q&quot;</span> P <span class="keyword2">for</span> Q j<span class="delimiter">]</span>
+      <span class="command">by</span> <span class="delimiter">(</span>auto simp<span class="delimiter">:</span> Extend_commute_unsafe LEQ_SUC Length_Extend nvars_Extend max_def<span class="delimiter">)</span>
+  <span class="command">qed</span>
+<span class="command">qed</span> <span class="delimiter">(</span>auto simp<span class="delimiter">:</span> Extend_satisfies0 split<span class="delimiter">:</span> bool.splits<span class="delimiter">)</span>
+
+
+<span class="command">section</span> <span class="cartouche">&#8249;Normalization&#8250;</span>
+
+<span class="command">lemma</span> wf_nFOr<span class="delimiter">:</span>
+  <span class="string">&quot;wf idx (FOr &phi; &psi;) ==&gt; wf idx (nFOr &phi; &psi;)&quot;</span>
+  <span class="command">by</span> <span class="delimiter">(</span>induct &phi; &psi; rule<span class="delimiter">:</span> nFOr.induct<span class="delimiter">)</span> <span class="delimiter">(</span>simp_all add<span class="delimiter">:</span> Let_def<span class="delimiter">)</span>
+
+<span class="command">lemma</span> wf_nFAnd<span class="delimiter">:</span>
+  <span class="string">&quot;wf idx (FAnd &phi; &psi;) ==&gt; wf idx (nFAnd &phi; &psi;)&quot;</span>
+  <span class="command">by</span> <span class="delimiter">(</span>induct &phi; &psi; rule<span class="delimiter">:</span> nFAnd.induct<span class="delimiter">)</span> <span class="delimiter">(</span>simp_all add<span class="delimiter">:</span> Let_def<span class="delimiter">)</span>
+
+<span class="command">lemma</span> wf_nFNot<span class="delimiter">:</span>
+  <span class="string">&quot;wf idx (FNot &phi;) ==&gt; wf idx (nFNot &phi;)&quot;</span>
+  <span class="command">by</span> <span class="delimiter">(</span>induct &phi; arbitrary<span class="delimiter">:</span> idx rule<span class="delimiter">:</span> nFNot.induct<span class="delimiter">)</span> <span class="delimiter">(</span>auto simp<span class="delimiter">:</span> wf_nFOr wf_nFAnd<span class="delimiter">)</span>
+
+<span class="command">lemma</span> wf_nFEx<span class="delimiter">:</span>
+  <span class="string">&quot;wf idx (FEx b &phi;) ==&gt; wf idx (nFEx b &phi;)&quot;</span>
+  <span class="command">by</span> <span class="delimiter">(</span>induct &phi; arbitrary<span class="delimiter">:</span> idx rule<span class="delimiter">:</span> nFEx.induct<span class="delimiter">)</span>
+    <span class="delimiter">(</span>auto simp<span class="delimiter">:</span> SUC_SUC LEQ_0 LESS_SUC<span class="delimiter">(</span>1<span class="delimiter">)</span> gr0_conv_Suc wf_nFOr intro<span class="delimiter">:</span> wf0_decr0 wf_decr<span class="delimiter">)</span>
+
+<span class="command">lemma</span> wf_nFAll<span class="delimiter">:</span>
+  <span class="string">&quot;wf idx (FAll b &phi;) ==&gt; wf idx (nFAll b &phi;)&quot;</span>
+  <span class="command">by</span> <span class="delimiter">(</span>induct &phi; arbitrary<span class="delimiter">:</span> idx rule<span class="delimiter">:</span> nFAll.induct<span class="delimiter">)</span>
+    <span class="delimiter">(</span>auto simp<span class="delimiter">:</span> SUC_SUC LEQ_0 LESS_SUC<span class="delimiter">(</span>1<span class="delimiter">)</span> gr0_conv_Suc wf_nFAnd intro<span class="delimiter">:</span> wf0_decr0 wf_decr<span class="delimiter">)</span>
+
+<span class="command">lemma</span> wf_norm<span class="delimiter">:</span> <span class="string">&quot;wf idx &phi; ==&gt; wf idx (norm &phi;)&quot;</span>
+  <span class="command">by</span> <span class="delimiter">(</span>induct &phi; arbitrary<span class="delimiter">:</span> idx<span class="delimiter">)</span> <span class="delimiter">(</span>simp_all add<span class="delimiter">:</span> wf_nFOr wf_nFAnd wf_nFNot wf_nFEx wf_nFAll<span class="delimiter">)</span>
+
+<span class="command">lemma</span> left_formula_nFOr<span class="delimiter">:</span>
+  <span class="string">&quot;left_formula (FOr &phi; &psi;) ==&gt; left_formula (nFOr &phi; &psi;)&quot;</span>
+  <span class="command">by</span> <span class="delimiter">(</span>induct &phi; &psi; rule<span class="delimiter">:</span> nFOr.induct<span class="delimiter">)</span> <span class="delimiter">(</span>simp_all add<span class="delimiter">:</span> Let_def<span class="delimiter">)</span>
+
+<span class="command">lemma</span> left_formula_nFAnd<span class="delimiter">:</span>
+  <span class="string">&quot;left_formula (FAnd &phi; &psi;) ==&gt; left_formula (nFAnd &phi; &psi;)&quot;</span>
+  <span class="command">by</span> <span class="delimiter">(</span>induct &phi; &psi; rule<span class="delimiter">:</span> nFAnd.induct<span class="delimiter">)</span> <span class="delimiter">(</span>simp_all add<span class="delimiter">:</span> Let_def<span class="delimiter">)</span>
+
+<span class="command">lemma</span> left_formula_nFNot<span class="delimiter">:</span>
+  <span class="string">&quot;left_formula (FNot &phi;) ==&gt; left_formula (nFNot &phi;)&quot;</span>
+  <span class="command">by</span> <span class="delimiter">(</span>induct &phi; rule<span class="delimiter">:</span> nFNot.induct<span class="delimiter">)</span> <span class="delimiter">(</span>auto simp<span class="delimiter">:</span> left_formula_nFOr left_formula_nFAnd<span class="delimiter">)</span>
+
+<span class="command">lemma</span> left_formula_nFEx<span class="delimiter">:</span>
+  <span class="string">&quot;left_formula (FEx b &phi;) ==&gt; left_formula (nFEx b &phi;)&quot;</span>
+  <span class="command">by</span> <span class="delimiter">(</span>induct &phi; rule<span class="delimiter">:</span> nFEx.induct<span class="delimiter">)</span>
+    <span class="delimiter">(</span>auto simp<span class="delimiter">:</span> left_formula_nFOr left_formula0_decr0 left_formula_decr<span class="delimiter">)</span>
+
+<span class="command">lemma</span> left_formula_nFAll<span class="delimiter">:</span>
+  <span class="string">&quot;left_formula (FAll b &phi;) ==&gt; left_formula (nFAll b &phi;)&quot;</span>
+  <span class="command">by</span> <span class="delimiter">(</span>induct &phi; rule<span class="delimiter">:</span> nFAll.induct<span class="delimiter">)</span>
+    <span class="delimiter">(</span>auto simp<span class="delimiter">:</span> left_formula_nFAnd left_formula0_decr0 left_formula_decr<span class="delimiter">)</span>
+
+<span class="command">lemma</span> left_formula_norm<span class="delimiter">:</span> <span class="string">&quot;left_formula &phi; ==&gt; left_formula (norm &phi;)&quot;</span>
+  <span class="command">by</span> <span class="delimiter">(</span>induct &phi;<span class="delimiter">)</span> <span class="delimiter">(</span>simp_all add<span class="delimiter">:</span> left_formula_nFOr left_formula_nFAnd left_formula_nFNot
+    left_formula_nFEx left_formula_nFAll<span class="delimiter">)</span>
+
+<span class="command">lemma</span> satisfies_nFOr<span class="delimiter">:</span>
+  <span class="string">&quot;\&lt;AA&gt; \&lt;Turnstile&gt; nFOr &phi; &psi; &lt;-&gt; \&lt;AA&gt; \&lt;Turnstile&gt; FOr &phi; &psi;&quot;</span>
+  <span class="command">by</span> <span class="delimiter">(</span>induct &phi; &psi; arbitrary<span class="delimiter">:</span> \&lt;AA&gt; rule<span class="delimiter">:</span> nFOr.induct<span class="delimiter">)</span> auto
+
+<span class="command">lemma</span> satisfies_nFAnd<span class="delimiter">:</span>
+  <span class="string">&quot;\&lt;AA&gt; \&lt;Turnstile&gt; nFAnd &phi; &psi; &lt;-&gt; \&lt;AA&gt; \&lt;Turnstile&gt; FAnd &phi; &psi;&quot;</span>
+  <span class="command">by</span> <span class="delimiter">(</span>induct &phi; &psi; arbitrary<span class="delimiter">:</span> \&lt;AA&gt; rule<span class="delimiter">:</span> nFAnd.induct<span class="delimiter">)</span> auto
+
+<span class="command">lemma</span> satisfies_nFNot<span class="delimiter">:</span>
+  <span class="string">&quot;\&lt;AA&gt; \&lt;Turnstile&gt; nFNot &phi; &lt;-&gt; \&lt;AA&gt; \&lt;Turnstile&gt; FNot &phi;&quot;</span>
+  <span class="command">by</span> <span class="delimiter">(</span>induct &phi; arbitrary<span class="delimiter">:</span> \&lt;AA&gt;<span class="delimiter">)</span>
+   <span class="delimiter">(</span>auto simp<span class="delimiter">:</span> satisfies_nFOr satisfies_nFAnd<span class="delimiter">)</span>
+
+<span class="command">lemma</span> satisfies_nFEx<span class="delimiter">:</span> <span class="string">&quot;\&lt;AA&gt; \&lt;Turnstile&gt; nFEx b &phi; &lt;-&gt; \&lt;AA&gt; \&lt;Turnstile&gt; FEx b &phi;&quot;</span>
+  <span class="command">by</span> <span class="delimiter">(</span>induct &phi; rule<span class="delimiter">:</span> nFEx.induct<span class="delimiter">)</span>
+    <span class="delimiter">(</span>auto simp add<span class="delimiter">:</span> satisfies_nFOr Extend_satisfies_decr
+      LEQ_0 LESS_SUC<span class="delimiter">(</span>1<span class="delimiter">)</span> nvars_Extend Extend_satisfies0 Extend_commute_safe Extend_commute_unsafe<span class="delimiter">)</span>
+
+<span class="command">lemma</span> satisfies_nFAll<span class="delimiter">:</span> <span class="string">&quot;\&lt;AA&gt; \&lt;Turnstile&gt; nFAll b &phi; &lt;-&gt; \&lt;AA&gt; \&lt;Turnstile&gt; FAll b &phi;&quot;</span>
+  <span class="command">by</span> <span class="delimiter">(</span>induct &phi; rule<span class="delimiter">:</span> nFAll.induct<span class="delimiter">)</span>
+    <span class="delimiter">(</span>auto simp add<span class="delimiter">:</span> satisfies_nFAnd Extend_satisfies_decr
+      Extend_satisfies0 LEQ_0 LESS_SUC<span class="delimiter">(</span>1<span class="delimiter">)</span> nvars_Extend Extend_commute_safe Extend_commute_unsafe<span class="delimiter">)</span>
+
+<span class="command">lemma</span> satisfies_norm<span class="delimiter">:</span> <span class="string">&quot;\&lt;AA&gt; \&lt;Turnstile&gt; norm &phi; &lt;-&gt; \&lt;AA&gt; \&lt;Turnstile&gt; &phi;&quot;</span>
+  <span class="command">using</span> satisfies_nFOr satisfies_nFAnd satisfies_nFNot satisfies_nFEx satisfies_nFAll
+  <span class="command">by</span> <span class="delimiter">(</span>induct &phi; arbitrary<span class="delimiter">:</span> \&lt;AA&gt;<span class="delimiter">)</span> simp_all
+
+<span class="command">lemma</span> satisfies_bounded_nFOr<span class="delimiter">:</span>
+  <span class="string">&quot;\&lt;AA&gt; \&lt;Turnstile&gt;<span class="hidden">&#8681;</span><sub>b</sub> nFOr &phi; &psi; &lt;-&gt; \&lt;AA&gt; \&lt;Turnstile&gt;<span class="hidden">&#8681;</span><sub>b</sub> FOr &phi; &psi;&quot;</span>
+  <span class="command">by</span> <span class="delimiter">(</span>induct &phi; &psi; arbitrary<span class="delimiter">:</span> \&lt;AA&gt; rule<span class="delimiter">:</span> nFOr.induct<span class="delimiter">)</span> auto
+
+<span class="command">lemma</span> satisfies_bounded_nFAnd<span class="delimiter">:</span>
+  <span class="string">&quot;\&lt;AA&gt; \&lt;Turnstile&gt;<span class="hidden">&#8681;</span><sub>b</sub> nFAnd &phi; &psi; &lt;-&gt; \&lt;AA&gt; \&lt;Turnstile&gt;<span class="hidden">&#8681;</span><sub>b</sub> FAnd &phi; &psi;&quot;</span>
+  <span class="command">by</span> <span class="delimiter">(</span>induct &phi; &psi; arbitrary<span class="delimiter">:</span> \&lt;AA&gt; rule<span class="delimiter">:</span> nFAnd.induct<span class="delimiter">)</span> auto
+
+<span class="command">lemma</span> satisfies_bounded_nFNot<span class="delimiter">:</span>
+  <span class="string">&quot;\&lt;AA&gt; \&lt;Turnstile&gt;<span class="hidden">&#8681;</span><sub>b</sub> nFNot &phi; &lt;-&gt; \&lt;AA&gt; \&lt;Turnstile&gt;<span class="hidden">&#8681;</span><sub>b</sub> FNot &phi;&quot;</span>
+  <span class="command">by</span> <span class="delimiter">(</span>induct &phi; arbitrary<span class="delimiter">:</span> \&lt;AA&gt;<span class="delimiter">)</span>
+    <span class="delimiter">(</span>auto simp<span class="delimiter">:</span> satisfies_bounded_nFOr satisfies_bounded_nFAnd<span class="delimiter">)</span>
+
+<span class="command">lemma</span> len_cut_0<span class="delimiter">:</span> <span class="string">&quot;len (cut 0 P) = 0&quot;</span>
+  <span class="command">by</span> <span class="delimiter">(</span>metis le_0_eq len_cut_le<span class="delimiter">)</span>
+
+<span class="command">lemma</span> satisfies_bounded_nFEx<span class="delimiter">:</span> <span class="string">&quot;\&lt;AA&gt; \&lt;Turnstile&gt;<span class="hidden">&#8681;</span><sub>b</sub> nFEx b &phi; &lt;-&gt; \&lt;AA&gt; \&lt;Turnstile&gt;<span class="hidden">&#8681;</span><sub>b</sub> FEx b &phi;&quot;</span>
+  <span class="command">by</span> <span class="delimiter">(</span>induct &phi; rule<span class="delimiter">:</span> nFEx.induct<span class="delimiter">)</span>
+    <span class="delimiter">(</span>auto 4 4 simp add<span class="delimiter">:</span> satisfies_bounded_nFOr Extend_satisfies_bounded_decr
+      LEQ_0 LESS_SUC<span class="delimiter">(</span>1<span class="delimiter">)</span> nvars_Extend Length_Extend len_cut_0
+      Extend_satisfies0 Extend_commute_safe Extend_commute_unsafe cong<span class="delimiter">:</span> ex_cong split<span class="delimiter">:</span> bool.splits
+      intro<span class="delimiter">:</span> exI<span class="delimiter">[</span><span class="keyword2">where</span> P <span class="delimiter">=</span> <span class="string">&quot;&lambda;x. P x &and; Q x&quot;</span> <span class="keyword2">for</span> P Q<span class="delimiter">,</span> OF conjI<span class="delimiter">[</span>rotated<span class="delimiter">]</span><span class="delimiter">]</span> exI<span class="delimiter">[</span>of _ <span class="string">&quot;cut 0 P&quot;</span> <span class="keyword2">for</span> P<span class="delimiter">]</span><span class="delimiter">)</span>
+
+<span class="command">lemma</span> satisfies_bounded_nFAll<span class="delimiter">:</span> <span class="string">&quot;\&lt;AA&gt; \&lt;Turnstile&gt;<span class="hidden">&#8681;</span><sub>b</sub> nFAll b &phi; &lt;-&gt; \&lt;AA&gt; \&lt;Turnstile&gt;<span class="hidden">&#8681;</span><sub>b</sub> FAll b &phi;&quot;</span>
+  <span class="command">by</span> <span class="delimiter">(</span>induct &phi; rule<span class="delimiter">:</span> nFAll.induct<span class="delimiter">)</span>
+    <span class="delimiter">(</span>auto 4 4 simp add<span class="delimiter">:</span> satisfies_bounded_nFAnd Extend_satisfies_bounded_decr
+      LEQ_0 LESS_SUC<span class="delimiter">(</span>1<span class="delimiter">)</span> nvars_Extend Length_Extend len_cut_0
+      Extend_satisfies0 Extend_commute_safe Extend_commute_unsafe cong<span class="delimiter">:</span> split<span class="delimiter">:</span> bool.splits
+      intro<span class="delimiter">:</span> exI<span class="delimiter">[</span><span class="keyword2">where</span> P <span class="delimiter">=</span> <span class="string">&quot;&lambda;x. P x &and; Q x&quot;</span> <span class="keyword2">for</span> P Q<span class="delimiter">,</span> OF conjI<span class="delimiter">[</span>rotated<span class="delimiter">]</span><span class="delimiter">]</span> dest<span class="delimiter">:</span> spec<span class="delimiter">[</span>of _ <span class="string">&quot;cut 0 P&quot;</span> <span class="keyword2">for</span> P<span class="delimiter">]</span><span class="delimiter">)</span>
+
+<span class="command">lemma</span> satisfies_bounded_norm<span class="delimiter">:</span> <span class="string">&quot;\&lt;AA&gt; \&lt;Turnstile&gt;<span class="hidden">&#8681;</span><sub>b</sub> norm &phi; &lt;-&gt; \&lt;AA&gt; \&lt;Turnstile&gt;<span class="hidden">&#8681;</span><sub>b</sub> &phi;&quot;</span>
+  <span class="command">by</span> <span class="delimiter">(</span>induct &phi; arbitrary<span class="delimiter">:</span> \&lt;AA&gt;<span class="delimiter">)</span>
+    <span class="delimiter">(</span>simp_all add<span class="delimiter">:</span> satisfies_bounded_nFOr satisfies_bounded_nFAnd
+      satisfies_bounded_nFNot satisfies_bounded_nFEx satisfies_bounded_nFAll<span class="delimiter">)</span>
+
+
+<span class="command">section</span> <span class="cartouche">&#8249;Derivatives of Formulas&#8250;</span>
+
+<span class="command">lemma</span> wf_lderiv<span class="delimiter">:</span>
+  <span class="string">&quot;wf idx &phi; ==&gt; wf idx (lderiv x &phi;)&quot;</span>
+  <span class="command">by</span> <span class="delimiter">(</span>induct &phi; arbitrary<span class="delimiter">:</span> x idx<span class="delimiter">)</span> <span class="delimiter">(</span>auto simp<span class="delimiter">:</span> wf_lderiv0<span class="delimiter">)</span>
+
+<span class="command">lemma</span> left_formula_lderiv<span class="delimiter">:</span>
+  <span class="string">&quot;left_formula &phi; ==&gt; left_formula (lderiv x &phi;)&quot;</span>
+  <span class="command">by</span> <span class="delimiter">(</span>induct &phi; arbitrary<span class="delimiter">:</span> x<span class="delimiter">)</span> <span class="delimiter">(</span>auto simp<span class="delimiter">:</span> left_formula_lderiv0<span class="delimiter">)</span>
+
+<span class="command">lemma</span> wf_rderiv<span class="delimiter">:</span>
+  <span class="string">&quot;wf idx &phi; ==&gt; wf idx (rderiv x &phi;)&quot;</span>
+  <span class="command">by</span> <span class="delimiter">(</span>induct &phi; arbitrary<span class="delimiter">:</span> x idx<span class="delimiter">)</span> <span class="delimiter">(</span>auto simp<span class="delimiter">:</span> wf_rderiv0<span class="delimiter">)</span>
+
+<span class="command">theorem</span> satisfies_lderiv<span class="delimiter">:</span> <span class="string">&quot;[|wf (#<span class="hidden">&#8681;</span><sub>V</sub> \&lt;AA&gt;) &phi;; #<span class="hidden">&#8681;</span><sub>V</sub> \&lt;AA&gt; = size x|] ==&gt; \&lt;AA&gt; \&lt;Turnstile&gt; lderiv x &phi; &lt;-&gt; CONS x \&lt;AA&gt; \&lt;Turnstile&gt; &phi;&quot;</span>
+<span class="command">proof</span> <span class="delimiter">(</span>induct &phi; arbitrary<span class="delimiter">:</span> x \&lt;AA&gt;<span class="delimiter">)</span>
+  <span class="command">case</span> <span class="delimiter">(</span>FEx k &phi;<span class="delimiter">)</span>
+  <span class="command">from</span> FEx.prems FEx.hyps<span class="delimiter">[</span>of <span class="string">&quot;Extend k 0 \&lt;AA&gt; P&quot;</span> <span class="string">&quot;extend k b x&quot;</span> <span class="keyword2">for</span> P b<span class="delimiter">]</span> <span class="command">show</span> <span class="var">?case</span>
+    <span class="command">by</span> <span class="delimiter">(</span>auto simp<span class="delimiter">:</span> nvars_Extend size_extend Extend_CONS
+      downshift_upshift eval_add eval_upshift downshift_add_zero
+      intro<span class="delimiter">:</span> exI<span class="delimiter">[</span>of _ <span class="string">&quot;add 0 (upshift P)&quot;</span> <span class="keyword2">for</span> P<span class="delimiter">]</span> exI<span class="delimiter">[</span>of _ <span class="string">&quot;upshift P&quot;</span> <span class="keyword2">for</span> P<span class="delimiter">]</span><span class="delimiter">)</span>
+<span class="command">next</span>
+  <span class="command">case</span> <span class="delimiter">(</span>FAll k &phi;<span class="delimiter">)</span>
+  <span class="command">from</span> FAll.prems FAll.hyps<span class="delimiter">[</span>of <span class="string">&quot;Extend k 0 \&lt;AA&gt; P&quot;</span> <span class="string">&quot;extend k b x&quot;</span> <span class="keyword2">for</span> P b<span class="delimiter">]</span> <span class="command">show</span> <span class="var">?case</span>
+    <span class="command">by</span> <span class="delimiter">(</span>auto simp<span class="delimiter">:</span> nvars_Extend size_extend Extend_CONS
+      downshift_upshift eval_add eval_upshift downshift_add_zero
+      dest<span class="delimiter">:</span> spec<span class="delimiter">[</span>of _ <span class="string">&quot;add 0 (upshift P)&quot;</span> <span class="keyword2">for</span> P<span class="delimiter">]</span> spec<span class="delimiter">[</span>of _ <span class="string">&quot;upshift P&quot;</span> <span class="keyword2">for</span> P<span class="delimiter">]</span><span class="delimiter">)</span>
+<span class="command">qed</span> <span class="delimiter">(</span>simp_all add<span class="delimiter">:</span> satisfies_lderiv0 split<span class="delimiter">:</span> bool.splits<span class="delimiter">)</span>
+
+<span class="command">theorem</span> satisfies_bounded_lderiv<span class="delimiter">:</span> <span class="string">&quot;[|wf (#<span class="hidden">&#8681;</span><sub>V</sub> \&lt;AA&gt;) &phi;; #<span class="hidden">&#8681;</span><sub>V</sub> \&lt;AA&gt; = size x|] ==&gt; \&lt;AA&gt; \&lt;Turnstile&gt;<span class="hidden">&#8681;</span><sub>b</sub> lderiv x &phi; &lt;-&gt; CONS x \&lt;AA&gt; \&lt;Turnstile&gt;<span class="hidden">&#8681;</span><sub>b</sub> &phi;&quot;</span>
+<span class="command">proof</span> <span class="delimiter">(</span>induct &phi; arbitrary<span class="delimiter">:</span> x \&lt;AA&gt;<span class="delimiter">)</span>
+  <span class="command">case</span> <span class="delimiter">(</span>FEx k &phi;<span class="delimiter">)</span>
+  <span class="command">note</span> <span class="delimiter">[</span>simp<span class="delimiter">]</span> <span class="delimiter">=</span> nvars_Extend size_extend Extend_CONS Length_CONS
+    downshift_upshift eval_add eval_upshift downshift_add_zero len_add len_upshift len_downshift
+  <span class="command">from</span> FEx.prems FEx.hyps<span class="delimiter">[</span>of <span class="string">&quot;Extend k 0 \&lt;AA&gt; P&quot;</span> <span class="string">&quot;extend k b x&quot;</span> <span class="keyword2">for</span> P b<span class="delimiter">]</span> <span class="command">show</span> <span class="var">?case</span>
+    <span class="command">by</span> auto <span class="delimiter">(</span>force intro<span class="delimiter">:</span> exI<span class="delimiter">[</span>of _ <span class="string">&quot;add 0 (upshift P)&quot;</span> <span class="keyword2">for</span> P<span class="delimiter">]</span> exI<span class="delimiter">[</span>of _ <span class="string">&quot;upshift P&quot;</span> <span class="keyword2">for</span> P<span class="delimiter">]</span> split<span class="delimiter">:</span> nat.splits<span class="delimiter">)</span><span class="delimiter">+</span>
+<span class="command">next</span>
+  <span class="command">case</span> <span class="delimiter">(</span>FAll k &phi;<span class="delimiter">)</span>
+  <span class="command">note</span> <span class="delimiter">[</span>simp<span class="delimiter">]</span> <span class="delimiter">=</span> nvars_Extend size_extend Extend_CONS Length_CONS
+    downshift_upshift eval_add eval_upshift downshift_add_zero len_add len_upshift len_downshift
+  <span class="command">from</span> FAll.prems FAll.hyps<span class="delimiter">[</span>of <span class="string">&quot;Extend k 0 \&lt;AA&gt; P&quot;</span> <span class="string">&quot;extend k b x&quot;</span> <span class="keyword2">for</span> P b<span class="delimiter">]</span> <span class="command">show</span> <span class="var">?case</span>
+    <span class="command">by</span> auto <span class="delimiter">(</span>force dest<span class="delimiter">:</span> spec<span class="delimiter">[</span>of _ <span class="string">&quot;add 0 (upshift P)&quot;</span> <span class="keyword2">for</span> P<span class="delimiter">]</span> spec<span class="delimiter">[</span>of _ <span class="string">&quot;upshift P&quot;</span> <span class="keyword2">for</span> P<span class="delimiter">]</span> split<span class="delimiter">:</span> nat.splits<span class="delimiter">)</span><span class="delimiter">+</span>
+<span class="command">qed</span> <span class="delimiter">(</span>simp_all add<span class="delimiter">:</span> satisfies_bounded_lderiv0 split<span class="delimiter">:</span> bool.splits<span class="delimiter">)</span>
+
+<span class="command">theorem</span> satisfies_bounded_rderiv<span class="delimiter">:</span>
+  <span class="string">&quot;[|wf (#<span class="hidden">&#8681;</span><sub>V</sub> \&lt;AA&gt;) &phi;; #<span class="hidden">&#8681;</span><sub>V</sub> \&lt;AA&gt; = size x|] ==&gt; \&lt;AA&gt; \&lt;Turnstile&gt;<span class="hidden">&#8681;</span><sub>b</sub> rderiv x &phi; &lt;-&gt; SNOC x \&lt;AA&gt; \&lt;Turnstile&gt;<span class="hidden">&#8681;</span><sub>b</sub> &phi;&quot;</span>
+<span class="command">proof</span> <span class="delimiter">(</span>induct &phi; arbitrary<span class="delimiter">:</span> x \&lt;AA&gt;<span class="delimiter">)</span>
+  <span class="command">case</span> <span class="delimiter">(</span>FEx k &phi;<span class="delimiter">)</span>
+  <span class="command">from</span> FEx.prems FEx.hyps<span class="delimiter">[</span>of <span class="string">&quot;Extend k 0 \&lt;AA&gt; P&quot;</span> <span class="string">&quot;extend k b x&quot;</span> <span class="keyword2">for</span> P b<span class="delimiter">]</span> <span class="command">show</span> <span class="var">?case</span>
+    <span class="command">by</span> <span class="delimiter">(</span>auto simp<span class="delimiter">:</span> nvars_Extend size_extend Extend_SNOC_cut len_cut_le eval_ge_len 
+      eval_add cut_add Length_SNOC len_add len_cut le_Suc_eq max_def
+      intro<span class="delimiter">:</span> exI<span class="delimiter">[</span>of _ <span class="string">&quot;cut (Length \&lt;AA&gt;) P&quot;</span> <span class="keyword2">for</span> P<span class="delimiter">]</span> exI<span class="delimiter">[</span>of _ <span class="string">&quot;add (Length \&lt;AA&gt;) P&quot;</span> <span class="keyword2">for</span> P<span class="delimiter">]</span> split<span class="delimiter">:</span> if_splits<span class="delimiter">)</span>
+<span class="command">next</span>
+  <span class="command">case</span> <span class="delimiter">(</span>FAll k &phi;<span class="delimiter">)</span>
+  <span class="command">from</span> FAll.prems FAll.hyps<span class="delimiter">[</span>of <span class="string">&quot;Extend k 0 \&lt;AA&gt; P&quot;</span> <span class="string">&quot;extend k b x&quot;</span> <span class="keyword2">for</span> P b<span class="delimiter">]</span> <span class="command">show</span> <span class="var">?case</span>
+    <span class="command">by</span> <span class="delimiter">(</span>auto simp<span class="delimiter">:</span> nvars_Extend size_extend Extend_SNOC_cut len_cut_le eval_ge_len 
+      eval_add cut_add Length_SNOC len_add len_cut le_Suc_eq max_def
+      dest<span class="delimiter">:</span> spec<span class="delimiter">[</span>of _ <span class="string">&quot;cut (Length \&lt;AA&gt;) P&quot;</span> <span class="keyword2">for</span> P<span class="delimiter">]</span> spec<span class="delimiter">[</span>of _ <span class="string">&quot;add (Length \&lt;AA&gt;) P&quot;</span> <span class="keyword2">for</span> P<span class="delimiter">]</span> split<span class="delimiter">:</span> if_splits<span class="delimiter">)</span>
+<span class="command">qed</span> <span class="delimiter">(</span>simp_all add<span class="delimiter">:</span> satisfies_bounded_rderiv0 split<span class="delimiter">:</span> bool.splits<span class="delimiter">)</span>
+
+<span class="command">lemma</span> wf_norm_rderivs<span class="delimiter">:</span> <span class="string">&quot;wf idx &phi; ==&gt; wf idx (((norm o rderiv (zero idx)) ^^ k) &phi;)&quot;</span>
+  <span class="command">by</span> <span class="delimiter">(</span>induct k<span class="delimiter">)</span> <span class="delimiter">(</span>auto simp<span class="delimiter">:</span> wf_norm wf_rderiv<span class="delimiter">)</span>
+
+<span class="command">section</span> <span class="cartouche">&#8249;Finiteness of Derivatives Modulo ACI&#8250;</span>
+
+<span class="command">lemma</span> finite_fold_deriv<span class="delimiter">:</span>
+  <span class="keyword2">assumes</span> <span class="string">&quot;d0 = lderiv0 &or; d0 = rderiv0&quot;</span>
+  <span class="keyword2">shows</span> <span class="string">&quot;finite {&lang;fold (deriv d0) xs &phi;&rang; | xs. True}&quot;</span>
+<span class="command">proof</span> <span class="delimiter">(</span>induct &phi;<span class="delimiter">)</span>
+  <span class="command">case</span> <span class="delimiter">(</span>FBase a<span class="delimiter">)</span> <span class="command">then</span> <span class="command">show</span> <span class="var">?case</span> <span class="command">using</span> assms 
+    <span class="command">by</span> <span class="delimiter">(</span>auto intro<span class="delimiter">:</span>
+      finite_subset<span class="delimiter">[</span>OF _ finite_imageI<span class="delimiter">[</span>OF finite_lderiv0<span class="delimiter">]</span><span class="delimiter">]</span>
+      finite_subset<span class="delimiter">[</span>OF _ finite_imageI<span class="delimiter">[</span>OF finite_rderiv0<span class="delimiter">]</span><span class="delimiter">]</span><span class="delimiter">)</span>
+<span class="command">next</span>
+  <span class="command">case</span> <span class="delimiter">(</span>FNot &phi;<span class="delimiter">)</span>
+  <span class="command">then</span> <span class="command">show</span> <span class="var">?case</span>
+    <span class="command">by</span> <span class="delimiter">(</span>auto simp<span class="delimiter">:</span> fold_deriv_FNot intro<span class="delimiter">:</span> finite_surj<span class="delimiter">[</span>OF FNot<span class="delimiter">]</span><span class="delimiter">)</span>
+<span class="command">next</span>
+  <span class="command">case</span> <span class="delimiter">(</span>FOr &phi; &psi;<span class="delimiter">)</span>
+  <span class="command">then</span> <span class="command">show</span> <span class="var">?case</span>
+    <span class="command">by</span> <span class="delimiter">(</span>auto simp<span class="delimiter">:</span> fold_deriv_FOr intro<span class="delimiter">!</span><span class="delimiter">:</span> finite_surj<span class="delimiter">[</span>OF finite_cartesian_product<span class="delimiter">[</span>OF FOr<span class="delimiter">]</span><span class="delimiter">]</span><span class="delimiter">)</span>
+<span class="command">next</span>
+  <span class="command">case</span> <span class="delimiter">(</span>FAnd &phi; &psi;<span class="delimiter">)</span>
+  <span class="command">then</span> <span class="command">show</span> <span class="var">?case</span>
+    <span class="command">by</span> <span class="delimiter">(</span>auto simp<span class="delimiter">:</span> fold_deriv_FAnd intro<span class="delimiter">!</span><span class="delimiter">:</span> finite_surj<span class="delimiter">[</span>OF finite_cartesian_product<span class="delimiter">[</span>OF FAnd<span class="delimiter">]</span><span class="delimiter">]</span><span class="delimiter">)</span>
+<span class="command">next</span>
+  <span class="command">case</span> <span class="delimiter">(</span>FEx k &phi;<span class="delimiter">)</span>
+  <span class="command">then</span> <span class="command">have</span> <span class="string">&quot;finite (\&lt;Union&gt; (disjuncts ` {&lang;fold (deriv d0) xs &phi;&rang; | xs . True}))&quot;</span>
+    <span class="command">by</span> <span class="delimiter">(</span>auto simp<span class="delimiter">:</span> finite_juncts<span class="delimiter">)</span>
+  <span class="command">then</span> <span class="command">have</span> <span class="string">&quot;finite (\&lt;Union&gt;xs. disjuncts &lang;fold (deriv d0) xs &phi;&rang;)&quot;</span>
+     <span class="command">by</span> <span class="delimiter">(</span>rule finite_subset<span class="delimiter">[</span>rotated<span class="delimiter">]</span><span class="delimiter">)</span> auto
+  <span class="command">then</span> <span class="command">have</span> <span class="string">&quot;finite {FEx k &psi; | &psi;. nf_ACI &psi; &and; disjuncts &psi; &sube; (\&lt;Union&gt;xs. disjuncts &lang;fold (deriv d0) xs &phi;&rang;)}&quot;</span>
+    <span class="command">by</span> <span class="delimiter">(</span>rule finite_norm_ACI_juncts<span class="delimiter">)</span>
+  <span class="command">then</span> <span class="command">show</span> <span class="var">?case</span>
+    <span class="command">by</span> <span class="delimiter">(</span>rule finite_subset<span class="delimiter">[</span>OF fold_deriv_FEx<span class="delimiter">]</span><span class="delimiter">)</span>
+<span class="command">next</span>
+  <span class="command">case</span> <span class="delimiter">(</span>FAll k &phi;<span class="delimiter">)</span>
+  <span class="command">then</span> <span class="command">have</span> <span class="string">&quot;finite (\&lt;Union&gt; (conjuncts ` {&lang;fold (deriv d0) xs &phi;&rang; | xs . True}))&quot;</span>
+    <span class="command">by</span> <span class="delimiter">(</span>auto simp<span class="delimiter">:</span> finite_juncts<span class="delimiter">)</span>
+  <span class="command">then</span> <span class="command">have</span> <span class="string">&quot;finite (\&lt;Union&gt;xs. conjuncts &lang;fold (deriv d0) xs &phi;&rang;)&quot;</span>
+     <span class="command">by</span> <span class="delimiter">(</span>rule finite_subset<span class="delimiter">[</span>rotated<span class="delimiter">]</span><span class="delimiter">)</span> auto
+  <span class="command">then</span> <span class="command">have</span> <span class="string">&quot;finite {FAll k &psi; | &psi;. nf_ACI &psi; &and; conjuncts &psi; &sube; (\&lt;Union&gt;xs. conjuncts &lang;fold (deriv d0) xs &phi;&rang;)}&quot;</span>
+    <span class="command">by</span> <span class="delimiter">(</span>rule finite_norm_ACI_juncts<span class="delimiter">)</span>
+  <span class="command">then</span> <span class="command">show</span> <span class="var">?case</span>
+    <span class="command">by</span> <span class="delimiter">(</span>rule finite_subset<span class="delimiter">[</span>OF fold_deriv_FAll<span class="delimiter">]</span><span class="delimiter">)</span>
+<span class="command">qed</span> <span class="delimiter">(</span>simp add<span class="delimiter">:</span> fold_deriv_FBool<span class="delimiter">)</span>
+
+<span class="command">theorem</span>
+  finite_fold_lderiv<span class="delimiter">:</span> <span class="string">&quot;finite {&lang;fold lderiv xs &lang;&phi;&rang;&rang; | xs. True}&quot;</span> <span class="keyword2">and</span>
+  finite_fold_rderiv<span class="delimiter">:</span> <span class="string">&quot;finite {&lang;fold rderiv xs &lang;&phi;&rang;&rang; | xs. True}&quot;</span>
+  <span class="command">by</span> <span class="delimiter">(</span>blast intro<span class="delimiter">:</span> nf_ACI_norm_ACI finite_fold_deriv<span class="delimiter">)</span><span class="delimiter">+</span>
+
+<span class="command">lemma</span> wf_nFOR<span class="delimiter">:</span> <span class="string">&quot;wf idx (nFOR &phi;s) &lt;-&gt; (&forall;&phi; &isin; set &phi;s. wf idx &phi;)&quot;</span>
+  <span class="command">by</span> <span class="delimiter">(</span>induct rule<span class="delimiter">:</span> nFOR.induct<span class="delimiter">)</span> auto
+
+<span class="command">lemma</span> wf_nFAND<span class="delimiter">:</span> <span class="string">&quot;wf idx (nFAND &phi;s) &lt;-&gt; (&forall;&phi; &isin; set &phi;s. wf idx &phi;)&quot;</span>
+  <span class="command">by</span> <span class="delimiter">(</span>induct rule<span class="delimiter">:</span> nFAND.induct<span class="delimiter">)</span> auto
+
+<span class="command">lemma</span> wf_NFOR<span class="delimiter">:</span> <span class="string">&quot;finite &Phi; ==&gt; wf idx (NFOR &Phi;) &lt;-&gt; (&forall;&phi; &isin; &Phi;. wf idx &phi;)&quot;</span>
+  <span class="command">unfolding</span> NFOR_def o_apply <span class="command">by</span> <span class="delimiter">(</span>auto simp<span class="delimiter">:</span> wf_nFOR<span class="delimiter">)</span>
+
+<span class="command">lemma</span> wf_NFAND<span class="delimiter">:</span> <span class="string">&quot;finite &Phi; ==&gt; wf idx (NFAND &Phi;) &lt;-&gt; (&forall;&phi; &isin; &Phi;. wf idx &phi;)&quot;</span>
+  <span class="command">unfolding</span> NFAND_def o_apply <span class="command">by</span> <span class="delimiter">(</span>auto simp<span class="delimiter">:</span> wf_nFAND<span class="delimiter">)</span>
+
+<span class="command">lemma</span> satisfies_bounded_nFOR<span class="delimiter">:</span> <span class="string">&quot;\&lt;AA&gt; \&lt;Turnstile&gt;<span class="hidden">&#8681;</span><sub>b</sub> nFOR &phi;s &lt;-&gt; (&exist;&phi; &isin; set &phi;s. \&lt;AA&gt; \&lt;Turnstile&gt;<span class="hidden">&#8681;</span><sub>b</sub> &phi;)&quot;</span>
+  <span class="command">by</span> <span class="delimiter">(</span>induct rule<span class="delimiter">:</span> nFOR.induct<span class="delimiter">)</span> <span class="delimiter">(</span>auto simp<span class="delimiter">:</span> satisfies_bounded_nFOr<span class="delimiter">)</span>
+
+<span class="command">lemma</span> satisfies_bounded_nFAND<span class="delimiter">:</span> <span class="string">&quot;\&lt;AA&gt; \&lt;Turnstile&gt;<span class="hidden">&#8681;</span><sub>b</sub> nFAND &phi;s &lt;-&gt; (&forall;&phi; &isin; set &phi;s. \&lt;AA&gt; \&lt;Turnstile&gt;<span class="hidden">&#8681;</span><sub>b</sub> &phi;)&quot;</span>
+  <span class="command">by</span> <span class="delimiter">(</span>induct rule<span class="delimiter">:</span> nFAND.induct<span class="delimiter">)</span> <span class="delimiter">(</span>auto simp<span class="delimiter">:</span> satisfies_bounded_nFAnd<span class="delimiter">)</span>
+
+<span class="command">lemma</span> satisfies_bounded_NFOR<span class="delimiter">:</span> <span class="string">&quot;finite &Phi; ==&gt; \&lt;AA&gt; \&lt;Turnstile&gt;<span class="hidden">&#8681;</span><sub>b</sub> NFOR &Phi; &lt;-&gt; (&exist;&phi; &isin; &Phi;. \&lt;AA&gt; \&lt;Turnstile&gt;<span class="hidden">&#8681;</span><sub>b</sub> &phi;)&quot;</span>
+  <span class="command">unfolding</span> NFOR_def o_apply <span class="command">by</span> <span class="delimiter">(</span>auto simp<span class="delimiter">:</span> satisfies_bounded_nFOR<span class="delimiter">)</span>
+
+<span class="command">lemma</span> satisfies_bounded_NFAND<span class="delimiter">:</span> <span class="string">&quot;finite &Phi; ==&gt; \&lt;AA&gt; \&lt;Turnstile&gt;<span class="hidden">&#8681;</span><sub>b</sub> NFAND &Phi; &lt;-&gt; (&forall;&phi; &isin; &Phi;. \&lt;AA&gt; \&lt;Turnstile&gt;<span class="hidden">&#8681;</span><sub>b</sub> &phi;)&quot;</span>
+  <span class="command">unfolding</span> NFAND_def o_apply <span class="command">by</span> <span class="delimiter">(</span>auto simp<span class="delimiter">:</span> satisfies_bounded_nFAND<span class="delimiter">)</span>
+
+<span class="command">lemma</span> wf_juncts<span class="delimiter">:</span>
+  <span class="string">&quot;wf idx &phi; &lt;-&gt; (&forall;&psi; &isin; disjuncts &phi;. wf idx &psi;)&quot;</span>
+  <span class="string">&quot;wf idx &phi; &lt;-&gt; (&forall;&psi; &isin; conjuncts &phi;. wf idx &psi;)&quot;</span>
+  <span class="command">by</span> <span class="delimiter">(</span>induct &phi;<span class="delimiter">)</span> auto
+
+<span class="command">lemma</span> wf_norm_ACI<span class="delimiter">:</span> <span class="string">&quot;wf idx &lang;&phi;&rang; = wf idx &phi;&quot;</span>
+  <span class="command">by</span> <span class="delimiter">(</span>induct &phi; arbitrary<span class="delimiter">:</span> idx<span class="delimiter">)</span>
+    <span class="delimiter">(</span>auto simp<span class="delimiter">:</span> finite_juncts wf_NFOR wf_NFAND ball_Un wf_juncts<span class="delimiter">[</span>symmetric<span class="delimiter">]</span><span class="delimiter">)</span>
+
+<span class="command">lemma</span> satisfies_bounded_disjuncts<span class="delimiter">:</span>
+  <span class="string">&quot;\&lt;AA&gt; \&lt;Turnstile&gt;<span class="hidden">&#8681;</span><sub>b</sub> &phi; &lt;-&gt; (&exist;&psi; &isin; disjuncts &phi;. \&lt;AA&gt; \&lt;Turnstile&gt;<span class="hidden">&#8681;</span><sub>b</sub> &psi;)&quot;</span>
+  <span class="command">by</span> <span class="delimiter">(</span>induct &phi; arbitrary<span class="delimiter">:</span> \&lt;AA&gt;<span class="delimiter">)</span> auto
+
+<span class="command">lemma</span> satisfies_bounded_conjuncts<span class="delimiter">:</span>
+  <span class="string">&quot;\&lt;AA&gt; \&lt;Turnstile&gt;<span class="hidden">&#8681;</span><sub>b</sub> &phi; &lt;-&gt; (&forall;&psi; &isin; conjuncts &phi;. \&lt;AA&gt; \&lt;Turnstile&gt;<span class="hidden">&#8681;</span><sub>b</sub> &psi;)&quot;</span>
+  <span class="command">by</span> <span class="delimiter">(</span>induct &phi; arbitrary<span class="delimiter">:</span> \&lt;AA&gt;<span class="delimiter">)</span> auto
+
+<span class="command">lemma</span> satisfies_bounded_norm_ACI<span class="delimiter">:</span> <span class="string">&quot;\&lt;AA&gt; \&lt;Turnstile&gt;<span class="hidden">&#8681;</span><sub>b</sub> &lang;&phi;&rang; &lt;-&gt; \&lt;AA&gt; \&lt;Turnstile&gt;<span class="hidden">&#8681;</span><sub>b</sub> &phi;&quot;</span>
+  <span class="command">by</span> <span class="delimiter">(</span>rule sym<span class="delimiter">,</span> induct &phi; arbitrary<span class="delimiter">:</span> \&lt;AA&gt;<span class="delimiter">)</span>
+    <span class="delimiter">(</span>auto simp<span class="delimiter">:</span> satisfies_bounded_NFOR satisfies_bounded_NFAND finite_juncts
+      intro<span class="delimiter">:</span> iffD2<span class="delimiter">[</span>OF satisfies_bounded_disjuncts<span class="delimiter">]</span> iffD2<span class="delimiter">[</span>OF satisfies_bounded_conjuncts<span class="delimiter">]</span>
+      dest<span class="delimiter">:</span> iffD1<span class="delimiter">[</span>OF satisfies_bounded_disjuncts<span class="delimiter">]</span> iffD1<span class="delimiter">[</span>OF satisfies_bounded_conjuncts<span class="delimiter">]</span><span class="delimiter">)</span>
+
+<span class="command">lemma</span> nvars_SNOCs<span class="delimiter">:</span> <span class="string">&quot;#<span class="hidden">&#8681;</span><sub>V</sub> ((SNOC x^^k) \&lt;AA&gt;) = #<span class="hidden">&#8681;</span><sub>V</sub> \&lt;AA&gt;&quot;</span>
+  <span class="command">by</span> <span class="delimiter">(</span>induct k<span class="delimiter">)</span> <span class="delimiter">(</span>auto simp<span class="delimiter">:</span> nvars_SNOC<span class="delimiter">)</span>
+
+<span class="command">lemma</span> wf_fold_rderiv<span class="delimiter">:</span> <span class="string">&quot;wf idx &phi; ==&gt; wf idx (fold rderiv (replicate k x) &phi;)&quot;</span>
+  <span class="command">by</span> <span class="delimiter">(</span>induct k arbitrary<span class="delimiter">:</span> &phi;<span class="delimiter">)</span> <span class="delimiter">(</span>auto simp<span class="delimiter">:</span> wf_rderiv<span class="delimiter">)</span>
+
+<span class="command">lemma</span> satisfies_bounded_fold_rderiv<span class="delimiter">:</span>
+  <span class="string">&quot;[|wf idx &phi;; #<span class="hidden">&#8681;</span><sub>V</sub> \&lt;AA&gt; = idx; size x = idx|] ==&gt;
+     \&lt;AA&gt; \&lt;Turnstile&gt;<span class="hidden">&#8681;</span><sub>b</sub> fold rderiv (replicate k x) &phi; &lt;-&gt; (SNOC x^^k) \&lt;AA&gt; \&lt;Turnstile&gt;<span class="hidden">&#8681;</span><sub>b</sub> &phi;&quot;</span>
+  <span class="command">by</span> <span class="delimiter">(</span>induct k arbitrary<span class="delimiter">:</span> \&lt;AA&gt; &phi;<span class="delimiter">)</span> <span class="delimiter">(</span>auto simp<span class="delimiter">:</span> satisfies_bounded_rderiv wf_rderiv nvars_SNOCs<span class="delimiter">)</span>
+
+
+<span class="command">section</span> <span class="cartouche">&#8249;Emptiness Check&#8250;</span>
+
+<span class="command">context</span>
+  <span class="keyword2">fixes</span> b <span class="delimiter">::</span> bool
+  <span class="keyword2">and</span> idx <span class="delimiter">::</span> <span class="tfree">&#39;n</span>
+  <span class="keyword2">and</span> &psi; <span class="delimiter">::</span> <span class="string">&quot;(&#39;a, &#39;k) aformula&quot;</span>
+<span class="keyword2">begin</span>
+
+<span class="command">abbreviation</span> <span class="string">&quot;fut_test &equiv; &lambda;(&phi;, &Phi;). &phi; &notin; set &Phi;&quot;</span>
+<span class="command">abbreviation</span> <span class="string">&quot;fut_step &equiv; &lambda;(&phi;, &Phi;). (norm (rderiv (zero idx) &phi;), &phi; # &Phi;)&quot;</span>
+<span class="command">definition</span> <span class="string">&quot;fut_derivs k &phi; &equiv; ((norm o rderiv (zero idx))^^k) &phi;&quot;</span>
+
+<span class="command">lemma</span> fut_derivs_Suc<span class="delimiter">[</span>simp<span class="delimiter">]</span><span class="delimiter">:</span> <span class="string">&quot;norm (rderiv (zero idx) (fut_derivs k &phi;)) = fut_derivs (Suc k) &phi;&quot;</span>
+  <span class="command">unfolding</span> fut_derivs_def <span class="command">by</span> auto
+
+<span class="command">definition</span> <span class="string">&quot;fut_invariant =
+  (&lambda;(&phi;, &Phi;). wf idx &phi; &and; (&forall;&phi; &isin; set &Phi;. wf idx &phi;) &and;
+    (&exist;k. &phi; = fut_derivs k &psi; &and; &Phi; = map (&lambda;i. fut_derivs i &psi;) (rev [0 ..&lt; k])))&quot;</span>
+<span class="command">definition</span> <span class="string">&quot;fut_spec &phi;&Phi; &equiv; (&forall;&phi; &isin; set (snd &phi;&Phi;). wf idx &phi;) &and;
+  (&forall;\&lt;AA&gt;. #<span class="hidden">&#8681;</span><sub>V</sub> \&lt;AA&gt; = idx --&gt;
+    (if b then (&exist;k. (SNOC (zero idx) ^^ k) \&lt;AA&gt; \&lt;Turnstile&gt;<span class="hidden">&#8681;</span><sub>b</sub> &psi;) &lt;-&gt; (&exist;&phi; &isin; set (snd &phi;&Phi;). \&lt;AA&gt; \&lt;Turnstile&gt;<span class="hidden">&#8681;</span><sub>b</sub> &phi;)
+    else (&forall;k. (SNOC (zero idx) ^^ k) \&lt;AA&gt; \&lt;Turnstile&gt;<span class="hidden">&#8681;</span><sub>b</sub> &psi;) &lt;-&gt; (&forall;&phi; &isin; set (snd &phi;&Phi;). \&lt;AA&gt; \&lt;Turnstile&gt;<span class="hidden">&#8681;</span><sub>b</sub> &phi;)))&quot;</span>
+
+<span class="command">definition</span> <span class="string">&quot;fut_default =
+  (&psi;, sorted_list_of_set {&lang;fold rderiv (replicate k (zero idx)) &lang;&psi;&rang;&rang; | k. True})&quot;</span>
+
+<span class="command">lemma</span> finite_fold_rderiv_zeros<span class="delimiter">:</span> <span class="string">&quot;finite {&lang;fold rderiv (replicate k (zero idx)) &lang;&psi;&rang;&rang; | k. True}&quot;</span>
+  <span class="command">by</span> <span class="delimiter">(</span>rule finite_subset<span class="delimiter">[</span>OF _ finite_fold_rderiv<span class="delimiter">[</span>of &psi;<span class="delimiter">]</span><span class="delimiter">]</span><span class="delimiter">)</span> blast
+
+<span class="command">definition</span> fut <span class="delimiter">::</span> <span class="string">&quot;(&#39;a, &#39;k) aformula&quot;</span> <span class="keyword2">where</span>
+  <span class="string">&quot;fut = (if b then nFOR else nFAND) (snd (while_default fut_default fut_test fut_step (&psi;, [])))&quot;</span>
+
+<span class="command">context</span>
+  <span class="keyword2">assumes</span> wf<span class="delimiter">:</span> <span class="string">&quot;wf idx &psi;&quot;</span>
+<span class="keyword2">begin</span> 
+
+<span class="command">lemma</span> wf_fut_derivs<span class="delimiter">:</span>
+  <span class="string">&quot;wf idx (fut_derivs k &psi;)&quot;</span>
+  <span class="command">by</span> <span class="delimiter">(</span>induct k<span class="delimiter">)</span> <span class="delimiter">(</span>auto simp<span class="delimiter">:</span> wf_norm wf_rderiv wf fut_derivs_def<span class="delimiter">)</span>
+
+<span class="command">lemma</span> satisfies_bounded_fut_derivs<span class="delimiter">:</span>
+  <span class="string">&quot;#<span class="hidden">&#8681;</span><sub>V</sub> \&lt;AA&gt; = idx ==&gt; \&lt;AA&gt; \&lt;Turnstile&gt;<span class="hidden">&#8681;</span><sub>b</sub> fut_derivs k &psi; &lt;-&gt; (SNOC (zero idx)^^k) \&lt;AA&gt; \&lt;Turnstile&gt;<span class="hidden">&#8681;</span><sub>b</sub> &psi;&quot;</span>
+  <span class="command">by</span> <span class="delimiter">(</span>induct k arbitrary<span class="delimiter">:</span> \&lt;AA&gt;<span class="delimiter">)</span> <span class="delimiter">(</span>auto simp<span class="delimiter">:</span> fut_derivs_def satisfies_bounded_rderiv satisfies_bounded_norm
+    wf_norm_rderivs size_zero nvars_SNOC funpow_swap1<span class="delimiter">[</span>of <span class="string">&quot;SNOC x&quot;</span> <span class="keyword2">for</span> x<span class="delimiter">]</span> wf<span class="delimiter">)</span>
+
+<span class="command">lemma</span> fut_init<span class="delimiter">:</span> <span class="string">&quot;fut_invariant (&psi;, [])&quot;</span>
+  <span class="command">unfolding</span> fut_invariant_def <span class="command">by</span> <span class="delimiter">(</span>auto simp<span class="delimiter">:</span> fut_derivs_def wf<span class="delimiter">)</span>
+
+<span class="command">lemma</span> fut_spec_default<span class="delimiter">:</span> <span class="string">&quot;fut_spec fut_default&quot;</span>
+  <span class="command">using</span> satisfies_bounded_fold_rderiv<span class="delimiter">[</span>OF iffD2<span class="delimiter">[</span>OF wf_norm_ACI wf<span class="delimiter">]</span> sym size_zero<span class="delimiter">]</span> 
+  <span class="command">unfolding</span> fut_spec_def fut_default_def snd_conv
+    conjunct1<span class="delimiter">[</span>OF sorted_list_of_set<span class="delimiter">[</span>OF finite_fold_rderiv_zeros<span class="delimiter">]</span><span class="delimiter">]</span>
+  <span class="command">by</span> <span class="delimiter">(</span>auto simp<span class="delimiter">:</span> satisfies_bounded_norm_ACI wf_fold_rderiv wf wf_norm_ACI simp del<span class="delimiter">:</span> fold_replicate<span class="delimiter">)</span>
+
+<span class="command">lemma</span> fut_invariant<span class="delimiter">:</span> <span class="string">&quot;fut_invariant &phi;&Phi; ==&gt; fut_test &phi;&Phi; ==&gt; fut_invariant (fut_step &phi;&Phi;)&quot;</span>
+  <span class="command">by</span> <span class="delimiter">(</span>cases &phi;&Phi;<span class="delimiter">)</span> <span class="delimiter">(</span>auto simp<span class="delimiter">:</span> fut_invariant_def wf_norm wf_rderiv split<span class="delimiter">:</span> if_splits<span class="delimiter">)</span>
+
+<span class="command">lemma</span> fut_terminate<span class="delimiter">:</span> <span class="string">&quot;fut_invariant &phi;&Phi; ==&gt; &not; fut_test &phi;&Phi; ==&gt; fut_spec &phi;&Phi;&quot;</span>
+<span class="command">proof</span> <span class="delimiter">(</span>induct &phi;&Phi;<span class="delimiter">,</span> unfold prod.case not_not<span class="delimiter">)</span>
+  <span class="command">fix</span> &phi; &Phi; <span class="command">assume</span> <span class="string">&quot;fut_invariant (&phi;, &Phi;)&quot;</span> <span class="string">&quot;&phi; &isin; set &Phi;&quot;</span>
+  <span class="command">then</span> <span class="command">obtain</span> i k <span class="keyword2">where</span> <span class="string">&quot;i &lt; k&quot;</span> <span class="keyword2">and</span> &phi;_def<span class="delimiter">:</span> <span class="string">&quot;&phi; = fut_derivs i &psi;&quot;</span>
+    <span class="keyword2">and</span> &Phi;_def<span class="delimiter">:</span> <span class="string">&quot;&Phi; = map (&lambda;i. fut_derivs i &psi;) (rev [0..&lt;k])&quot;</span>
+    <span class="keyword2">and</span> *<span class="delimiter">:</span> <span class="string">&quot;fut_derivs k &psi; = fut_derivs i &psi;&quot;</span> <span class="command">unfolding</span> fut_invariant_def <span class="command">by</span> auto
+  <span class="command">have</span> <span class="string">&quot;set &Phi; = {fut_derivs k &psi; | k . True}&quot;</span>
+  <span class="command">unfolding</span> &Phi;_def set_map set_rev set_upt <span class="command">proof</span> safe
+    <span class="command">fix</span> j
+    <span class="command">show</span> <span class="string">&quot;fut_derivs j &psi; &isin; (&lambda;i. fut_derivs i &psi;) ` {0..&lt;k}&quot;</span>
+    <span class="command">proof</span> <span class="delimiter">(</span>cases <span class="string">&quot;j &lt; k&quot;</span><span class="delimiter">)</span>
+      <span class="command">case</span> False
+      <span class="command">with</span> * <span class="cartouche">&#8249;i &lt; k&#8250;</span> <span class="command">have</span> <span class="string">&quot;fut_derivs j &psi; = fut_derivs ((j - i) mod (k - i) + i) &psi;&quot;</span>
+        <span class="command">unfolding</span> fut_derivs_def <span class="command">by</span> <span class="delimiter">(</span>auto intro<span class="delimiter">:</span> funpow_cycle_offset<span class="delimiter">)</span>
+      <span class="command">then</span> <span class="command">show</span> <span class="var">?thesis</span> <span class="command">using</span> <span class="cartouche">&#8249;i &lt; k&#8250;</span> <span class="cartouche">&#8249;&not; j &lt; k&#8250;</span>
+        <span class="command">by</span> <span class="delimiter">(</span>metis image_eqI atLeastLessThan_iff le0 less_diff_conv mod_less_divisor zero_less_diff<span class="delimiter">)</span>
+    <span class="command">qed</span> simp
+  <span class="command">qed</span> <span class="delimiter">(</span>blast intro<span class="delimiter">:</span> *<span class="delimiter">)</span>
+  <span class="command">then</span> <span class="command">show</span> <span class="string">&quot;fut_spec (&phi;, &Phi;)&quot;</span>
+    <span class="command">unfolding</span> fut_spec_def <span class="command">using</span> satisfies_bounded_fut_derivs <span class="command">by</span> <span class="delimiter">(</span>auto simp<span class="delimiter">:</span> wf_fut_derivs<span class="delimiter">)</span>
+<span class="command">qed</span>
+
+<span class="command">lemma</span> fut_spec_while_default<span class="delimiter">:</span>
+  <span class="string">&quot;fut_spec (while_default fut_default fut_test fut_step (&psi;, []))&quot;</span>
+  <span class="command">using</span> fut_invariant fut_terminate fut_init fut_spec_default <span class="command">by</span> <span class="delimiter">(</span>rule while_default_rule<span class="delimiter">)</span>
+
+<span class="command">lemma</span> wf_fut<span class="delimiter">:</span> <span class="string">&quot;wf idx fut&quot;</span>
+  <span class="command">using</span> fut_spec_while_default <span class="command">unfolding</span> fut_def fut_spec_def <span class="command">by</span> <span class="delimiter">(</span>auto simp<span class="delimiter">:</span> wf_nFOR wf_nFAND<span class="delimiter">)</span>
+
+<span class="command">lemma</span> satisfies_bounded_fut<span class="delimiter">:</span>
+  <span class="keyword2">assumes</span> <span class="string">&quot;#<span class="hidden">&#8681;</span><sub>V</sub> \&lt;AA&gt; = idx&quot;</span>
+  <span class="keyword2">shows</span> <span class="string">&quot;\&lt;AA&gt; \&lt;Turnstile&gt;<span class="hidden">&#8681;</span><sub>b</sub> fut &lt;-&gt;
+    (if b then (&exist;k. (SNOC (zero idx) ^^ k) \&lt;AA&gt; \&lt;Turnstile&gt;<span class="hidden">&#8681;</span><sub>b</sub> &psi;) else (&forall;k. (SNOC (zero idx) ^^ k) \&lt;AA&gt; \&lt;Turnstile&gt;<span class="hidden">&#8681;</span><sub>b</sub> &psi;))&quot;</span>
+  <span class="command">using</span> fut_spec_while_default assms <span class="command">unfolding</span> fut_def fut_spec_def
+  <span class="command">by</span> <span class="delimiter">(</span>auto simp<span class="delimiter">:</span> satisfies_bounded_nFOR satisfies_bounded_nFAND<span class="delimiter">)</span>
+
+<span class="command">end</span>
+
+<span class="command">end</span>
+
+<span class="command">fun</span> finalize <span class="delimiter">::</span> <span class="string">&quot;&#39;n =&gt; (&#39;a, &#39;k) aformula =&gt; (&#39;a, &#39;k) aformula&quot;</span> <span class="keyword2">where</span>
+  <span class="string">&quot;finalize idx (FEx k &phi;) = fut True idx (nFEx k (finalize (SUC k idx) &phi;))&quot;</span>
+<span class="delimiter">|</span> <span class="string">&quot;finalize idx (FAll k &phi;) = fut False idx (nFAll k (finalize (SUC k idx) &phi;))&quot;</span>
+<span class="delimiter">|</span> <span class="string">&quot;finalize idx (FOr &phi; &psi;) = FOr (finalize idx &phi;) (finalize idx &psi;)&quot;</span>
+<span class="delimiter">|</span> <span class="string">&quot;finalize idx (FAnd &phi; &psi;) = FAnd (finalize idx &phi;) (finalize idx &psi;)&quot;</span>
+<span class="delimiter">|</span> <span class="string">&quot;finalize idx (FNot &phi;) = FNot (finalize idx &phi;)&quot;</span>
+<span class="delimiter">|</span> <span class="string">&quot;finalize idx &phi; = &phi;&quot;</span>
+
+<span class="command">definition</span> final <span class="delimiter">::</span> <span class="string">&quot;&#39;n =&gt; (&#39;a, &#39;k) aformula =&gt; bool&quot;</span> <span class="keyword2">where</span>
+  <span class="string">&quot;final idx = nullable o finalize idx&quot;</span>
+
+<span class="command">lemma</span> wf_finalize<span class="delimiter">:</span> <span class="string">&quot;wf idx &phi; ==&gt; wf idx (finalize idx &phi;)&quot;</span>
+  <span class="command">by</span> <span class="delimiter">(</span>induct &phi; arbitrary<span class="delimiter">:</span> idx<span class="delimiter">)</span> <span class="delimiter">(</span>auto simp<span class="delimiter">:</span> wf_fut wf_nFEx wf_nFAll<span class="delimiter">)</span>
+
+<span class="command">lemma</span> Length_SNOCs<span class="delimiter">:</span> <span class="string">&quot;Length ((SNOC x ^^ k) \&lt;AA&gt;) = Length \&lt;AA&gt; + k&quot;</span>
+  <span class="command">by</span> <span class="delimiter">(</span>induct k arbitrary<span class="delimiter">:</span> \&lt;AA&gt;<span class="delimiter">)</span> <span class="delimiter">(</span>auto simp<span class="delimiter">:</span> Length_SNOC<span class="delimiter">)</span>
+
+<span class="command">lemma</span> assigns_SNOCs_zero<span class="delimiter">:</span>
+  <span class="string">&quot;[|LESS ord m (#<span class="hidden">&#8681;</span><sub>V</sub> \&lt;AA&gt;); #<span class="hidden">&#8681;</span><sub>V</sub> \&lt;AA&gt; = idx|]  ==&gt; m<span class="hidden">&#8663;</span><sup>(SNOC (zero idx) ^^ k) \&lt;AA&gt;<span class="hidden">&#8662;</span></sup>ord = m<span class="hidden">&#8663;</span><sup>\&lt;AA&gt;<span class="hidden">&#8662;</span></sup>ord&quot;</span>
+  <span class="command">by</span> <span class="delimiter">(</span>induct k arbitrary<span class="delimiter">:</span> \&lt;AA&gt;<span class="delimiter">)</span> <span class="delimiter">(</span>auto simp<span class="delimiter">:</span> assigns_SNOC_zero nvars_SNOC funpow_swap1<span class="delimiter">)</span>
+
+<span class="command">lemma</span> Extend_SNOCs_zero_satisfies<span class="delimiter">:</span> <span class="string">&quot;[|wf (SUC ord idx) &phi;; #<span class="hidden">&#8681;</span><sub>V</sub> \&lt;AA&gt; = idx; left_formula &phi;|] ==&gt;
+  Extend ord 0 ((SNOC (zero (#<span class="hidden">&#8681;</span><sub>V</sub> \&lt;AA&gt;)) ^^ k) \&lt;AA&gt;) P \&lt;Turnstile&gt; &phi; &lt;-&gt; Extend ord 0 \&lt;AA&gt; P \&lt;Turnstile&gt; &phi;&quot;</span>
+  <span class="command">by</span> <span class="delimiter">(</span>rule satisfies_eqI<span class="delimiter">)</span>
+   <span class="delimiter">(</span>auto simp<span class="delimiter">:</span> nvars_Extend nvars_SNOCs assigns_Extend assigns_SNOCs_zero LEQ_0 LESS_SUC
+     dec_def gr0_conv_Suc<span class="delimiter">)</span>
+
+<span class="command">lemma</span> finalize_satisfies<span class="delimiter">:</span> <span class="string">&quot;[|wf idx &phi;; #<span class="hidden">&#8681;</span><sub>V</sub> \&lt;AA&gt; = idx; left_formula &phi;|] ==&gt; \&lt;AA&gt; \&lt;Turnstile&gt;<span class="hidden">&#8681;</span><sub>b</sub> finalize idx &phi; &lt;-&gt; \&lt;AA&gt; \&lt;Turnstile&gt; &phi;&quot;</span>
+  <span class="command">by</span> <span class="delimiter">(</span>induct &phi; arbitrary<span class="delimiter">:</span> idx \&lt;AA&gt;<span class="delimiter">)</span>
+    <span class="delimiter">(</span>force simp add<span class="delimiter">:</span> wf_nFEx wf_nFAll wf_finalize Length_SNOCs nvars_Extend nvars_SNOCs
+      satisfies_bounded_fut satisfies_bounded_nFEx satisfies_bounded_nFAll Extend_SNOCs_zero_satisfies
+      intro<span class="delimiter">:</span> le_add2<span class="delimiter">)</span><span class="delimiter">+</span>
+
+<span class="command">lemma</span> Extend_empty_satisfies0<span class="delimiter">:</span>
+  <span class="string">&quot;[|Length \&lt;AA&gt; = 0; len P = 0|] ==&gt; Extend k i \&lt;AA&gt; P \&lt;Turnstile&gt;<span class="hidden">&#8681;</span><sub>0</sub> a &lt;-&gt; \&lt;AA&gt; \&lt;Turnstile&gt;<span class="hidden">&#8681;</span><sub>0</sub> a&quot;</span>
+  <span class="command">by</span> <span class="delimiter">(</span>intro box_equals<span class="delimiter">[</span>OF _ nullable0_satisfies0 nullable0_satisfies0<span class="delimiter">]</span><span class="delimiter">)</span>
+    <span class="delimiter">(</span>auto simp<span class="delimiter">:</span> nvars_Extend Length_Extend<span class="delimiter">)</span>
+
+<span class="command">lemma</span> Extend_empty_satisfies_bounded<span class="delimiter">:</span>
+  <span class="string">&quot;[|Length \&lt;AA&gt; = 0; len P = 0|] ==&gt; Extend k 0 \&lt;AA&gt; P \&lt;Turnstile&gt;<span class="hidden">&#8681;</span><sub>b</sub> &phi; &lt;-&gt; \&lt;AA&gt; \&lt;Turnstile&gt;<span class="hidden">&#8681;</span><sub>b</sub> &phi;&quot;</span>
+  <span class="command">by</span> <span class="delimiter">(</span>induct &phi; arbitrary<span class="delimiter">:</span> k \&lt;AA&gt; P<span class="delimiter">)</span>
+    <span class="delimiter">(</span>auto simp<span class="delimiter">:</span> Extend_empty_satisfies0 Length_Extend split<span class="delimiter">:</span> bool.splits<span class="delimiter">)</span>
+
+<span class="command">lemma</span> nullable_satisfies_bounded<span class="delimiter">:</span> <span class="string">&quot;Length \&lt;AA&gt; = 0 ==&gt; nullable &phi; &lt;-&gt; \&lt;AA&gt; \&lt;Turnstile&gt;<span class="hidden">&#8681;</span><sub>b</sub> &phi;&quot;</span>
+  <span class="command">by</span> <span class="delimiter">(</span>induct &phi;<span class="delimiter">)</span> <span class="delimiter">(</span>auto simp<span class="delimiter">:</span> nullable0_satisfies0 Extend_empty_satisfies_bounded len_cut_0
+    intro<span class="delimiter">:</span> exI<span class="delimiter">[</span>of _ <span class="string">&quot;cut 0 P&quot;</span> <span class="keyword2">for</span> P<span class="delimiter">]</span><span class="delimiter">)</span>
+
+<span class="command">lemma</span> final_satisfies<span class="delimiter">:</span>
+  <span class="string">&quot;[|wf idx &phi; &and; left_formula &phi;; Length \&lt;AA&gt; = 0; #<span class="hidden">&#8681;</span><sub>V</sub> \&lt;AA&gt; = idx|] ==&gt; final idx &phi; = (\&lt;AA&gt; \&lt;Turnstile&gt; &phi;)&quot;</span>
+  <span class="command">by</span> <span class="delimiter">(</span>simp only<span class="delimiter">:</span> final_def o_apply nullable_satisfies_bounded finalize_satisfies<span class="delimiter">)</span>
+
+<span class="command">section</span> <span class="cartouche">&#8249;Restrictions&#8250;</span>
+
+<span class="command">lemma</span> satisfies_gen_restrict_RESTR<span class="delimiter">:</span>
+  <span class="string">&quot;satisfies_gen (&lambda;k P _. restrict k P) \&lt;AA&gt; &phi; &lt;-&gt; \&lt;AA&gt; \&lt;Turnstile&gt; RESTR &phi;&quot;</span>
+  <span class="command">by</span> <span class="delimiter">(</span>induct &phi; arbitrary<span class="delimiter">:</span> \&lt;AA&gt;<span class="delimiter">)</span> <span class="delimiter">(</span>auto simp<span class="delimiter">:</span> restrict_Restrict<span class="delimiter">[</span>symmetric<span class="delimiter">]</span> assigns_Extend LEQ_0<span class="delimiter">)</span>
+
+<span class="command">lemma</span> satisfies_gen_restrict<span class="hidden">&#8681;</span><sub>b</sub>_RESTR<span class="delimiter">:</span>
+  <span class="string">&quot;satisfies_gen (&lambda;k P n. restrict k P &and; len P &le; n) \&lt;AA&gt; &phi; &lt;-&gt; \&lt;AA&gt; \&lt;Turnstile&gt;<span class="hidden">&#8681;</span><sub>b</sub> RESTR &phi;&quot;</span>
+  <span class="command">by</span> <span class="delimiter">(</span>induct &phi; arbitrary<span class="delimiter">:</span> \&lt;AA&gt;<span class="delimiter">)</span> <span class="delimiter">(</span>auto simp<span class="delimiter">:</span> restrict_Restrict<span class="hidden">&#8681;</span><sub>b</sub><span class="delimiter">[</span>symmetric<span class="delimiter">]</span> assigns_Extend LEQ_0<span class="delimiter">)</span>
+
+<span class="command">lemma</span> distinct_FV<span class="delimiter">:</span> <span class="string">&quot;distinct (FV &phi;)&quot;</span>
+  <span class="command">by</span> <span class="delimiter">(</span>induct &phi;<span class="delimiter">)</span> <span class="delimiter">(</span>auto simp<span class="delimiter">:</span> distinct_FV0 distinct_map inj_on_def split<span class="delimiter">:</span> if_splits<span class="delimiter">)</span>
+
+<span class="command">lemma</span> sat_vars_RESTRICT_VARS<span class="delimiter">:</span> <span class="string">&quot;sat_vars_gen (&lambda;_ _ _. True) vs \&lt;AA&gt; &phi; &lt;-&gt; \&lt;AA&gt; \&lt;Turnstile&gt; RESTRICT_VARS vs &phi;&quot;</span>
+  <span class="command">by</span> <span class="delimiter">(</span>induct vs arbitrary<span class="delimiter">:</span> &phi;<span class="delimiter">)</span> <span class="delimiter">(</span>force simp<span class="delimiter">:</span> satisfies_gen_restrict_RESTR restrict_Restrict<span class="delimiter">)</span><span class="delimiter">+</span>
+
+<span class="command">lemma</span> sat_vars<span class="hidden">&#8681;</span><sub>b</sub>_RESTRICT_VARS<span class="delimiter">:</span> <span class="string">&quot;sat_vars_gen (&lambda;_ P n. len P &le; n) vs \&lt;AA&gt; &phi; &lt;-&gt; \&lt;AA&gt; \&lt;Turnstile&gt;<span class="hidden">&#8681;</span><sub>b</sub> RESTRICT_VARS vs &phi;&quot;</span>
+  <span class="command">by</span> <span class="delimiter">(</span>induct vs arbitrary<span class="delimiter">:</span> &phi;<span class="delimiter">)</span> <span class="delimiter">(</span>auto simp<span class="delimiter">:</span> satisfies_gen_restrict<span class="hidden">&#8681;</span><sub>b</sub>_RESTR restrict_Restrict<span class="hidden">&#8681;</span><sub>b</sub><span class="delimiter">)</span><span class="delimiter">+</span>
+
+<span class="command">lemma</span> sat_RESTRICT<span class="delimiter">:</span> <span class="string">&quot;sat \&lt;AA&gt; &phi; &lt;-&gt; \&lt;AA&gt; \&lt;Turnstile&gt; RESTRICT &phi;&quot;</span>
+  <span class="command">unfolding</span> sat_def RESTRICT_def <span class="command">by</span> <span class="delimiter">(</span>rule sat_vars_RESTRICT_VARS<span class="delimiter">)</span>
+
+<span class="command">lemma</span> sat<span class="hidden">&#8681;</span><sub>b</sub>_RESTRICT<span class="delimiter">:</span> <span class="string">&quot;sat<span class="hidden">&#8681;</span><sub>b</sub> \&lt;AA&gt; &phi; &lt;-&gt; \&lt;AA&gt; \&lt;Turnstile&gt;<span class="hidden">&#8681;</span><sub>b</sub> RESTRICT &phi;&quot;</span>
+  <span class="command">unfolding</span> sat<span class="hidden">&#8681;</span><sub>b</sub>_def RESTRICT_def <span class="command">by</span> <span class="delimiter">(</span>rule sat_vars<span class="hidden">&#8681;</span><sub>b</sub>_RESTRICT_VARS<span class="delimiter">)</span> 
+
+<span class="command">end</span>
+
+<span class="command">context</span> Word_Formula
+<span class="keyword2">begin</span>
+
+<span class="command">lemma</span> enc_Nil<span class="delimiter">:</span> <span class="string">&quot;Length \&lt;AA&gt; = 0 ==&gt; enc \&lt;AA&gt; = []&quot;</span>
+  <span class="command">by</span> <span class="delimiter">(</span>metis length_0_conv length_enc<span class="delimiter">)</span>
+
+<span class="command">definition</span> <span class="string">&quot;decode idx = the_inv_into {\&lt;BB&gt;. #<span class="hidden">&#8681;</span><sub>V</sub> \&lt;BB&gt; = idx} enc&quot;</span>
+
+<span class="command">lemma</span> inj_on_enc<span class="delimiter">:</span> <span class="string">&quot;inj_on enc {\&lt;BB&gt;. #<span class="hidden">&#8681;</span><sub>V</sub> \&lt;BB&gt; = idx}&quot;</span>
+  <span class="command">unfolding</span> inj_on_def <span class="command">by</span> <span class="delimiter">(</span>auto simp<span class="delimiter">:</span> enc_inj<span class="delimiter">)</span>
+
+<span class="command">lemma</span> surj_enc<span class="delimiter">:</span> <span class="string">&quot;&forall;x&isin;set xs. size x = idx ==&gt; xs &isin; enc ` {\&lt;BB&gt;. #<span class="hidden">&#8681;</span><sub>V</sub> \&lt;BB&gt; = idx}&quot;</span>
+<span class="command">proof</span> <span class="delimiter">(</span>induct xs<span class="delimiter">)</span>
+  <span class="command">case</span> Nil <span class="command">then</span> <span class="command">show</span> <span class="var">?case</span> <span class="command">using</span> ex_Length_0<span class="delimiter">[</span>of idx<span class="delimiter">]</span>
+    <span class="command">by</span> <span class="delimiter">(</span>auto dest<span class="delimiter">:</span> enc_Nil<span class="delimiter">[</span>symmetric<span class="delimiter">]</span><span class="delimiter">)</span>
+<span class="command">next</span>
+  <span class="command">case</span> <span class="delimiter">(</span>Cons x xs<span class="delimiter">)</span> <span class="command">then</span> <span class="command">show</span> <span class="var">?case</span>
+    <span class="command">by</span> <span class="delimiter">(</span>auto simp<span class="delimiter">:</span> image_iff enc_CONS nvars_CONS intro<span class="delimiter">:</span> exI<span class="delimiter">[</span>of _ <span class="string">&quot;CONS x \&lt;AA&gt;&quot;</span> <span class="keyword2">for</span> \&lt;AA&gt;<span class="delimiter">]</span><span class="delimiter">)</span>
+<span class="command">qed</span>
+
+<span class="command">lemma</span> enc_decode<span class="delimiter">:</span> <span class="string">&quot;&forall;x &isin; set xs. size x = idx ==&gt; enc (decode idx xs) = xs&quot;</span>
+  <span class="command">unfolding</span> decode_def <span class="command">by</span> <span class="delimiter">(</span>rule f_the_inv_into_f<span class="delimiter">[</span>OF inj_on_enc surj_enc<span class="delimiter">]</span><span class="delimiter">)</span>
+
+<span class="command">definition</span> <span class="string">&quot;TL \&lt;AA&gt; = decode (#<span class="hidden">&#8681;</span><sub>V</sub> \&lt;AA&gt;) (tl (enc \&lt;AA&gt;))&quot;</span>
+
+<span class="command">lemma</span> in_set_tlD<span class="delimiter">:</span> <span class="string">&quot;x &isin; set (tl xs) ==&gt; x &isin; set xs&quot;</span>
+  <span class="command">by</span> <span class="delimiter">(</span>cases xs<span class="delimiter">)</span> auto
+
+<span class="command">lemma</span> enc_TL<span class="delimiter">:</span> <span class="string">&quot;enc (TL \&lt;AA&gt;) = tl (enc \&lt;AA&gt;)&quot;</span>
+  <span class="command">unfolding</span> TL_def <span class="command">by</span> <span class="delimiter">(</span>subst enc_decode<span class="delimiter">)</span> <span class="delimiter">(</span>auto dest<span class="delimiter">!</span><span class="delimiter">:</span> in_set_encD in_set_tlD<span class="delimiter">)</span>
+
+<span class="command">lemma</span> nvars_TL<span class="delimiter">:</span> <span class="string">&quot;#<span class="hidden">&#8681;</span><sub>V</sub> (TL \&lt;AA&gt;) = #<span class="hidden">&#8681;</span><sub>V</sub> \&lt;AA&gt;&quot;</span>
+  <span class="command">unfolding</span> TL_def decode_def
+  <span class="command">using</span> the_inv_into_into<span class="delimiter">[</span>OF inj_on_enc surj_enc subset_refl<span class="delimiter">,</span> of <span class="string">&quot;tl (enc \&lt;AA&gt;)&quot;</span><span class="delimiter">]</span>
+  <span class="command">by</span> <span class="delimiter">(</span>auto dest<span class="delimiter">!</span><span class="delimiter">:</span> in_set_encD in_set_tlD<span class="delimiter">)</span>
+
+<span class="command">definition</span> <span class="string">&quot;lang idx &phi; = {enc \&lt;AA&gt; | \&lt;AA&gt;. \&lt;AA&gt; \&lt;Turnstile&gt; &phi; &and; #<span class="hidden">&#8681;</span><sub>V</sub> \&lt;AA&gt; = idx}&quot;</span>
+<span class="command">definition</span> <span class="string">&quot;lang<span class="hidden">&#8681;</span><sub>b</sub> idx &phi; = {enc \&lt;AA&gt; | \&lt;AA&gt;. \&lt;AA&gt; \&lt;Turnstile&gt;<span class="hidden">&#8681;</span><sub>b</sub> &phi; &and; #<span class="hidden">&#8681;</span><sub>V</sub> \&lt;AA&gt; = idx}&quot;</span>
+
+<span class="command">lemma</span> lang_eq_iff<span class="delimiter">:</span> <span class="string">&quot;lang idx &phi; = lang idx &psi; &lt;-&gt; (&forall;\&lt;AA&gt;. #<span class="hidden">&#8681;</span><sub>V</sub> \&lt;AA&gt; = idx --&gt; \&lt;AA&gt; \&lt;Turnstile&gt; &phi; &lt;-&gt; \&lt;AA&gt; \&lt;Turnstile&gt; &psi;)&quot;</span>
+  <span class="command">unfolding</span> lang_def set_eq_iff <span class="command">by</span> auto <span class="delimiter">(</span>metis enc_inj<span class="delimiter">)</span><span class="delimiter">+</span>
+
+<span class="command">lemma</span> lang<span class="hidden">&#8681;</span><sub>b</sub>_eq_iff<span class="delimiter">:</span> <span class="string">&quot;lang<span class="hidden">&#8681;</span><sub>b</sub> idx &phi; = lang<span class="hidden">&#8681;</span><sub>b</sub> idx &psi; &lt;-&gt; (&forall;\&lt;AA&gt;. #<span class="hidden">&#8681;</span><sub>V</sub> \&lt;AA&gt; = idx --&gt; \&lt;AA&gt; \&lt;Turnstile&gt;<span class="hidden">&#8681;</span><sub>b</sub> &phi; &lt;-&gt; \&lt;AA&gt; \&lt;Turnstile&gt;<span class="hidden">&#8681;</span><sub>b</sub> &psi;)&quot;</span>
+  <span class="command">unfolding</span> lang<span class="hidden">&#8681;</span><sub>b</sub>_def set_eq_iff <span class="command">by</span> auto <span class="delimiter">(</span>metis enc_inj<span class="delimiter">)</span><span class="delimiter">+</span>
+
+<span class="command">lemma</span> final_iff_Nil<span class="delimiter">:</span> <span class="string">&quot;wf idx &phi; &and; left_formula &phi; ==&gt; final idx &phi; &lt;-&gt; ([] &isin; lang idx &phi;)&quot;</span>
+  <span class="command">using</span> ex_Length_0<span class="delimiter">[</span>of idx<span class="delimiter">]</span> Length_0_inj
+   enc_Nil<span class="delimiter">[</span>symmetric<span class="delimiter">]</span> enc_inj final_satisfies<span class="delimiter">[</span>of idx &phi;<span class="delimiter">]</span>
+  <span class="command">unfolding</span> lang_def <span class="command">by</span> clarsimp metis
+
+<span class="command">lemma</span> nullable_iff_Nil<span class="delimiter">:</span> <span class="string">&quot;wf idx &phi; &and; left_formula &phi; ==&gt; nullable &phi; &lt;-&gt; ([] &isin; lang<span class="hidden">&#8681;</span><sub>b</sub> idx &phi;)&quot;</span>
+  <span class="command">using</span> ex_Length_0<span class="delimiter">[</span>of idx<span class="delimiter">]</span> Length_0_inj
+   enc_Nil<span class="delimiter">[</span>symmetric<span class="delimiter">]</span> enc_inj nullable_satisfies_bounded
+  <span class="command">unfolding</span> lang<span class="hidden">&#8681;</span><sub>b</sub>_def <span class="command">by</span> clarsimp metis
+
+<span class="command">lemma</span> lQuot_enc<span class="delimiter">:</span>
+  <span class="keyword2">assumes</span> <span class="string">&quot;!!\&lt;AA&gt;. P \&lt;AA&gt; ==&gt; #<span class="hidden">&#8681;</span><sub>V</sub> \&lt;AA&gt; = size a&quot;</span>
+  <span class="keyword2">shows</span> <span class="string">&quot;{w. a # w &isin; {enc \&lt;AA&gt; | \&lt;AA&gt;. P \&lt;AA&gt;}} = {enc \&lt;AA&gt; | \&lt;AA&gt;. P (CONS a \&lt;AA&gt;)}&quot;</span>
+<span class="command">proof</span> safe
+  <span class="command">fix</span> w <span class="keyword2">and</span> \&lt;AA&gt; <span class="delimiter">::</span> <span class="string">&quot;&#39;i&quot;</span> <span class="command">assume</span> <span class="string">&quot;a # w = enc \&lt;AA&gt;&quot;</span> <span class="string">&quot;P \&lt;AA&gt;&quot;</span>
+  <span class="command">with</span> assms <span class="command">have</span> <span class="string">&quot;CONS a (TL \&lt;AA&gt;) = \&lt;AA&gt;&quot;</span> <span class="string">&quot;enc \&lt;AA&gt; = a # w&quot;</span>
+    <span class="command">by</span> <span class="delimiter">(</span>auto simp<span class="delimiter">:</span> enc_inj<span class="delimiter">[</span>symmetric<span class="delimiter">]</span> enc_CONS enc_TL nvars_CONS nvars_TL dest<span class="delimiter">:</span> sym<span class="delimiter">)</span>
+  <span class="command">with</span> <span class="cartouche">&#8249;P \&lt;AA&gt;&#8250;</span> <span class="command">show</span> <span class="string">&quot;&exist;\&lt;AA&gt;. w = enc \&lt;AA&gt; &and; P (CONS a \&lt;AA&gt;)&quot;</span> <span class="command">by</span> <span class="delimiter">(</span>auto simp<span class="delimiter">:</span> enc_TL intro<span class="delimiter">!</span><span class="delimiter">:</span> exI<span class="delimiter">[</span>of _ <span class="string">&quot;TL \&lt;AA&gt;&quot;</span><span class="delimiter">]</span><span class="delimiter">)</span>
+<span class="command">next</span>
+  <span class="command">fix</span> \&lt;AA&gt; <span class="delimiter">::</span> <span class="string">&quot;&#39;i&quot;</span> <span class="command">assume</span> <span class="string">&quot;P (CONS a \&lt;AA&gt;)&quot;</span>
+  <span class="command">with</span> assms<span class="delimiter">[</span>of <span class="string">&quot;CONS a \&lt;AA&gt;&quot;</span><span class="delimiter">]</span> <span class="command">show</span> <span class="string">&quot;&exist;\&lt;AA&gt;&#39;. a # enc \&lt;AA&gt; = enc \&lt;AA&gt;&#39; &and; P \&lt;AA&gt;&#39;&quot;</span>
+     <span class="command">by</span> <span class="delimiter">(</span>auto simp<span class="delimiter">:</span> enc_CONS nvars_CONS intro<span class="delimiter">:</span> exI<span class="delimiter">[</span>of _ <span class="string">&quot;CONS a \&lt;AA&gt;&quot;</span><span class="delimiter">]</span><span class="delimiter">)</span>
+<span class="command">qed</span>
+
+<span class="command">lemma</span> lang_lderiv<span class="delimiter">:</span>
+  <span class="string">&quot;[|wf idx &phi;; idx = size x|] ==&gt; lang idx (lderiv x &phi;) = {w. x # w &isin; lang idx &phi;}&quot;</span>
+  <span class="command">unfolding</span> lang_def <span class="command">by</span> <span class="delimiter">(</span>subst lQuot_enc<span class="delimiter">)</span> <span class="delimiter">(</span>auto simp<span class="delimiter">:</span> satisfies_lderiv nvars_CONS<span class="delimiter">)</span>
+
+<span class="command">lemma</span> lang<span class="hidden">&#8681;</span><sub>b</sub>_lderiv<span class="delimiter">:</span>
+  <span class="string">&quot;[|wf idx &phi;; idx = size x|] ==&gt; lang<span class="hidden">&#8681;</span><sub>b</sub> idx (lderiv x &phi;) = {w. x # w &isin; lang<span class="hidden">&#8681;</span><sub>b</sub> idx &phi;}&quot;</span>
+  <span class="command">unfolding</span> lang<span class="hidden">&#8681;</span><sub>b</sub>_def <span class="command">by</span> <span class="delimiter">(</span>subst lQuot_enc<span class="delimiter">)</span> <span class="delimiter">(</span>auto simp<span class="delimiter">:</span> satisfies_bounded_lderiv nvars_CONS<span class="delimiter">)</span>
+
+<span class="command">lemma</span> lang_norm<span class="delimiter">:</span> <span class="string">&quot;lang idx (norm &phi;) = lang idx &phi;&quot;</span>
+  <span class="command">unfolding</span> lang_eq_iff <span class="command">by</span> <span class="delimiter">(</span>simp add<span class="delimiter">:</span> satisfies_norm<span class="delimiter">)</span>
+
+<span class="command">lemma</span> lang<span class="hidden">&#8681;</span><sub>b</sub>_norm<span class="delimiter">:</span> <span class="string">&quot;lang<span class="hidden">&#8681;</span><sub>b</sub> idx (norm &phi;) = lang<span class="hidden">&#8681;</span><sub>b</sub> idx &phi;&quot;</span>
+  <span class="command">unfolding</span> lang<span class="hidden">&#8681;</span><sub>b</sub>_eq_iff <span class="command">by</span> <span class="delimiter">(</span>simp add<span class="delimiter">:</span> satisfies_bounded_norm<span class="delimiter">)</span>
+
+<span class="command">lemma</span> lang_size<span class="delimiter">:</span> <span class="string">&quot;[|w &isin; lang idx &phi;; x &isin; set w|] ==&gt; size x = idx&quot;</span>
+  <span class="command">unfolding</span> lang_def <span class="command">by</span> <span class="delimiter">(</span>auto elim<span class="delimiter">:</span> in_set_encD<span class="delimiter">)</span>
+
+<span class="command">lemma</span> lang<span class="hidden">&#8681;</span><sub>b</sub>_size<span class="delimiter">:</span> <span class="string">&quot;[|w &isin; lang<span class="hidden">&#8681;</span><sub>b</sub> idx &phi;; x &isin; set w|] ==&gt; size x = idx&quot;</span>
+  <span class="command">unfolding</span> lang<span class="hidden">&#8681;</span><sub>b</sub>_def <span class="command">by</span> <span class="delimiter">(</span>auto elim<span class="delimiter">:</span> in_set_encD<span class="delimiter">)</span>
+
+<span class="command">definition</span> <span class="string">&quot;language idx &phi; = {enc \&lt;AA&gt; | \&lt;AA&gt;. sat \&lt;AA&gt; &phi; &and; #<span class="hidden">&#8681;</span><sub>V</sub> \&lt;AA&gt; = idx}&quot;</span>
+<span class="command">definition</span> <span class="string">&quot;language<span class="hidden">&#8681;</span><sub>b</sub> idx &phi; = {enc \&lt;AA&gt; | \&lt;AA&gt;. sat<span class="hidden">&#8681;</span><sub>b</sub> \&lt;AA&gt; &phi; &and; #<span class="hidden">&#8681;</span><sub>V</sub> \&lt;AA&gt; = idx}&quot;</span>
+
+<span class="command">lemma</span> language_lang_RESTRICT<span class="delimiter">:</span> <span class="string">&quot;language idx &phi; = lang idx (RESTRICT &phi;)&quot;</span>
+  <span class="command">unfolding</span> language_def lang_def <span class="command">by</span> <span class="delimiter">(</span>auto simp<span class="delimiter">:</span> sat_RESTRICT<span class="delimiter">)</span>
+
+<span class="command">lemma</span> language<span class="hidden">&#8681;</span><sub>b</sub>_lang<span class="hidden">&#8681;</span><sub>b</sub>_RESTRICT<span class="delimiter">:</span> <span class="string">&quot;language<span class="hidden">&#8681;</span><sub>b</sub> idx &phi; = lang<span class="hidden">&#8681;</span><sub>b</sub> idx (RESTRICT &phi;)&quot;</span>
+  <span class="command">unfolding</span> language<span class="hidden">&#8681;</span><sub>b</sub>_def lang<span class="hidden">&#8681;</span><sub>b</sub>_def <span class="command">by</span> <span class="delimiter">(</span>auto simp<span class="delimiter">:</span> sat<span class="hidden">&#8681;</span><sub>b</sub>_RESTRICT<span class="delimiter">)</span>
+
+<span class="command">lemma</span> wf_RESTR<span class="delimiter">:</span> <span class="string">&quot;wf idx &phi; ==&gt; wf idx (RESTR &phi;)&quot;</span>
+  <span class="command">by</span> <span class="delimiter">(</span>induct &phi; arbitrary<span class="delimiter">:</span> idx<span class="delimiter">)</span> <span class="delimiter">(</span>auto simp<span class="delimiter">:</span> wf_Restrict LESS_SUC LEQ_0<span class="delimiter">)</span>
+
+<span class="command">lemma</span> wf_RESTRICT_VARS<span class="delimiter">:</span> <span class="string">&quot;[|wf idx &phi;; list_all (&lambda;(k, v). LESS k v idx) vs|] ==&gt;
+  wf idx (RESTRICT_VARS vs &phi;)&quot;</span>
+  <span class="command">by</span> <span class="delimiter">(</span>induct vs<span class="delimiter">)</span> <span class="delimiter">(</span>auto simp<span class="delimiter">:</span> wf_RESTR wf_Restrict<span class="delimiter">)</span>
+
+<span class="command">lemma</span> wf_FV_LESS<span class="delimiter">:</span> <span class="string">&quot;[|wf idx &phi;; (k, v) &isin; set (FV &phi;)|] ==&gt; LESS k v idx&quot;</span>
+  <span class="command">by</span> <span class="delimiter">(</span>induct &phi; arbitrary<span class="delimiter">:</span> idx v<span class="delimiter">)</span>
+    <span class="delimiter">(</span>force simp<span class="delimiter">:</span> distinct_FV wf0_FV0_LESS LESS_SUC diff_Suc split<span class="delimiter">:</span> if_splits nat.splits<span class="delimiter">)</span><span class="delimiter">+</span>
+
+<span class="command">lemma</span> wf_RESTRICT<span class="delimiter">:</span> <span class="string">&quot;wf idx &phi; ==&gt; wf idx (RESTRICT &phi;)&quot;</span>
+  <span class="command">unfolding</span> RESTRICT_def <span class="command">by</span> <span class="delimiter">(</span>rule wf_RESTRICT_VARS<span class="delimiter">)</span> <span class="delimiter">(</span>auto simp<span class="delimiter">:</span> list_all_iff wf_FV_LESS<span class="delimiter">)</span>
+
+<span class="command">lemma</span> left_formula_RESTR<span class="delimiter">:</span> <span class="string">&quot;left_formula &phi; ==&gt; left_formula (RESTR &phi;)&quot;</span>
+  <span class="command">by</span> <span class="delimiter">(</span>induct &phi;<span class="delimiter">)</span> <span class="delimiter">(</span>auto simp<span class="delimiter">:</span> left_formula_Restrict<span class="delimiter">)</span>
+
+<span class="command">lemma</span> left_formula_RESTRICT_VARS<span class="delimiter">:</span> <span class="string">&quot;left_formula &phi; ==&gt; left_formula (RESTRICT_VARS vs &phi;)&quot;</span>
+  <span class="command">by</span> <span class="delimiter">(</span>induct vs<span class="delimiter">)</span> <span class="delimiter">(</span>auto simp<span class="delimiter">:</span> left_formula_RESTR left_formula_Restrict<span class="delimiter">)</span>
+
+<span class="command">lemma</span> left_formula_RESTRICT<span class="delimiter">:</span> <span class="string">&quot;left_formula &phi; ==&gt; left_formula (RESTRICT &phi;)&quot;</span>
+  <span class="command">unfolding</span> RESTRICT_def <span class="command">by</span> <span class="delimiter">(</span>rule left_formula_RESTRICT_VARS<span class="delimiter">)</span>
+
+<span class="command">end</span>
+
+<span class="command">sublocale</span> Word_Formula <span class="delimiter">&lt;</span>
+  bounded<span class="delimiter">!</span><span class="delimiter">:</span> DA <span class="string">&quot;alphabet idx&quot;</span> <span class="string">&quot;&lambda;&phi;. norm (RESTRICT &phi;)&quot;</span> <span class="string">&quot;&lambda;a &phi;. norm (lderiv a &phi;)&quot;</span> <span class="string">&quot;nullable&quot;</span>
+     <span class="string">&quot;&lambda;&phi;. wf idx &phi; &and; left_formula &phi;&quot;</span> <span class="string">&quot;&lambda;&phi;. wf idx &phi; &and; left_formula &phi;&quot;</span>
+     <span class="string">&quot;&lambda;&phi;. to_language (lang<span class="hidden">&#8681;</span><sub>b</sub> idx &phi;)&quot;</span> <span class="string">&quot;&lambda;&phi;. to_language (language<span class="hidden">&#8681;</span><sub>b</sub> idx &phi;)&quot;</span> <span class="keyword2">for</span> idx
+  <span class="command">by</span> unfold_locales
+    <span class="delimiter">(</span>auto simp<span class="delimiter">:</span> nullable_iff_Nil lang<span class="hidden">&#8681;</span><sub>b</sub>_norm lang<span class="hidden">&#8681;</span><sub>b</sub>_lderiv wf_norm wf_lderiv
+      left_formula_norm left_formula_lderiv alphabet_size lang<span class="hidden">&#8681;</span><sub>b</sub>_size
+      language<span class="hidden">&#8681;</span><sub>b</sub>_lang<span class="hidden">&#8681;</span><sub>b</sub>_RESTRICT wf_RESTRICT left_formula_RESTRICT<span class="delimiter">)</span>
+
+<span class="command">sublocale</span> Word_Formula <span class="delimiter">&lt;</span>
+  DA <span class="string">&quot;alphabet idx&quot;</span> <span class="string">&quot;&lambda;&phi;. norm (RESTRICT &phi;)&quot;</span> <span class="string">&quot;&lambda;a &phi;. norm (lderiv a &phi;)&quot;</span> <span class="string">&quot;final idx&quot;</span>
+     <span class="string">&quot;&lambda;&phi;. wf idx &phi; &and; left_formula &phi;&quot;</span> <span class="string">&quot;&lambda;&phi;. wf idx &phi; &and; left_formula &phi;&quot;</span>
+     <span class="string">&quot;&lambda;&phi;. to_language (lang idx &phi;)&quot;</span> <span class="string">&quot;&lambda;&phi;. to_language (language idx &phi;)&quot;</span> <span class="keyword2">for</span> idx
+  <span class="command">by</span> unfold_locales
+    <span class="delimiter">(</span>auto simp<span class="delimiter">:</span> final_iff_Nil lang_norm lang_lderiv wf_norm wf_lderiv
+      left_formula_norm left_formula_lderiv alphabet_size lang_size
+      language_lang_RESTRICT wf_RESTRICT left_formula_RESTRICT<span class="delimiter">)</span>
+
+<span class="command">lemma</span> <span class="delimiter">(</span><span class="keyword2">in</span> Word_Formula<span class="delimiter">)</span> check_eqv_soundness<span class="delimiter">:</span>
+  <span class="string">&quot;[|#<span class="hidden">&#8681;</span><sub>V</sub> \&lt;AA&gt; = idx; check_eqv idx &phi; &psi;|] ==&gt; sat \&lt;AA&gt; &phi; &lt;-&gt; sat \&lt;AA&gt; &psi;&quot;</span>
+  <span class="command">by</span> <span class="delimiter">(</span>drule soundness<span class="delimiter">,</span> drule injD<span class="delimiter">[</span>OF bij_is_inj<span class="delimiter">[</span>OF to_language_bij<span class="delimiter">]</span><span class="delimiter">]</span><span class="delimiter">)</span>
+    <span class="delimiter">(</span>force simp<span class="delimiter">:</span> language_def set_eq_iff enc_inj<span class="delimiter">)</span>
+
+<span class="command">lemma</span> <span class="delimiter">(</span><span class="keyword2">in</span> Word_Formula<span class="delimiter">)</span> bounded_check_eqv_soundness<span class="delimiter">:</span>
+  <span class="string">&quot;[|#<span class="hidden">&#8681;</span><sub>V</sub> \&lt;AA&gt; = idx; bounded.check_eqv idx &phi; &psi;|] ==&gt; sat<span class="hidden">&#8681;</span><sub>b</sub> \&lt;AA&gt; &phi; &lt;-&gt; sat<span class="hidden">&#8681;</span><sub>b</sub> \&lt;AA&gt; &psi;&quot;</span>
+  <span class="command">by</span> <span class="delimiter">(</span>drule bounded.soundness<span class="delimiter">,</span> drule injD<span class="delimiter">[</span>OF bij_is_inj<span class="delimiter">[</span>OF to_language_bij<span class="delimiter">]</span><span class="delimiter">]</span><span class="delimiter">)</span>
+    <span class="delimiter">(</span>force simp<span class="delimiter">:</span> language<span class="hidden">&#8681;</span><sub>b</sub>_def set_eq_iff enc_inj<span class="delimiter">)</span>
+
+<span class="command">end</span>
+</pre>
+
+</div>
+</body>
+</html>

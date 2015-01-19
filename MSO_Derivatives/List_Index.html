@@ -1,0 +1,382 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+<html xmlns="http://www.w3.org/1999/xhtml">
+<head>
+<meta http-equiv="Content-Type" content="text/html; charset=utf-8"/>
+<title>Theory List_Index (Isabelle2014: August 2014)</title>
+<link media="all" rel="stylesheet" type="text/css" href="isabelle.css"/>
+</head>
+
+<body>
+<div class="head"><h1>Theory List_Index</h1>
+
+<span class="command">theory</span> <span class="name">List_Index</span><br/>
+<span class="keyword">imports</span> <a href="../../HOL/HOL/Main.html"><span class="name">Main</span></a><br/>
+
+</div>
+<div class="source">
+<pre><span class="comment">(* Author: Tobias Nipkow *)</span>
+
+<span class="command">theory</span> List_Index <span class="keyword2">imports</span> Main <span class="keyword2">begin</span>
+
+<span class="command">text</span> <span class="verbatim">{* \noindent
+This theory collects functions for index-based manipulation of lists.
+*}</span>
+
+<span class="command">subsection</span> <span class="verbatim">{* Finding an index *}</span>
+
+<span class="command">text</span><span class="verbatim">{*
+This subsection defines three functions for finding the index of items in a list:
+\begin{description}
+\item[@{text &quot;find_index P xs&quot;}] finds the index of the first element in
+ @{text xs} that satisfies @{text P}.
+\item[@{text &quot;index xs x&quot;}] finds the index of the first occurrence of
+ @{text x} in @{text xs}.
+\item[@{text &quot;last_index xs x&quot;}] finds the index of the last occurrence of
+ @{text x} in @{text xs}.
+\end{description}
+All functions return @{term &quot;length xs&quot;} if @{text xs} does not contain a
+suitable element.
+
+The argument order of @{text find_index} follows the function of the same
+name in the Haskell standard library. For @{text index} (and @{text
+last_index}) the order is intentionally reversed: @{text index} maps
+lists to a mapping from elements to their indices, almost the inverse of
+function @{text nth}. *}</span>
+
+<span class="command">primrec</span> find_index <span class="delimiter">::</span> <span class="string">&quot;(&#39;a =&gt; bool) =&gt; &#39;a list =&gt; nat&quot;</span> <span class="keyword2">where</span>
+<span class="string">&quot;find_index _ [] = 0&quot;</span> <span class="delimiter">|</span>
+<span class="string">&quot;find_index P (x#xs) = (if P x then 0 else find_index P xs + 1)&quot;</span>
+
+<span class="command">definition</span> index <span class="delimiter">::</span> <span class="string">&quot;&#39;a list =&gt; &#39;a =&gt; nat&quot;</span> <span class="keyword2">where</span>
+<span class="string">&quot;index xs = (&lambda;a. find_index (&lambda;x. x=a) xs)&quot;</span>
+
+<span class="command">definition</span> last_index <span class="delimiter">::</span> <span class="string">&quot;&#39;a list =&gt; &#39;a =&gt; nat&quot;</span> <span class="keyword2">where</span>
+<span class="string">&quot;last_index xs x =
+ (let i = index (rev xs) x; n = size xs
+  in if i = n then i else n - (i+1))&quot;</span>
+
+<span class="command">lemma</span> find_index_le_size<span class="delimiter">:</span> <span class="string">&quot;find_index P xs &lt;= size xs&quot;</span>
+<span class="command">by</span><span class="delimiter">(</span>induct xs<span class="delimiter">)</span> simp_all
+
+<span class="command">lemma</span> index_le_size<span class="delimiter">:</span> <span class="string">&quot;index xs x &lt;= size xs&quot;</span>
+<span class="command">by</span><span class="delimiter">(</span>simp add<span class="delimiter">:</span> index_def find_index_le_size<span class="delimiter">)</span>
+
+<span class="command">lemma</span> last_index_le_size<span class="delimiter">:</span> <span class="string">&quot;last_index xs x &lt;= size xs&quot;</span>
+<span class="command">by</span><span class="delimiter">(</span>simp add<span class="delimiter">:</span> last_index_def Let_def index_le_size<span class="delimiter">)</span>
+
+<span class="command">lemma</span> index_Nil<span class="delimiter">[</span>simp<span class="delimiter">]</span><span class="delimiter">:</span> <span class="string">&quot;index [] a = 0&quot;</span>
+<span class="command">by</span><span class="delimiter">(</span>simp add<span class="delimiter">:</span> index_def<span class="delimiter">)</span>
+
+<span class="command">lemma</span> index_Cons<span class="delimiter">[</span>simp<span class="delimiter">]</span><span class="delimiter">:</span> <span class="string">&quot;index (x#xs) a = (if x=a then 0 else index xs a + 1)&quot;</span>
+<span class="command">by</span><span class="delimiter">(</span>simp add<span class="delimiter">:</span> index_def<span class="delimiter">)</span>
+
+<span class="command">lemma</span> index_append<span class="delimiter">:</span> <span class="string">&quot;index (xs @ ys) x =
+  (if x : set xs then index xs x else size xs + index ys x)&quot;</span>
+<span class="command">by</span> <span class="delimiter">(</span>induct xs<span class="delimiter">)</span> simp_all
+
+<span class="command">lemma</span> index_conv_size_if_notin<span class="delimiter">[</span>simp<span class="delimiter">]</span><span class="delimiter">:</span> <span class="string">&quot;x &notin; set xs ==&gt; index xs x = size xs&quot;</span>
+<span class="command">by</span> <span class="delimiter">(</span>induct xs<span class="delimiter">)</span> auto
+
+<span class="command">lemma</span> find_index_eq_size_conv<span class="delimiter">:</span>
+  <span class="string">&quot;size xs = n ==&gt; (find_index P xs = n) = (ALL x : set xs. ~ P x)&quot;</span>
+<span class="command">by</span><span class="delimiter">(</span>induct xs arbitrary<span class="delimiter">:</span> n<span class="delimiter">)</span> auto
+
+<span class="command">lemma</span> size_eq_find_index_conv<span class="delimiter">:</span>
+  <span class="string">&quot;size xs = n ==&gt; (n = find_index P xs) = (ALL x : set xs. ~ P x)&quot;</span>
+<span class="command">by</span><span class="delimiter">(</span>metis find_index_eq_size_conv<span class="delimiter">)</span>
+
+<span class="command">lemma</span> index_size_conv<span class="delimiter">:</span> <span class="string">&quot;size xs = n ==&gt; (index xs x = n) = (x &notin; set xs)&quot;</span>
+<span class="command">by</span><span class="delimiter">(</span>auto simp<span class="delimiter">:</span> index_def find_index_eq_size_conv<span class="delimiter">)</span>
+
+<span class="command">lemma</span> size_index_conv<span class="delimiter">:</span> <span class="string">&quot;size xs = n ==&gt; (n = index xs x) = (x &notin; set xs)&quot;</span>
+<span class="command">by</span> <span class="delimiter">(</span>metis index_size_conv<span class="delimiter">)</span>
+
+<span class="command">lemma</span> last_index_size_conv<span class="delimiter">:</span>
+  <span class="string">&quot;size xs = n ==&gt; (last_index xs x = n) = (x &notin; set xs)&quot;</span>
+<span class="command">apply</span><span class="delimiter">(</span>auto simp<span class="delimiter">:</span> last_index_def index_size_conv<span class="delimiter">)</span>
+<span class="command">apply</span><span class="delimiter">(</span>drule length_pos_if_in_set<span class="delimiter">)</span>
+<span class="command">apply</span> arith
+<span class="command">done</span>
+
+<span class="command">lemma</span> size_last_index_conv<span class="delimiter">:</span>
+  <span class="string">&quot;size xs = n ==&gt; (n = last_index xs x) = (x &notin; set xs)&quot;</span>
+<span class="command">by</span> <span class="delimiter">(</span>metis last_index_size_conv<span class="delimiter">)</span>
+
+<span class="command">lemma</span> find_index_less_size_conv<span class="delimiter">:</span>
+  <span class="string">&quot;(find_index P xs &lt; size xs) = (EX x : set xs. P x)&quot;</span>
+<span class="command">by</span> <span class="delimiter">(</span>induct xs<span class="delimiter">)</span> auto
+
+<span class="command">lemma</span> index_less_size_conv<span class="delimiter">:</span>
+  <span class="string">&quot;(index xs x &lt; size xs) = (x &isin; set xs)&quot;</span>
+<span class="command">by</span><span class="delimiter">(</span>auto simp<span class="delimiter">:</span> index_def find_index_less_size_conv<span class="delimiter">)</span>
+
+<span class="command">lemma</span> last_index_less_size_conv<span class="delimiter">:</span>
+  <span class="string">&quot;(last_index xs x &lt; size xs) = (x : set xs)&quot;</span>
+<span class="command">by</span><span class="delimiter">(</span>simp add<span class="delimiter">:</span> last_index_def Let_def index_size_conv length_pos_if_in_set
+        del<span class="delimiter">:</span>length_greater_0_conv<span class="delimiter">)</span>
+
+<span class="command">lemma</span> index_less<span class="delimiter">[</span>simp<span class="delimiter">]</span><span class="delimiter">:</span>
+  <span class="string">&quot;x : set xs ==&gt; size xs &lt;= n ==&gt; index xs x &lt; n&quot;</span>
+<span class="command">apply</span><span class="delimiter">(</span>induct xs<span class="delimiter">)</span> <span class="command">apply</span> auto
+<span class="command">apply</span> <span class="delimiter">(</span>metis index_less_size_conv less_eq_Suc_le less_trans_Suc<span class="delimiter">)</span>
+<span class="command">done</span>
+
+<span class="command">lemma</span> last_index_less<span class="delimiter">[</span>simp<span class="delimiter">]</span><span class="delimiter">:</span>
+  <span class="string">&quot;x : set xs ==&gt; size xs &lt;= n ==&gt; last_index xs x &lt; n&quot;</span>
+<span class="command">by</span><span class="delimiter">(</span>simp add<span class="delimiter">:</span> last_index_less_size_conv<span class="delimiter">[</span>symmetric<span class="delimiter">]</span><span class="delimiter">)</span>
+
+<span class="command">lemma</span> last_index_Cons<span class="delimiter">:</span> <span class="string">&quot;last_index (x#xs) y =
+  (if x=y then
+      if x &isin; set xs then last_index xs y + 1 else 0
+   else last_index xs y + 1)&quot;</span>
+<span class="command">using</span> index_le_size<span class="delimiter">[</span>of <span class="string">&quot;rev xs&quot;</span> y<span class="delimiter">]</span>
+<span class="command">apply</span><span class="delimiter">(</span>auto simp add<span class="delimiter">:</span> last_index_def index_append Let_def<span class="delimiter">)</span>
+<span class="command">apply</span><span class="delimiter">(</span>simp add<span class="delimiter">:</span> index_size_conv<span class="delimiter">)</span>
+<span class="command">done</span>
+
+<span class="command">lemma</span> last_index_append<span class="delimiter">:</span> <span class="string">&quot;last_index (xs @ ys) x =
+  (if x : set ys then size xs + last_index ys x
+   else if x : set xs then last_index xs x else size xs + size ys)&quot;</span>
+<span class="command">by</span> <span class="delimiter">(</span>induct xs<span class="delimiter">)</span> <span class="delimiter">(</span>simp_all add<span class="delimiter">:</span> last_index_Cons last_index_size_conv<span class="delimiter">)</span>
+
+<span class="command">lemma</span> last_index_Snoc<span class="delimiter">[</span>simp<span class="delimiter">]</span><span class="delimiter">:</span>
+  <span class="string">&quot;last_index (xs @ [x]) y =
+  (if x=y then size xs
+   else if y : set xs then last_index xs y else size xs + 1)&quot;</span>
+<span class="command">by</span><span class="delimiter">(</span>simp add<span class="delimiter">:</span> last_index_append last_index_Cons<span class="delimiter">)</span>
+
+<span class="command">lemma</span> nth_find_index<span class="delimiter">:</span> <span class="string">&quot;find_index P xs &lt; size xs ==&gt; P(xs ! find_index P xs)&quot;</span>
+<span class="command">by</span> <span class="delimiter">(</span>induct xs<span class="delimiter">)</span> auto
+
+<span class="command">lemma</span> nth_index<span class="delimiter">[</span>simp<span class="delimiter">]</span><span class="delimiter">:</span> <span class="string">&quot;x &isin; set xs ==&gt; xs ! index xs x = x&quot;</span>
+<span class="command">by</span> <span class="delimiter">(</span>induct xs<span class="delimiter">)</span> auto
+
+<span class="command">lemma</span> nth_last_index<span class="delimiter">[</span>simp<span class="delimiter">]</span><span class="delimiter">:</span> <span class="string">&quot;x &isin; set xs ==&gt; xs ! last_index xs x = x&quot;</span>
+<span class="command">by</span><span class="delimiter">(</span>simp add<span class="delimiter">:</span>last_index_def index_size_conv Let_def rev_nth<span class="delimiter">[</span>symmetric<span class="delimiter">]</span><span class="delimiter">)</span>
+
+<span class="command">lemma</span> index_nth_id<span class="delimiter">:</span>
+  <span class="string">&quot;[| distinct xs;  n &lt; length xs |] ==&gt; index xs (xs ! n) = n&quot;</span>
+<span class="command">by</span> <span class="delimiter">(</span>metis in_set_conv_nth index_less_size_conv nth_eq_iff_index_eq nth_index<span class="delimiter">)</span>
+
+<span class="command">lemma</span> index_eq_index_conv<span class="delimiter">[</span>simp<span class="delimiter">]</span><span class="delimiter">:</span> <span class="string">&quot;x &isin; set xs &or; y &isin; set xs ==&gt;
+  (index xs x = index xs y) = (x = y)&quot;</span>
+<span class="command">by</span> <span class="delimiter">(</span>induct xs<span class="delimiter">)</span> auto
+
+<span class="command">lemma</span> last_index_eq_index_conv<span class="delimiter">[</span>simp<span class="delimiter">]</span><span class="delimiter">:</span> <span class="string">&quot;x &isin; set xs &or; y &isin; set xs ==&gt;
+  (last_index xs x = last_index xs y) = (x = y)&quot;</span>
+<span class="command">by</span> <span class="delimiter">(</span>induct xs<span class="delimiter">)</span> <span class="delimiter">(</span>auto simp<span class="delimiter">:</span>last_index_Cons<span class="delimiter">)</span>
+
+<span class="command">lemma</span> inj_on_index<span class="delimiter">:</span> <span class="string">&quot;inj_on (index xs) (set xs)&quot;</span>
+<span class="command">by</span> <span class="delimiter">(</span>simp add<span class="delimiter">:</span>inj_on_def<span class="delimiter">)</span>
+
+<span class="command">lemma</span> inj_on_last_index<span class="delimiter">:</span> <span class="string">&quot;inj_on (last_index xs) (set xs)&quot;</span>
+<span class="command">by</span> <span class="delimiter">(</span>simp add<span class="delimiter">:</span>inj_on_def<span class="delimiter">)</span>
+
+<span class="command">lemma</span> index_conv_takeWhile<span class="delimiter">:</span> <span class="string">&quot;index xs x = size(takeWhile (&lambda;y. x&ne;y) xs)&quot;</span>
+<span class="command">by</span><span class="delimiter">(</span>induct xs<span class="delimiter">)</span> auto
+
+<span class="command">lemma</span> index_take<span class="delimiter">:</span> <span class="string">&quot;index xs x &gt;= i ==&gt; x &notin; set(take i xs)&quot;</span>
+<span class="command">apply</span><span class="delimiter">(</span>subst <span class="delimiter">(</span>asm<span class="delimiter">)</span> index_conv_takeWhile<span class="delimiter">)</span>
+<span class="command">apply</span><span class="delimiter">(</span>subgoal_tac <span class="string">&quot;set(take i xs) &lt;= set(takeWhile (op &ne; x) xs)&quot;</span><span class="delimiter">)</span>
+ <span class="command">apply</span><span class="delimiter">(</span>blast dest<span class="delimiter">:</span> set_takeWhileD<span class="delimiter">)</span>
+<span class="command">apply</span><span class="delimiter">(</span>metis set_take_subset_set_take takeWhile_eq_take<span class="delimiter">)</span>
+<span class="command">done</span>
+
+<span class="command">lemma</span> last_index_drop<span class="delimiter">:</span>
+  <span class="string">&quot;last_index xs x &lt; i ==&gt; x &notin; set(drop i xs)&quot;</span>
+<span class="command">apply</span><span class="delimiter">(</span>subgoal_tac <span class="string">&quot;set(drop i xs) = set(take (size xs - i) (rev xs))&quot;</span><span class="delimiter">)</span>
+ <span class="command">apply</span><span class="delimiter">(</span>simp add<span class="delimiter">:</span> last_index_def index_take Let_def split<span class="delimiter">:</span>split_if_asm<span class="delimiter">)</span>
+<span class="command">apply</span> <span class="delimiter">(</span>metis rev_drop set_rev<span class="delimiter">)</span>
+<span class="command">done</span>
+
+<span class="command">lemma</span> set_take_if_index<span class="delimiter">:</span> <span class="keyword2">assumes</span> <span class="string">&quot;index xs x &lt; i&quot;</span> <span class="keyword2">and</span> <span class="string">&quot;i &le; length xs&quot;</span>
+<span class="keyword2">shows</span> <span class="string">&quot;x &isin; set (take i xs)&quot;</span>
+<span class="command">proof</span> -
+  <span class="command">have</span> <span class="string">&quot;index (take i xs @ drop i xs) x &lt; i&quot;</span>
+    <span class="command">using</span> append_take_drop_id<span class="delimiter">[</span>of i xs<span class="delimiter">]</span> assms<span class="delimiter">(</span>1<span class="delimiter">)</span> <span class="command">by</span> simp
+  <span class="command">thus</span> <span class="var">?thesis</span> <span class="command">using</span> assms<span class="delimiter">(</span>2<span class="delimiter">)</span>
+    <span class="command">by</span><span class="delimiter">(</span>simp add<span class="delimiter">:</span>index_append del<span class="delimiter">:</span>append_take_drop_id split<span class="delimiter">:</span> if_splits<span class="delimiter">)</span>
+<span class="command">qed</span>
+
+<span class="command">lemma</span> index_take_if_index<span class="delimiter">:</span>
+<span class="keyword2">assumes</span> <span class="string">&quot;index xs x &le; n&quot;</span> <span class="keyword2">shows</span> <span class="string">&quot;index (take n xs) x = index xs x&quot;</span>
+<span class="command">proof</span> cases
+  <span class="command">assume</span> <span class="string">&quot;x : set(take n xs)&quot;</span> <span class="command">with</span> assms <span class="command">show</span> <span class="var">?thesis</span>
+    <span class="command">by</span> <span class="delimiter">(</span>metis append_take_drop_id index_append<span class="delimiter">)</span>
+<span class="command">next</span>
+  <span class="command">assume</span> <span class="string">&quot;x &notin; set(take n xs)&quot;</span> <span class="command">with</span> assms <span class="command">show</span> <span class="var">?thesis</span>
+   <span class="command">by</span> <span class="delimiter">(</span>metis order_le_less set_take_if_index le_cases length_take min_def size_index_conv take_all<span class="delimiter">)</span>
+<span class="command">qed</span>
+
+<span class="command">lemma</span> index_take_if_set<span class="delimiter">:</span>
+  <span class="string">&quot;x : set(take n xs) ==&gt; index (take n xs) x = index xs x&quot;</span>
+<span class="command">by</span> <span class="delimiter">(</span>metis index_take index_take_if_index linear<span class="delimiter">)</span>
+
+<span class="command">lemma</span> index_update_if_diff2<span class="delimiter">:</span>
+  <span class="string">&quot;n &lt; length xs ==&gt; x &ne; xs!n ==&gt; x &ne; y ==&gt; index (xs[n := y]) x = index xs x&quot;</span>
+<span class="command">by</span><span class="delimiter">(</span>subst <span class="delimiter">(</span>2<span class="delimiter">)</span> id_take_nth_drop<span class="delimiter">[</span>of n xs<span class="delimiter">]</span><span class="delimiter">)</span>
+  <span class="delimiter">(</span>auto simp<span class="delimiter">:</span> upd_conv_take_nth_drop index_append min_def<span class="delimiter">)</span>
+
+<span class="command">lemma</span> set_drop_if_index<span class="delimiter">:</span> <span class="string">&quot;distinct xs ==&gt; index xs x &lt; i ==&gt; x &notin; set(drop i xs)&quot;</span>
+<span class="command">by</span> <span class="delimiter">(</span>metis in_set_dropD index_nth_id last_index_drop last_index_less_size_conv nth_last_index<span class="delimiter">)</span>
+
+<span class="command">lemma</span> index_swap_if_distinct<span class="delimiter">:</span> <span class="keyword2">assumes</span> <span class="string">&quot;distinct xs&quot;</span> <span class="string">&quot;i &lt; size xs&quot;</span> <span class="string">&quot;j &lt; size xs&quot;</span>
+<span class="keyword2">shows</span> <span class="string">&quot;index (xs[i := xs!j, j := xs!i]) x =
+  (if x = xs!i then j else if x = xs!j then i else index xs x)&quot;</span>
+<span class="command">proof</span>-
+  <span class="command">have</span> <span class="string">&quot;distinct(xs[i := xs!j, j := xs!i])&quot;</span> <span class="command">using</span> assms <span class="command">by</span> simp
+  <span class="command">with</span> assms <span class="command">show</span> <span class="var">?thesis</span>
+    <span class="command">apply</span> <span class="delimiter">(</span>auto simp<span class="delimiter">:</span> swap_def simp del<span class="delimiter">:</span> distinct_swap<span class="delimiter">)</span>
+    <span class="command">apply</span> <span class="delimiter">(</span>metis index_nth_id list_update_same_conv<span class="delimiter">)</span>
+    <span class="command">apply</span> <span class="delimiter">(</span>metis <span class="delimiter">(</span>erased<span class="delimiter">,</span> hide_lams<span class="delimiter">)</span> index_nth_id length_list_update list_update_swap nth_list_update_eq<span class="delimiter">)</span>
+    <span class="command">apply</span> <span class="delimiter">(</span>metis index_nth_id length_list_update nth_list_update_eq<span class="delimiter">)</span>
+    <span class="command">by</span> <span class="delimiter">(</span>metis index_update_if_diff2 length_list_update nth_list_update<span class="delimiter">)</span>
+<span class="command">qed</span>
+
+
+<span class="command">subsection</span> <span class="verbatim">{* Map with index *}</span>
+
+<span class="command">primrec</span> map_index&#39; <span class="delimiter">::</span> <span class="string">&quot;nat =&gt; (nat =&gt; &#39;a =&gt; &#39;b) =&gt; &#39;a list =&gt; &#39;b list&quot;</span> <span class="keyword2">where</span>
+  <span class="string">&quot;map_index&#39; n f [] = []&quot;</span>
+<span class="delimiter">|</span> <span class="string">&quot;map_index&#39; n f (x#xs) = f n x # map_index&#39; (Suc n) f xs&quot;</span>
+
+<span class="command">lemma</span> length_map_index&#39;<span class="delimiter">[</span>simp<span class="delimiter">]</span><span class="delimiter">:</span> <span class="string">&quot;length (map_index&#39; n f xs) = length xs&quot;</span>
+  <span class="command">by</span> <span class="delimiter">(</span>induct xs arbitrary<span class="delimiter">:</span> n<span class="delimiter">)</span> auto
+
+<span class="command">lemma</span> map_index&#39;_map_zip<span class="delimiter">:</span> <span class="string">&quot;map_index&#39; n f xs = map (split f) (zip [n ..&lt; n + length xs] xs)&quot;</span>
+<span class="command">proof</span> <span class="delimiter">(</span>induct xs arbitrary<span class="delimiter">:</span> n<span class="delimiter">)</span>
+  <span class="command">case</span> <span class="delimiter">(</span>Cons x xs<span class="delimiter">)</span>
+  <span class="command">hence</span> <span class="string">&quot;map_index&#39; n f (x#xs) = f n x # map (split f) (zip [Suc n ..&lt; n + length (x # xs)] xs)&quot;</span> <span class="command">by</span> simp
+  <span class="command">also</span> <span class="command">have</span> <span class="string">&quot;&hellip; =  map (split f) (zip (n # [Suc n ..&lt; n + length (x # xs)]) (x # xs))&quot;</span> <span class="command">by</span> simp
+  <span class="command">also</span> <span class="command">have</span> <span class="string">&quot;(n # [Suc n ..&lt; n + length (x # xs)]) = [n ..&lt; n + length (x # xs)]&quot;</span> <span class="command">by</span> <span class="delimiter">(</span>induct xs<span class="delimiter">)</span> auto
+  <span class="command">finally</span> <span class="command">show</span> <span class="var">?case</span> <span class="command">by</span> simp
+<span class="command">qed</span> simp
+
+<span class="command">abbreviation</span> <span class="string">&quot;map_index &equiv; map_index&#39; 0&quot;</span>
+
+<span class="command">lemmas</span> map_index <span class="delimiter">=</span> map_index&#39;_map_zip<span class="delimiter">[</span>of 0<span class="delimiter">,</span> simplified<span class="delimiter">]</span>
+
+<span class="command">lemma</span> take_map_index<span class="delimiter">:</span> <span class="string">&quot;take p (map_index f xs) = map_index f (take p xs)&quot;</span>
+  <span class="command">unfolding</span> map_index <span class="command">by</span> <span class="delimiter">(</span>auto simp<span class="delimiter">:</span> min_def take_map take_zip<span class="delimiter">)</span>
+
+<span class="command">lemma</span> drop_map_index<span class="delimiter">:</span> <span class="string">&quot;drop p (map_index f xs) = map_index&#39; p f (drop p xs)&quot;</span>
+  <span class="command">unfolding</span> map_index&#39;_map_zip <span class="command">by</span> <span class="delimiter">(</span>cases <span class="string">&quot;p &lt; length xs&quot;</span><span class="delimiter">)</span> <span class="delimiter">(</span>auto simp<span class="delimiter">:</span> drop_map drop_zip<span class="delimiter">)</span>
+
+<span class="command">lemma</span> map_map_index<span class="delimiter">[</span>simp<span class="delimiter">]</span><span class="delimiter">:</span> <span class="string">&quot;map g (map_index f xs) = map_index (&lambda;n x. g (f n x)) xs&quot;</span>
+  <span class="command">unfolding</span> map_index <span class="command">by</span> auto
+
+<span class="command">lemma</span> map_index_map<span class="delimiter">[</span>simp<span class="delimiter">]</span><span class="delimiter">:</span> <span class="string">&quot;map_index f (map g xs) = map_index (&lambda;n x. f n (g x)) xs&quot;</span>
+  <span class="command">unfolding</span> map_index <span class="command">by</span> <span class="delimiter">(</span>auto simp<span class="delimiter">:</span> map_zip_map2<span class="delimiter">)</span>
+
+<span class="command">lemma</span> set_map_index<span class="delimiter">[</span>simp<span class="delimiter">]</span><span class="delimiter">:</span> <span class="string">&quot;x &isin; set (map_index f xs) = (&exist;i &lt; length xs. f i (xs ! i) = x)&quot;</span>
+  <span class="command">unfolding</span> map_index <span class="command">by</span> <span class="delimiter">(</span>auto simp<span class="delimiter">:</span> set_zip intro<span class="delimiter">!</span><span class="delimiter">:</span> image_eqI<span class="delimiter">[</span>of _ <span class="string">&quot;split f&quot;</span><span class="delimiter">]</span><span class="delimiter">)</span>
+
+<span class="command">lemma</span> set_map_index&#39;<span class="delimiter">[</span>simp<span class="delimiter">]</span><span class="delimiter">:</span> <span class="string">&quot;x&isin;set (map_index&#39; n f xs) 
+  &lt;-&gt; (&exist;i&lt;length xs. f (n+i) (xs!i) = x) &quot;</span>
+  <span class="command">unfolding</span> map_index&#39;_map_zip 
+  <span class="command">by</span> <span class="delimiter">(</span>auto simp<span class="delimiter">:</span> set_zip intro<span class="delimiter">!</span><span class="delimiter">:</span> image_eqI<span class="delimiter">[</span>of _ <span class="string">&quot;split f&quot;</span><span class="delimiter">]</span><span class="delimiter">)</span>
+
+
+<span class="command">lemma</span> nth_map_index<span class="delimiter">[</span>simp<span class="delimiter">]</span><span class="delimiter">:</span> <span class="string">&quot;p &lt; length xs ==&gt; map_index f xs ! p = f p (xs ! p)&quot;</span>
+  <span class="command">unfolding</span> map_index <span class="command">by</span> auto
+
+<span class="command">lemma</span> map_index_cong<span class="delimiter">:</span>
+  <span class="string">&quot;&forall;p &lt; length xs. f p (xs ! p) = g p (xs ! p) ==&gt; map_index f xs = map_index g xs&quot;</span>
+  <span class="command">unfolding</span> map_index <span class="command">by</span> <span class="delimiter">(</span>auto simp<span class="delimiter">:</span> set_zip<span class="delimiter">)</span>
+
+<span class="command">lemma</span> map_index_id<span class="delimiter">:</span> <span class="string">&quot;map_index (curry snd) xs = xs&quot;</span>
+  <span class="command">unfolding</span> map_index <span class="command">by</span> auto
+
+<span class="command">lemma</span> map_index_no_index<span class="delimiter">[</span>simp<span class="delimiter">]</span><span class="delimiter">:</span> <span class="string">&quot;map_index (&lambda;n x. f x) xs = map f xs&quot;</span>
+  <span class="command">unfolding</span> map_index <span class="command">by</span> <span class="delimiter">(</span>induct xs rule<span class="delimiter">:</span> rev_induct<span class="delimiter">)</span> auto
+
+<span class="command">lemma</span> map_index_congL<span class="delimiter">:</span>
+  <span class="string">&quot;&forall;p &lt; length xs. f p (xs ! p) = xs ! p ==&gt; map_index f xs = xs&quot;</span>
+  <span class="command">by</span> <span class="delimiter">(</span>rule trans<span class="delimiter">[</span>OF map_index_cong map_index_id<span class="delimiter">]</span><span class="delimiter">)</span> auto
+
+<span class="command">lemma</span> map_index&#39;_is_NilD<span class="delimiter">:</span> <span class="string">&quot;map_index&#39; n f xs = [] ==&gt; xs = []&quot;</span>
+  <span class="command">by</span> <span class="delimiter">(</span>induct xs<span class="delimiter">)</span> auto
+
+<span class="command">declare</span> map_index&#39;_is_NilD<span class="delimiter">[</span>of 0<span class="delimiter">,</span> dest<span class="delimiter">!</span><span class="delimiter">]</span>
+
+<span class="command">lemma</span> map_index&#39;_is_ConsD<span class="delimiter">:</span>
+  <span class="string">&quot;map_index&#39; n f xs = y # ys ==&gt; &exist;z zs. xs = z # zs &and; f n z = y &and; map_index&#39; (n + 1) f zs = ys&quot;</span>
+  <span class="command">by</span> <span class="delimiter">(</span>induct xs arbitrary<span class="delimiter">:</span> n<span class="delimiter">)</span> auto
+
+<span class="command">lemma</span> map_index&#39;_eq_imp_length_eq<span class="delimiter">:</span> <span class="string">&quot;map_index&#39; n f xs = map_index&#39; n g ys ==&gt; length xs = length ys&quot;</span>
+<span class="command">proof</span> <span class="delimiter">(</span>induct ys arbitrary<span class="delimiter">:</span> xs n<span class="delimiter">)</span>
+  <span class="command">case</span> <span class="delimiter">(</span>Cons y ys<span class="delimiter">)</span> <span class="command">thus</span> <span class="var">?case</span> <span class="command">by</span> <span class="delimiter">(</span>cases xs<span class="delimiter">)</span> auto
+<span class="command">qed</span> <span class="delimiter">(</span>auto dest<span class="delimiter">!</span><span class="delimiter">:</span> map_index&#39;_is_NilD<span class="delimiter">)</span>
+
+<span class="command">lemmas</span> map_index_eq_imp_length_eq <span class="delimiter">=</span> map_index&#39;_eq_imp_length_eq<span class="delimiter">[</span>of 0<span class="delimiter">]</span>
+
+<span class="command">lemma</span> map_index&#39;_comp<span class="delimiter">[</span>simp<span class="delimiter">]</span><span class="delimiter">:</span> <span class="string">&quot;map_index&#39; n f (map_index&#39; n g xs) = map_index&#39; n (&lambda;n. f n o g n) xs&quot;</span>
+  <span class="command">by</span> <span class="delimiter">(</span>induct xs arbitrary<span class="delimiter">:</span> n<span class="delimiter">)</span> auto
+
+<span class="command">lemma</span> map_index&#39;_append<span class="delimiter">[</span>simp<span class="delimiter">]</span><span class="delimiter">:</span> <span class="string">&quot;map_index&#39; n f (a @ b) 
+  = map_index&#39; n f a @ map_index&#39; (n + length a) f b&quot;</span>
+  <span class="command">by</span> <span class="delimiter">(</span>induct a arbitrary<span class="delimiter">:</span> n<span class="delimiter">)</span> auto
+
+<span class="command">lemma</span> map_index_append<span class="delimiter">[</span>simp<span class="delimiter">]</span><span class="delimiter">:</span> <span class="string">&quot;map_index f (a @ b) 
+  = map_index f a @ map_index&#39; (length a) f b&quot;</span>
+  <span class="command">using</span> map_index&#39;_append<span class="delimiter">[</span><span class="keyword2">where</span> n<span class="delimiter">=</span>0<span class="delimiter">]</span>
+  <span class="command">by</span> <span class="delimiter">(</span>simp del<span class="delimiter">:</span> map_index&#39;_append<span class="delimiter">)</span>
+
+
+<span class="command">subsection</span> <span class="verbatim">{* Insert at position *}</span>
+
+<span class="command">primrec</span> insert_nth <span class="delimiter">::</span> <span class="string">&quot;nat =&gt; &#39;a =&gt; &#39;a list =&gt; &#39;a list&quot;</span> <span class="keyword2">where</span>
+  <span class="string">&quot;insert_nth 0 x xs = x # xs&quot;</span>
+<span class="delimiter">|</span> <span class="string">&quot;insert_nth (Suc n) x xs = (case xs of [] =&gt; [x] | y # ys =&gt; y # insert_nth n x ys)&quot;</span>
+
+<span class="command">lemma</span> insert_nth_take_drop<span class="delimiter">[</span>simp<span class="delimiter">]</span><span class="delimiter">:</span> <span class="string">&quot;insert_nth n x xs = take n xs @ [x] @ drop n xs&quot;</span>
+<span class="command">proof</span> <span class="delimiter">(</span>induct n arbitrary<span class="delimiter">:</span> xs<span class="delimiter">)</span>
+  <span class="command">case</span> Suc <span class="command">thus</span> <span class="var">?case</span> <span class="command">by</span> <span class="delimiter">(</span>cases xs<span class="delimiter">)</span> auto
+<span class="command">qed</span> simp
+
+<span class="command">lemma</span> length_insert_nth<span class="delimiter">:</span> <span class="string">&quot;length (insert_nth n x xs) = Suc (length xs)&quot;</span>
+  <span class="command">by</span> <span class="delimiter">(</span>induct xs<span class="delimiter">)</span> auto
+
+<span class="command">text</span> <span class="verbatim">{* Insert several elements at given (ascending) positions *}</span>
+
+<span class="command">lemma</span> length_fold_insert_nth<span class="delimiter">:</span>
+  <span class="string">&quot;length (fold (&lambda;(p, b). insert_nth p b) pxs xs) = length xs + length pxs&quot;</span>
+  <span class="command">by</span> <span class="delimiter">(</span>induct pxs arbitrary<span class="delimiter">:</span> xs<span class="delimiter">)</span> auto
+
+<span class="command">lemma</span> invar_fold_insert_nth<span class="delimiter">:</span>
+  <span class="string">&quot;[|&forall;x&isin;set pxs. p &lt; fst x; p &lt; length xs; xs ! p = b|] ==&gt;
+    fold (&lambda;(x, y). insert_nth x y) pxs xs ! p = b&quot;</span>
+  <span class="command">by</span> <span class="delimiter">(</span>induct pxs arbitrary<span class="delimiter">:</span> xs<span class="delimiter">)</span> <span class="delimiter">(</span>auto simp<span class="delimiter">:</span> nth_append<span class="delimiter">)</span>
+
+<span class="command">lemma</span> nth_fold_insert_nth<span class="delimiter">:</span>
+  <span class="string">&quot;[|sorted (map fst pxs); distinct (map fst pxs); &forall;(p, b) &isin; set pxs. p &lt; length xs + length pxs;
+    i &lt; length pxs; pxs ! i = (p, b)|] ==&gt;
+  fold (&lambda;(p, b). insert_nth p b) pxs xs ! p = b&quot;</span>
+<span class="command">proof</span> <span class="delimiter">(</span>induct pxs arbitrary<span class="delimiter">:</span> xs i p b<span class="delimiter">)</span>
+  <span class="command">case</span> <span class="delimiter">(</span>Cons pb pxs<span class="delimiter">)</span>
+  <span class="command">show</span> <span class="var">?case</span>
+  <span class="command">proof</span> <span class="delimiter">(</span>cases i<span class="delimiter">)</span>
+    <span class="command">case</span> 0
+    <span class="command">with</span> Cons.prems <span class="command">have</span> <span class="string">&quot;p &lt; Suc (length xs)&quot;</span>
+    <span class="command">proof</span> <span class="delimiter">(</span>induct pxs rule<span class="delimiter">:</span> rev_induct<span class="delimiter">)</span>
+      <span class="command">case</span> <span class="delimiter">(</span>snoc pb&#39; pxs<span class="delimiter">)</span>
+      <span class="command">then</span> <span class="command">obtain</span> p&#39; b&#39; <span class="keyword2">where</span> <span class="string">&quot;pb&#39; = (p&#39;, b&#39;)&quot;</span> <span class="command">by</span> auto
+      <span class="command">with</span> snoc.prems <span class="command">have</span> <span class="string">&quot;&forall;p &isin; fst ` set pxs. p &lt; p&#39;&quot;</span> <span class="string">&quot;p&#39; &le; Suc (length xs + length pxs)&quot;</span>
+        <span class="command">by</span> <span class="delimiter">(</span>auto simp<span class="delimiter">:</span> image_iff sorted_Cons sorted_append le_eq_less_or_eq<span class="delimiter">)</span>
+      <span class="command">with</span> snoc.prems <span class="command">show</span> <span class="var">?case</span> <span class="command">by</span> <span class="delimiter">(</span>intro snoc<span class="delimiter">(</span>1<span class="delimiter">)</span><span class="delimiter">)</span> <span class="delimiter">(</span>auto simp<span class="delimiter">:</span> sorted_Cons sorted_append<span class="delimiter">)</span>
+    <span class="command">qed</span> auto
+    <span class="command">with</span> 0 Cons.prems <span class="command">show</span> <span class="var">?thesis</span> <span class="command">unfolding</span> fold.simps o_apply
+    <span class="command">by</span> <span class="delimiter">(</span>intro invar_fold_insert_nth<span class="delimiter">)</span> <span class="delimiter">(</span>auto simp<span class="delimiter">:</span> sorted_Cons image_iff le_eq_less_or_eq nth_append<span class="delimiter">)</span>
+  <span class="command">next</span>
+    <span class="command">case</span> <span class="delimiter">(</span>Suc n<span class="delimiter">)</span> <span class="command">with</span> Cons.prems <span class="command">show</span> <span class="var">?thesis</span> <span class="command">unfolding</span> fold.simps
+      <span class="command">by</span> <span class="delimiter">(</span>auto intro<span class="delimiter">!</span><span class="delimiter">:</span> Cons<span class="delimiter">(</span>1<span class="delimiter">)</span> simp<span class="delimiter">:</span> sorted_Cons<span class="delimiter">)</span>
+  <span class="command">qed</span>
+<span class="command">qed</span> simp
+
+<span class="command">end</span>
+</pre>
+
+</div>
+</body>
+</html>

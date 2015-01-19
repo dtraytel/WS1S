@@ -1,0 +1,723 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+<html xmlns="http://www.w3.org/1999/xhtml">
+<head>
+<meta http-equiv="Content-Type" content="text/html; charset=utf-8"/>
+<title>Theory WS1S_Formula (Isabelle2014: August 2014)</title>
+<link media="all" rel="stylesheet" type="text/css" href="isabelle.css"/>
+</head>
+
+<body>
+<div class="head"><h1>Theory WS1S_Formula</h1>
+
+<span class="command">theory</span> <span class="name">WS1S_Formula</span><br/>
+<span class="keyword">imports</span> <a href="Abstract_Formula.html"><span class="name">Abstract_Formula</span></a> <a href="FSet_More.html"><span class="name">FSet_More</span></a> <a href="Permanent_Interpretation.html"><span class="name">Permanent_Interpretation</span></a><br/>
+
+</div>
+<div class="source">
+<pre><span class="comment">(*&lt;*)</span>
+<span class="command">theory</span> WS1S_Formula
+<span class="keyword2">imports</span>
+  Abstract_Formula
+  FSet_More
+  <span class="string">&quot;~~/src/Tools/Permanent_Interpretation&quot;</span>
+<span class="keyword2">begin</span>
+
+<span class="command">hide_const</span> <span class="delimiter">(</span><span class="keyword2">open</span><span class="delimiter">)</span> cut
+<span class="comment">(*&gt;*)</span>
+
+<span class="command">section</span> <span class="cartouche">&#8249;Concrete Atomic WS1S Formulas&#8250;</span>
+
+<span class="command">definition</span> <span class="string">&quot;eval P x = (x |&isin;| P)&quot;</span>
+<span class="command">definition</span> <span class="string">&quot;downshift P = (&lambda;x. x - Suc 0) |`| (P |-| {|0|})&quot;</span>
+<span class="command">definition</span> <span class="string">&quot;upshift P = Suc |`| P&quot;</span>
+<span class="command">definition</span> <span class="string">&quot;lift bs i P = (if bs ! i then finsert 0 (upshift P) else upshift P)&quot;</span>
+<span class="command">definition</span> <span class="string">&quot;snoc n bs i P = (if bs ! i then finsert n P else P)&quot;</span>
+<span class="command">definition</span> <span class="string">&quot;cut n P = ffilter (&lambda;i. i &lt; n) P&quot;</span>
+<span class="command">definition</span> <span class="string">&quot;len P = (if P = {||} then 0 else Suc (fMax P))&quot;</span>
+
+<span class="command">datatype_new</span> order <span class="delimiter">=</span> FO <span class="delimiter">|</span> SO
+<span class="command">datatype_compat</span> order
+<span class="command">derive</span> linorder order
+
+<span class="command">typedef</span> idx <span class="delimiter">=</span> <span class="string">&quot;UNIV :: (nat &times; nat) set&quot;</span> <span class="command">by</span> <span class="delimiter">(</span>rule UNIV_witness<span class="delimiter">)</span>
+
+<span class="command">setup_lifting</span> type_definition_idx
+
+<span class="command">lift_definition</span> ZERO <span class="delimiter">::</span> <span class="string">&quot;idx&quot;</span> <span class="keyword2">is</span> <span class="string">&quot;(0, 0)&quot;</span> <span class="command">.</span>
+<span class="command">lift_definition</span> SUC <span class="delimiter">::</span> <span class="string">&quot;order =&gt; idx =&gt; idx&quot;</span> <span class="keyword2">is</span>
+  <span class="string">&quot;&lambda;ord (m, n). case ord of FO =&gt; (Suc m, n) | SO =&gt; (m, Suc n)&quot;</span> <span class="command">.</span>
+<span class="command">lift_definition</span> LESS <span class="delimiter">::</span> <span class="string">&quot;order =&gt; nat =&gt; idx =&gt; bool&quot;</span> <span class="keyword2">is</span>
+  <span class="string">&quot;&lambda;ord l (m, n). case ord of FO =&gt; l &lt; m | SO =&gt; l &lt; n&quot;</span> <span class="command">.</span>
+<span class="command">abbreviation</span> <span class="string">&quot;LEQ ord l idx &equiv; LESS ord l (SUC ord idx)&quot;</span>
+
+<span class="command">definition</span> <span class="string">&quot;MSB Is &equiv;
+  if &forall;P &isin; set Is. P = {||} then 0 else Suc (Max (\&lt;Union&gt;P &isin; set Is. fset P))&quot;</span>
+
+<span class="command">lemma</span> MSB_Nil<span class="delimiter">[</span>simp<span class="delimiter">]</span><span class="delimiter">:</span> <span class="string">&quot;MSB [] = 0&quot;</span>
+  <span class="command">unfolding</span> MSB_def <span class="command">by</span> simp
+
+<span class="command">lemma</span> MSB_Cons<span class="delimiter">[</span>simp<span class="delimiter">]</span><span class="delimiter">:</span> <span class="string">&quot;MSB (I # Is) = max (if I = {||} then 0 else Suc (fMax I)) (MSB Is)&quot;</span>
+  <span class="command">unfolding</span> MSB_def <span class="command">including</span> fset.lifting
+  <span class="command">by</span> transfer <span class="delimiter">(</span>auto simp<span class="delimiter">:</span> Max_Un list_all_iff Sup_bot_conv<span class="delimiter">(</span>2<span class="delimiter">)</span><span class="delimiter">[</span>symmetric<span class="delimiter">]</span> simp del<span class="delimiter">:</span> Sup_bot_conv<span class="delimiter">(</span>2<span class="delimiter">)</span><span class="delimiter">)</span>
+
+<span class="command">lemma</span> MSB_append<span class="delimiter">[</span>simp<span class="delimiter">]</span><span class="delimiter">:</span> <span class="string">&quot;MSB (I1 @ I2) = max (MSB I1) (MSB I2)&quot;</span>
+  <span class="command">by</span> <span class="delimiter">(</span>induct I1<span class="delimiter">)</span> auto
+
+<span class="command">lemma</span> MSB_insert_nth<span class="delimiter">[</span>simp<span class="delimiter">]</span><span class="delimiter">:</span>
+  <span class="string">&quot;MSB (insert_nth n P Is) = max (if P = {||} then 0 else Suc (fMax P)) (MSB Is)&quot;</span>
+  <span class="command">by</span> <span class="delimiter">(</span>subst <span class="delimiter">(</span>2<span class="delimiter">)</span> append_take_drop_id<span class="delimiter">[</span>of n Is<span class="delimiter">,</span> symmetric<span class="delimiter">]</span><span class="delimiter">)</span>
+    <span class="delimiter">(</span>simp only<span class="delimiter">:</span> insert_nth_take_drop MSB_append MSB_Cons MSB_Nil<span class="delimiter">)</span>
+
+<span class="command">lemma</span> MSB_greater<span class="delimiter">:</span>
+  <span class="string">&quot;[|i &lt; length Is; p |&isin;| Is ! i|] ==&gt; p &lt; MSB Is&quot;</span>
+  <span class="command">unfolding</span> MSB_def <span class="command">by</span> <span class="delimiter">(</span>fastforce simp<span class="delimiter">:</span> Bex_def in_set_conv_nth less_Suc_eq_le intro<span class="delimiter">:</span> Max_ge<span class="delimiter">)</span>
+
+<span class="command">lemma</span> MSB_mono<span class="delimiter">:</span> <span class="string">&quot;set I1 &sube; set I2 ==&gt; MSB I1 &le; MSB I2&quot;</span>
+  <span class="command">unfolding</span> MSB_def <span class="command">including</span> fset.lifting
+  <span class="command">by</span> transfer <span class="delimiter">(</span>auto simp<span class="delimiter">:</span> list_all_iff intro<span class="delimiter">!</span><span class="delimiter">:</span> Max_ge<span class="delimiter">)</span>
+
+<span class="command">lemma</span> MSB_map_index&#39;_CONS<span class="delimiter">[</span>simp<span class="delimiter">]</span><span class="delimiter">:</span>
+  <span class="string">&quot;MSB (map_index&#39; i (lift bs) Is) =
+  (if MSB Is = 0 &and; (&forall;i &isin; {i ..&lt; i + length Is}. &not; bs ! i) then 0 else Suc (MSB Is))&quot;</span>
+  <span class="command">by</span> <span class="delimiter">(</span>induct Is arbitrary<span class="delimiter">:</span> i<span class="delimiter">)</span>
+   <span class="delimiter">(</span>auto split<span class="delimiter">:</span> if_splits simp<span class="delimiter">:</span> mono_fMax_commute<span class="delimiter">[</span><span class="keyword2">where</span> f <span class="delimiter">=</span> Suc<span class="delimiter">,</span> symmetric<span class="delimiter">]</span> mono_def
+    lift_def upshift_def<span class="delimiter">,</span>
+    metis atLeastLessThan_iff le_antisym not_less_eq_eq<span class="delimiter">)</span>
+
+<span class="command">lemma</span> MSB_map_index&#39;_SNOC<span class="delimiter">[</span>simp<span class="delimiter">]</span><span class="delimiter">:</span>
+  <span class="string">&quot;MSB Is &le; n ==&gt; MSB (map_index&#39; i (snoc n bs) Is) =
+  (if (&forall;i &isin; {i ..&lt; i + length Is}. &not; bs ! i) then MSB Is else Suc n)&quot;</span>
+  <span class="command">by</span> <span class="delimiter">(</span>induct Is arbitrary<span class="delimiter">:</span> i<span class="delimiter">)</span>
+    <span class="delimiter">(</span>auto split<span class="delimiter">:</span> if_splits simp<span class="delimiter">:</span> mono_fMax_commute<span class="delimiter">[</span><span class="keyword2">where</span> f <span class="delimiter">=</span> Suc<span class="delimiter">,</span> symmetric<span class="delimiter">]</span> mono_def
+    snoc_def<span class="delimiter">,</span> <span class="delimiter">(</span>metis atLeastLessThan_iff le_antisym not_less_eq_eq<span class="delimiter">)</span><span class="delimiter">+</span><span class="delimiter">)</span>
+
+<span class="command">lemma</span> MSB_replicate<span class="delimiter">[</span>simp<span class="delimiter">]</span><span class="delimiter">:</span> <span class="string">&quot;MSB (replicate n P) = (if P = {||} &or; n = 0 then 0 else Suc (fMax P))&quot;</span>
+  <span class="command">by</span> <span class="delimiter">(</span>induct n<span class="delimiter">)</span> auto
+
+<span class="command">typedef</span> interp <span class="delimiter">=</span>
+  <span class="string">&quot;{(n :: nat, I1 :: nat fset list, I2  :: nat fset list) | n I1 I2. MSB (I1 @ I2) &le; n}&quot;</span>
+  <span class="command">by</span> auto
+
+<span class="command">setup_lifting</span> type_definition_interp
+
+<span class="command">lift_definition</span> assigns <span class="delimiter">::</span> <span class="string">&quot;nat =&gt; interp =&gt; order =&gt; nat fset&quot;</span> <span class="delimiter">(</span><span class="string">&quot;_<span class="hidden">&#8663;</span><sup>_<span class="hidden">&#8662;</span></sup>_&quot;</span> <span class="delimiter">[</span>900<span class="delimiter">,</span> 999<span class="delimiter">,</span> 999<span class="delimiter">]</span> 999<span class="delimiter">)</span>
+  <span class="keyword2">is</span> <span class="string">&quot;&lambda;n (_, I1, I2) ord. case ord of FO =&gt; if n &lt; length I1 then I1 ! n else {||}
+    | SO =&gt; if n &lt; length I2 then I2 ! n else {||}&quot;</span> <span class="command">.</span>
+<span class="command">lift_definition</span> nvars <span class="delimiter">::</span> <span class="string">&quot;interp =&gt; idx&quot;</span> <span class="delimiter">(</span><span class="string">&quot;#<span class="hidden">&#8681;</span><sub>V</sub> _&quot;</span> <span class="delimiter">[</span>1000<span class="delimiter">]</span> 900<span class="delimiter">)</span>
+  <span class="keyword2">is</span> <span class="string">&quot;&lambda;(_, I1, I2). (length I1, length I2)&quot;</span> <span class="command">.</span>
+<span class="command">lift_definition</span> Length <span class="delimiter">::</span> <span class="string">&quot;interp =&gt; nat&quot;</span>
+  <span class="keyword2">is</span> <span class="string">&quot;&lambda;(n, _, _). n&quot;</span> <span class="command">.</span>
+<span class="command">lift_definition</span> Extend <span class="delimiter">::</span> <span class="string">&quot;order =&gt; nat =&gt; interp =&gt; nat fset =&gt; interp&quot;</span>
+  <span class="keyword2">is</span> <span class="string">&quot;&lambda;ord i (n, I1, I2) P. case ord of
+      FO =&gt; (max n (if P = {||} then 0 else Suc (fMax P)), insert_nth i P I1, I2)
+    | SO =&gt; (max n (if P = {||} then 0 else Suc (fMax P)), I1, insert_nth i P I2)&quot;</span>
+  <span class="command">using</span> MSB_mono <span class="command">by</span> <span class="delimiter">(</span>auto simp del<span class="delimiter">:</span> insert_nth_take_drop split<span class="delimiter">:</span> order.splits<span class="delimiter">)</span>
+
+<span class="command">lift_definition</span> CONS <span class="delimiter">::</span> <span class="string">&quot;(bool list &times; bool list) =&gt; interp =&gt; interp&quot;</span>
+  <span class="keyword2">is</span> <span class="string">&quot;&lambda;(bs1, bs2) (n, I1, I2).
+   (Suc n, map_index (lift bs1) I1, map_index (lift bs2) I2)&quot;</span>
+  <span class="command">by</span> auto
+
+<span class="command">lift_definition</span> SNOC <span class="delimiter">::</span> <span class="string">&quot;(bool list &times; bool list) =&gt; interp =&gt; interp&quot;</span>
+  <span class="keyword2">is</span> <span class="string">&quot;&lambda;(bs1, bs2) (n, I1, I2).
+   (Suc n, map_index (snoc n bs1) I1, map_index (snoc n bs2) I2)&quot;</span>
+  <span class="command">by</span> <span class="delimiter">(</span>auto simp<span class="delimiter">:</span> Let_def<span class="delimiter">)</span>
+
+<span class="command">abbreviation</span> <span class="string">&quot;enc_atom_bool I n &equiv; map (&lambda;P. n |&isin;| P) I&quot;</span>
+
+<span class="command">abbreviation</span> <span class="string">&quot;enc_atom I1 I2 n &equiv; (enc_atom_bool I1 n, enc_atom_bool I2 n)&quot;</span>
+
+<span class="command">type_synonym</span> atom <span class="delimiter">=</span> <span class="string">&quot;bool list &times; bool list&quot;</span>
+
+<span class="command">lift_definition</span> enc <span class="delimiter">::</span> <span class="string">&quot;interp =&gt; atom list&quot;</span>
+  <span class="keyword2">is</span> <span class="string">&quot;&lambda;(n, I1, I2). let m = MSB (I1 @ I2) in
+    map (enc_atom I1 I2) [0 ..&lt; m] @
+    replicate (n - m) (replicate (length I1) False, replicate (length I2) False)&quot;</span> <span class="command">.</span>
+
+<span class="command">lift_definition</span> zero <span class="delimiter">::</span> <span class="string">&quot;idx =&gt; atom&quot;</span>
+  <span class="keyword2">is</span> <span class="string">&quot;&lambda;(m, n). (replicate m False, replicate n False)&quot;</span> <span class="command">.</span>
+
+<span class="command">definition</span> <span class="string">&quot;extend ord b &equiv;
+  &lambda;(bs1, bs2). case ord of FO =&gt; (b # bs1, bs2) | SO =&gt; (bs1, b # bs2)&quot;</span>
+<span class="command">lift_definition</span> size_atom <span class="delimiter">::</span> <span class="string">&quot;bool list &times; bool list =&gt; idx&quot;</span>
+  <span class="keyword2">is</span> <span class="string">&quot;&lambda;(bs1, bs2). (length bs1, length bs2)&quot;</span> <span class="command">.</span>
+
+<span class="command">type_synonym</span> fo <span class="delimiter">=</span> nat
+<span class="command">type_synonym</span> so <span class="delimiter">=</span> nat
+
+<span class="command">datatype_new</span> ws1s <span class="delimiter">=</span>
+  Q fo <span class="delimiter">|</span>
+  Less fo fo <span class="delimiter">|</span> LessF fo fo <span class="delimiter">|</span> LessT fo fo <span class="delimiter">|</span>
+  In fo so <span class="delimiter">|</span> InT fo so
+<span class="command">datatype_compat</span> ws1s
+<span class="command">derive</span> linorder option
+<span class="command">derive</span> linorder ws1s
+<span class="command">type_synonym</span> formula <span class="delimiter">=</span> <span class="string">&quot;(ws1s, order) aformula&quot;</span>
+
+<span class="command">primrec</span> wf0 <span class="keyword2">where</span>
+  <span class="string">&quot;wf0 idx (Q m) = LESS FO m idx&quot;</span>
+<span class="delimiter">|</span> <span class="string">&quot;wf0 idx (Less m1 m2) = (LESS FO m1 idx &and; LESS FO m2 idx)&quot;</span>
+<span class="delimiter">|</span> <span class="string">&quot;wf0 idx (LessF m1 m2) = (LESS FO m1 idx &and; LESS FO m2 idx)&quot;</span>
+<span class="delimiter">|</span> <span class="string">&quot;wf0 idx (LessT m1 m2) = (LESS FO m1 idx &and; LESS FO m2 idx)&quot;</span>
+<span class="delimiter">|</span> <span class="string">&quot;wf0 idx (In m M) = (LESS FO m idx &and; LESS SO M idx)&quot;</span>
+<span class="delimiter">|</span> <span class="string">&quot;wf0 idx (InT m M) = (LESS FO m idx &and; LESS SO M idx)&quot;</span>
+
+<span class="command">fun</span> left_formula0 <span class="keyword2">where</span>
+  <span class="string">&quot;left_formula0 x = True&quot;</span>
+
+<span class="command">fun</span> FV0 <span class="keyword2">where</span>
+  <span class="string">&quot;FV0 (Q m) = [(FO, m)]&quot;</span>
+<span class="delimiter">|</span> <span class="string">&quot;FV0 (Less m1 m2) = List.insert (FO, m1) [(FO, m2)]&quot;</span>
+<span class="delimiter">|</span> <span class="string">&quot;FV0 (LessF m1 m2) = List.insert (FO, m1) [(FO, m2)]&quot;</span>
+<span class="delimiter">|</span> <span class="string">&quot;FV0 (LessT m1 m2) = List.insert (FO, m1) [(FO, m2)]&quot;</span>
+<span class="delimiter">|</span> <span class="string">&quot;FV0 (In m M) = [(FO, m), (SO, M)]&quot;</span>
+<span class="delimiter">|</span> <span class="string">&quot;FV0 (InT m M) = [(FO, m), (SO, M)]&quot;</span>
+
+<span class="command">fun</span> find0 <span class="keyword2">where</span>
+  <span class="string">&quot;find0 FO i (Q m) = (i = m)&quot;</span>
+<span class="delimiter">|</span> <span class="string">&quot;find0 FO i (Less m1 m2) = (i = m1 &or; i = m2)&quot;</span>
+<span class="delimiter">|</span> <span class="string">&quot;find0 FO i (LessF m1 m2) = (i = m1 &or; i = m2)&quot;</span>
+<span class="delimiter">|</span> <span class="string">&quot;find0 FO i (LessT m1 m2) = (i = m1 &or; i = m2)&quot;</span>
+<span class="delimiter">|</span> <span class="string">&quot;find0 FO i (In m _) = (i = m)&quot;</span>
+<span class="delimiter">|</span> <span class="string">&quot;find0 SO i (In _ M) = (i = M)&quot;</span>
+<span class="delimiter">|</span> <span class="string">&quot;find0 FO i (InT m _) = (i = m)&quot;</span>
+<span class="delimiter">|</span> <span class="string">&quot;find0 SO i (InT _ M) = (i = M)&quot;</span>
+<span class="delimiter">|</span> <span class="string">&quot;find0 _ _ _ = False&quot;</span>
+
+<span class="command">primrec</span> decr0 <span class="keyword2">where</span>
+  <span class="string">&quot;decr0 ord k (Q m) = Q (case_order (dec k) id ord m)&quot;</span>
+<span class="delimiter">|</span> <span class="string">&quot;decr0 ord k (Less m1 m2) = Less (case_order (dec k) id ord m1) (case_order (dec k) id ord m2)&quot;</span>
+<span class="delimiter">|</span> <span class="string">&quot;decr0 ord k (LessF m1 m2) = LessF (case_order (dec k) id ord m1) (case_order (dec k) id ord m2)&quot;</span>
+<span class="delimiter">|</span> <span class="string">&quot;decr0 ord k (LessT m1 m2) = LessT (case_order (dec k) id ord m1) (case_order (dec k) id ord m2)&quot;</span>
+<span class="delimiter">|</span> <span class="string">&quot;decr0 ord k (In m M) = In (case_order (dec k) id ord m) (case_order id (dec k) ord M)&quot;</span>
+<span class="delimiter">|</span> <span class="string">&quot;decr0 ord k (InT m M) = InT (case_order (dec k) id ord m) (case_order id (dec k) ord M)&quot;</span>
+
+<span class="command">primrec</span> satisfies0 <span class="keyword2">where</span>
+  <span class="string">&quot;satisfies0 \&lt;AA&gt; (Q m) = (m<span class="hidden">&#8663;</span><sup>\&lt;AA&gt;<span class="hidden">&#8662;</span></sup>FO &ne; {||})&quot;</span>
+<span class="delimiter">|</span> <span class="string">&quot;satisfies0 \&lt;AA&gt; (Less m1 m2) =
+   (let P1 = m1<span class="hidden">&#8663;</span><sup>\&lt;AA&gt;<span class="hidden">&#8662;</span></sup>FO; P2 = m2<span class="hidden">&#8663;</span><sup>\&lt;AA&gt;<span class="hidden">&#8662;</span></sup>FO in if P1 = {||} &or; P2 = {||} then False else fMin P1 &lt; fMin P2)&quot;</span>
+<span class="delimiter">|</span> <span class="string">&quot;satisfies0 \&lt;AA&gt; (LessF m1 m2) =
+   (let P1 = m1<span class="hidden">&#8663;</span><sup>\&lt;AA&gt;<span class="hidden">&#8662;</span></sup>FO; P2 = m2<span class="hidden">&#8663;</span><sup>\&lt;AA&gt;<span class="hidden">&#8662;</span></sup>FO in
+      if P1 = {||} then False else if P2 = {||} then True else fMin P1 &lt; fMin P2)&quot;</span>
+<span class="delimiter">|</span> <span class="string">&quot;satisfies0 \&lt;AA&gt; (LessT m1 m2) =
+   (let P1 = m1<span class="hidden">&#8663;</span><sup>\&lt;AA&gt;<span class="hidden">&#8662;</span></sup>FO; P2 = m2<span class="hidden">&#8663;</span><sup>\&lt;AA&gt;<span class="hidden">&#8662;</span></sup>FO in
+      if P2 = {||} then True else if P1 = {||} then False else fMin P1 &lt; fMin P2)&quot;</span>
+<span class="delimiter">|</span> <span class="string">&quot;satisfies0 \&lt;AA&gt; (In m M) =
+   (let P = m<span class="hidden">&#8663;</span><sup>\&lt;AA&gt;<span class="hidden">&#8662;</span></sup>FO in if P = {||} then False else fMin P |&isin;| M<span class="hidden">&#8663;</span><sup>\&lt;AA&gt;<span class="hidden">&#8662;</span></sup>SO)&quot;</span>
+<span class="delimiter">|</span> <span class="string">&quot;satisfies0 \&lt;AA&gt; (InT m M) =
+   (let P = m<span class="hidden">&#8663;</span><sup>\&lt;AA&gt;<span class="hidden">&#8662;</span></sup>FO in if P = {||} then True else fMin P |&isin;| M<span class="hidden">&#8663;</span><sup>\&lt;AA&gt;<span class="hidden">&#8662;</span></sup>SO)&quot;</span>
+
+<span class="command">fun</span> lderiv0 <span class="keyword2">where</span>
+  <span class="string">&quot;lderiv0 (bs1, bs2) (Q m) = (if bs1 ! m then FBool True else FBase (Q m))&quot;</span>
+<span class="delimiter">|</span> <span class="string">&quot;lderiv0 (bs1, bs2) (Less m1 m2) = (case (bs1 ! m1, bs1 ! m2) of
+    (False, False) =&gt; FBase (Less m1 m2)
+  | (True, False) =&gt; FBase (Q m2)
+  | _ =&gt; FBool False)&quot;</span>
+<span class="delimiter">|</span> <span class="string">&quot;lderiv0 (bs1, bs2) (LessF m1 m2) = (case (bs1 ! m1, bs1 ! m2) of
+    (False, False) =&gt; FBase (LessF m1 m2)
+  | (True, False) =&gt; FBool True
+  | _ =&gt; FBool False)&quot;</span>
+<span class="delimiter">|</span> <span class="string">&quot;lderiv0 (bs1, bs2) (LessT m1 m2) = (case (bs1 ! m1, bs1 ! m2) of
+    (False, False) =&gt; FBase (LessT m1 m2)
+  | (True, False) =&gt; FBool True
+  | _ =&gt; FBool False)&quot;</span>
+<span class="delimiter">|</span> <span class="string">&quot;lderiv0 (bs1, bs2) (In m M) = (case (bs1 ! m, bs2 ! M) of
+    (False, _) =&gt; FBase (In m M)
+  | (True, True) =&gt; FBool True
+  | _ =&gt; FBool False)&quot;</span>
+<span class="delimiter">|</span> <span class="string">&quot;lderiv0 (bs1, bs2) (InT m M) = (case (bs1 ! m, bs2 ! M) of
+    (False, _) =&gt; FBase (InT m M)
+  | (True, True) =&gt; FBool True
+  | _ =&gt; FBool False)&quot;</span>
+
+<span class="command">fun</span> rderiv0 <span class="keyword2">where</span>
+  <span class="string">&quot;rderiv0 (bs1, bs2) (Q m) = (if bs1 ! m then FBool True else FBase (Q m))&quot;</span>
+<span class="delimiter">|</span> <span class="string">&quot;rderiv0 (bs1, bs2) (Less m1 m2) = (case bs1 ! m2 of
+    False =&gt; FBase (Less m1 m2)
+  | True =&gt; FBase (LessF m1 m2))&quot;</span>
+<span class="delimiter">|</span> <span class="string">&quot;rderiv0 (bs1, bs2) (LessF m1 m2) = (case (bs1 ! m1, bs1 ! m2) of
+    (True, False) =&gt; FBase (LessT m1 m2)
+  | _ =&gt; FBase (LessF m1 m2))&quot;</span>
+<span class="delimiter">|</span> <span class="string">&quot;rderiv0 (bs1, bs2) (LessT m1 m2) = (case bs1 ! m2 of
+    False =&gt; FBase (LessT m1 m2)
+  | True =&gt; FBase (LessF m1 m2))&quot;</span>
+<span class="delimiter">|</span> <span class="string">&quot;rderiv0 (bs1, bs2) (In m M) = (case (bs1 ! m, bs2 ! M) of
+    (True, True) =&gt; FBase (InT m M)
+  | _ =&gt; FBase (In m M))&quot;</span>
+<span class="delimiter">|</span> <span class="string">&quot;rderiv0 (bs1, bs2) (InT m M) = (case (bs1 ! m, bs2 ! M) of
+    (True, False) =&gt; FBase (In m M)
+  | _ =&gt; FBase (InT m M))&quot;</span>
+
+<span class="command">fun</span> nullable0 <span class="keyword2">where</span>
+  <span class="string">&quot;nullable0 (Q m) = False&quot;</span>
+<span class="delimiter">|</span> <span class="string">&quot;nullable0 (Less m1 m2) = False&quot;</span>
+<span class="delimiter">|</span> <span class="string">&quot;nullable0 (LessF m1 m2) = False&quot;</span>
+<span class="delimiter">|</span> <span class="string">&quot;nullable0 (LessT m1 m2) = True&quot;</span>
+<span class="delimiter">|</span> <span class="string">&quot;nullable0 (In m M) = False&quot;</span>
+<span class="delimiter">|</span> <span class="string">&quot;nullable0 (InT m M) = True&quot;</span>
+
+<span class="command">lift_definition</span> &sigma; <span class="delimiter">::</span> <span class="string">&quot;idx =&gt; atom list&quot;</span>
+  <span class="keyword2">is</span> <span class="string">&quot;(&lambda;(n, N). map (&lambda;bs. (take n bs, drop n bs)) (List.n_lists (n + N) [True, False]))&quot;</span> <span class="command">.</span>
+
+<span class="command">section</span> <span class="verbatim">{* Interpretation *}</span>
+
+<span class="command">lemma</span> fMin_fimage_Suc<span class="delimiter">[</span>simp<span class="delimiter">]</span><span class="delimiter">:</span> <span class="string">&quot;x |&isin;| A ==&gt; fMin (Suc |`| A) = Suc (fMin A)&quot;</span>
+  <span class="command">by</span> <span class="delimiter">(</span>rule fMin_eqI<span class="delimiter">)</span> <span class="delimiter">(</span>auto intro<span class="delimiter">:</span> fMin_in<span class="delimiter">)</span>
+
+<span class="command">lemma</span> fMin_eq_0<span class="delimiter">[</span>simp<span class="delimiter">]</span><span class="delimiter">:</span> <span class="string">&quot;0 |&isin;| A ==&gt; fMin A = (0 :: nat)&quot;</span>
+  <span class="command">by</span> <span class="delimiter">(</span>rule fMin_eqI<span class="delimiter">)</span> auto
+
+<span class="command">lemma</span> insert_nth_Cons<span class="delimiter">[</span>simp<span class="delimiter">]</span><span class="delimiter">:</span>
+  <span class="string">&quot;insert_nth i x (y # xs) = (case i of 0 =&gt; x # y # xs | Suc i =&gt; y # insert_nth i x xs)&quot;</span>
+  <span class="command">by</span> <span class="delimiter">(</span>cases i<span class="delimiter">)</span> simp_all
+
+<span class="command">lemma</span> insert_nth_commute<span class="delimiter">[</span>simp<span class="delimiter">]</span><span class="delimiter">:</span>
+  <span class="keyword2">assumes</span> <span class="string">&quot;j &le; i&quot;</span> <span class="string">&quot;i &le; length xs&quot;</span>
+  <span class="keyword2">shows</span> <span class="string">&quot;insert_nth j y (insert_nth i x xs) = insert_nth (Suc i) x (insert_nth j y xs)&quot;</span>
+  <span class="command">using</span> assms <span class="command">by</span> <span class="delimiter">(</span>induct xs arbitrary<span class="delimiter">:</span> i j<span class="delimiter">)</span> <span class="delimiter">(</span>auto simp del<span class="delimiter">:</span> insert_nth_take_drop split<span class="delimiter">:</span> nat.splits<span class="delimiter">)</span>
+
+<span class="command">lemma</span> SUC_SUC<span class="delimiter">[</span>simp<span class="delimiter">]</span><span class="delimiter">:</span> <span class="string">&quot;SUC ord (SUC ord&#39; idx) = SUC ord&#39; (SUC ord idx)&quot;</span>
+  <span class="command">by</span> transfer <span class="delimiter">(</span>auto split<span class="delimiter">:</span> order.splits<span class="delimiter">)</span>
+
+<span class="command">lemma</span> LESS_SUC<span class="delimiter">[</span>simp<span class="delimiter">]</span><span class="delimiter">:</span>
+  <span class="string">&quot;LESS ord 0 (SUC ord idx)&quot;</span>
+  <span class="string">&quot;LESS ord (Suc l) (SUC ord idx) = LESS ord l idx&quot;</span>
+  <span class="string">&quot;ord &ne; ord&#39; ==&gt; LESS ord l (SUC ord&#39; idx) = LESS ord l idx&quot;</span>
+  <span class="string">&quot;LESS ord l idx ==&gt; LESS ord l (SUC ord&#39; idx)&quot;</span>
+  <span class="command">by</span> <span class="delimiter">(</span>transfer<span class="delimiter">,</span> force split<span class="delimiter">:</span> order.splits<span class="delimiter">)</span><span class="delimiter">+</span>
+
+<span class="command">lemma</span> nvars_Extend<span class="delimiter">[</span>simp<span class="delimiter">]</span><span class="delimiter">:</span>
+  <span class="string">&quot;#<span class="hidden">&#8681;</span><sub>V</sub> (Extend ord i \&lt;AA&gt; P) = SUC ord (#<span class="hidden">&#8681;</span><sub>V</sub> \&lt;AA&gt;)&quot;</span>
+  <span class="command">by</span> <span class="delimiter">(</span>transfer<span class="delimiter">,</span> force split<span class="delimiter">:</span> order.splits<span class="delimiter">)</span>
+
+<span class="command">lemma</span> Length_Extend<span class="delimiter">[</span>simp<span class="delimiter">]</span><span class="delimiter">:</span>
+  <span class="string">&quot;Length (Extend k i \&lt;AA&gt; P) = max (Length \&lt;AA&gt;) (if P = {||} then 0 else Suc (fMax P))&quot;</span>
+  <span class="command">unfolding</span> max_def <span class="command">by</span> <span class="delimiter">(</span>split if_splits<span class="delimiter">,</span> transfer<span class="delimiter">)</span> <span class="delimiter">(</span>force split<span class="delimiter">:</span> order.splits<span class="delimiter">)</span>
+
+<span class="command">lemma</span> assigns_Extend<span class="delimiter">[</span>simp<span class="delimiter">]</span><span class="delimiter">:</span>
+  <span class="string">&quot;LEQ ord i (#<span class="hidden">&#8681;</span><sub>V</sub> \&lt;AA&gt;) ==&gt;m<span class="hidden">&#8663;</span><sup>Extend ord i \&lt;AA&gt; P<span class="hidden">&#8662;</span></sup>ord = (if m = i then P else dec i m<span class="hidden">&#8663;</span><sup>\&lt;AA&gt;<span class="hidden">&#8662;</span></sup>ord)&quot;</span>
+  <span class="string">&quot;ord &ne; ord&#39; ==&gt; m<span class="hidden">&#8663;</span><sup>Extend ord i \&lt;AA&gt; P<span class="hidden">&#8662;</span></sup>ord&#39; = m<span class="hidden">&#8663;</span><sup>\&lt;AA&gt;<span class="hidden">&#8662;</span></sup>ord&#39;&quot;</span>
+  <span class="command">by</span> <span class="delimiter">(</span>transfer<span class="delimiter">,</span> force simp<span class="delimiter">:</span> dec_def min_def nth_append split<span class="delimiter">:</span> order.splits<span class="delimiter">)</span><span class="delimiter">+</span>
+
+<span class="command">lemma</span> Extend_commute_safe<span class="delimiter">[</span>simp<span class="delimiter">]</span><span class="delimiter">:</span>
+  <span class="string">&quot;[|j &le; i; LEQ ord i (#<span class="hidden">&#8681;</span><sub>V</sub> \&lt;AA&gt;)|] ==&gt;
+    Extend ord j (Extend ord i \&lt;AA&gt; P1) P2 = Extend ord (Suc i) (Extend ord j \&lt;AA&gt; P2) P1&quot;</span>
+  <span class="command">by</span> <span class="delimiter">(</span>transfer<span class="delimiter">,</span>
+    force simp del<span class="delimiter">:</span> insert_nth_take_drop simp<span class="delimiter">:</span> replicate_add<span class="delimiter">[</span>symmetric<span class="delimiter">]</span> split<span class="delimiter">:</span> order.splits<span class="delimiter">)</span>
+
+<span class="command">lemma</span> Extend_commute_unsafe<span class="delimiter">:</span>
+  <span class="string">&quot;ord &ne; ord&#39; ==&gt; Extend ord j (Extend ord&#39; i \&lt;AA&gt; P1) P2 = Extend ord&#39; i (Extend ord j \&lt;AA&gt; P2) P1&quot;</span>
+  <span class="command">by</span> <span class="delimiter">(</span>transfer<span class="delimiter">,</span> force simp<span class="delimiter">:</span> replicate_add<span class="delimiter">[</span>symmetric<span class="delimiter">]</span> split<span class="delimiter">:</span> order.splits<span class="delimiter">)</span>
+
+<span class="command">lemma</span> Length_CONS<span class="delimiter">[</span>simp<span class="delimiter">]</span><span class="delimiter">:</span>
+  <span class="string">&quot;Length (CONS x \&lt;AA&gt;) = Suc (Length \&lt;AA&gt;)&quot;</span>
+  <span class="command">by</span> <span class="delimiter">(</span>transfer<span class="delimiter">,</span> force split<span class="delimiter">:</span> order.splits<span class="delimiter">)</span>
+
+<span class="command">lemma</span> Length_SNOC<span class="delimiter">[</span>simp<span class="delimiter">]</span><span class="delimiter">:</span>
+  <span class="string">&quot;Length (SNOC x \&lt;AA&gt;) = Suc (Length \&lt;AA&gt;)&quot;</span>
+  <span class="command">by</span> <span class="delimiter">(</span>transfer<span class="delimiter">,</span> force simp<span class="delimiter">:</span> Let_def split<span class="delimiter">:</span> order.splits<span class="delimiter">)</span>
+
+<span class="command">lemma</span> nvars_CONS<span class="delimiter">[</span>simp<span class="delimiter">]</span><span class="delimiter">:</span>
+  <span class="string">&quot;#<span class="hidden">&#8681;</span><sub>V</sub> (CONS x \&lt;AA&gt;) = #<span class="hidden">&#8681;</span><sub>V</sub> \&lt;AA&gt;&quot;</span>
+  <span class="command">by</span> <span class="delimiter">(</span>transfer<span class="delimiter">,</span> force<span class="delimiter">)</span>
+
+<span class="command">lemma</span> nvars_SNOC<span class="delimiter">[</span>simp<span class="delimiter">]</span><span class="delimiter">:</span>
+  <span class="string">&quot;#<span class="hidden">&#8681;</span><sub>V</sub> (SNOC x \&lt;AA&gt;) = #<span class="hidden">&#8681;</span><sub>V</sub> \&lt;AA&gt;&quot;</span>
+  <span class="command">by</span> <span class="delimiter">(</span>transfer<span class="delimiter">,</span> force simp<span class="delimiter">:</span> Let_def<span class="delimiter">)</span>
+
+<span class="command">lemma</span> assigns_CONS<span class="delimiter">[</span>simp<span class="delimiter">]</span><span class="delimiter">:</span>
+  <span class="keyword2">assumes</span> <span class="string">&quot;#<span class="hidden">&#8681;</span><sub>V</sub> \&lt;AA&gt; = size_atom bs1_bs2&quot;</span>
+  <span class="keyword2">shows</span> <span class="string">&quot;LESS ord x (#<span class="hidden">&#8681;</span><sub>V</sub> \&lt;AA&gt;) ==&gt; x<span class="hidden">&#8663;</span><sup>CONS bs1_bs2 \&lt;AA&gt;<span class="hidden">&#8662;</span></sup>ord =
+    (if split case_order bs1_bs2 ord ! x then finsert 0 (upshift (x<span class="hidden">&#8663;</span><sup>\&lt;AA&gt;<span class="hidden">&#8662;</span></sup>ord)) else upshift (x<span class="hidden">&#8663;</span><sup>\&lt;AA&gt;<span class="hidden">&#8662;</span></sup>ord))&quot;</span>
+  <span class="command">by</span> <span class="delimiter">(</span>insert assms<span class="delimiter">,</span> transfer<span class="delimiter">)</span> <span class="delimiter">(</span>auto simp<span class="delimiter">:</span> lift_def split<span class="delimiter">:</span> order.splits<span class="delimiter">)</span>
+
+<span class="command">lemma</span> assigns_SNOC<span class="delimiter">[</span>simp<span class="delimiter">]</span><span class="delimiter">:</span>
+  <span class="keyword2">assumes</span> <span class="string">&quot;#<span class="hidden">&#8681;</span><sub>V</sub> \&lt;AA&gt; = size_atom bs1_bs2&quot;</span>
+  <span class="keyword2">shows</span> <span class="string">&quot;LESS ord x (#<span class="hidden">&#8681;</span><sub>V</sub> \&lt;AA&gt;) ==&gt; x<span class="hidden">&#8663;</span><sup>SNOC bs1_bs2 \&lt;AA&gt;<span class="hidden">&#8662;</span></sup>ord =
+    (if split case_order bs1_bs2 ord ! x then finsert (Length \&lt;AA&gt;) (x<span class="hidden">&#8663;</span><sup>\&lt;AA&gt;<span class="hidden">&#8662;</span></sup>ord) else x<span class="hidden">&#8663;</span><sup>\&lt;AA&gt;<span class="hidden">&#8662;</span></sup>ord)&quot;</span>
+  <span class="command">by</span> <span class="delimiter">(</span>insert assms<span class="delimiter">,</span> transfer<span class="delimiter">)</span> <span class="delimiter">(</span>force simp<span class="delimiter">:</span> snoc_def Let_def split<span class="delimiter">:</span> order.splits<span class="delimiter">)</span>
+
+<span class="command">lemma</span> map_index&#39;_eq_conv<span class="delimiter">[</span>simp<span class="delimiter">]</span><span class="delimiter">:</span>
+  <span class="string">&quot;map_index&#39; i f xs = map_index&#39; j g xs = (&forall;k &lt; length xs. f (i + k) (xs ! k) = g (j + k) (xs ! k))&quot;</span>
+<span class="command">proof</span> <span class="delimiter">(</span>induct xs arbitrary<span class="delimiter">:</span> i j<span class="delimiter">)</span>
+  <span class="command">case</span> Cons <span class="command">from</span> Cons<span class="delimiter">(</span>1<span class="delimiter">)</span><span class="delimiter">[</span>of <span class="string">&quot;Suc i&quot;</span> <span class="string">&quot;Suc j&quot;</span><span class="delimiter">]</span> <span class="command">show</span> <span class="var">?case</span> <span class="command">by</span> <span class="delimiter">(</span>auto simp<span class="delimiter">:</span> nth_Cons split<span class="delimiter">:</span> nat.splits<span class="delimiter">)</span>
+<span class="command">qed</span> simp
+
+<span class="command">lemma</span> fMax_Diff_0<span class="delimiter">[</span>simp<span class="delimiter">]</span><span class="delimiter">:</span> <span class="string">&quot;Suc m |&isin;| P ==&gt; fMax (P |-| {|0|}) = fMax P&quot;</span>
+  <span class="command">by</span> <span class="delimiter">(</span>rule fMax_eqI<span class="delimiter">)</span> <span class="delimiter">(</span>auto intro<span class="delimiter">:</span> fMax_in dest<span class="delimiter">:</span> fMax_ge<span class="delimiter">)</span>
+
+<span class="command">lemma</span> Suc_fMax_pred_fimage<span class="delimiter">[</span>simp<span class="delimiter">]</span><span class="delimiter">:</span>
+  <span class="keyword2">assumes</span> <span class="string">&quot;Suc p |&isin;| P&quot;</span> <span class="string">&quot;0 |&notin;| P&quot;</span>
+  <span class="keyword2">shows</span> <span class="string">&quot;Suc (fMax ((&lambda;x. x - Suc 0) |`| P)) = fMax P&quot;</span>
+  <span class="command">using</span> assms <span class="command">by</span> <span class="delimiter">(</span>subst mono_fMax_commute<span class="delimiter">[</span>of Suc<span class="delimiter">,</span> unfolded mono_def<span class="delimiter">,</span> simplified<span class="delimiter">]</span><span class="delimiter">)</span> <span class="delimiter">(</span>auto simp<span class="delimiter">:</span> o_def<span class="delimiter">)</span>
+
+<span class="command">lemma</span> Extend_CONS<span class="delimiter">[</span>simp<span class="delimiter">]</span><span class="delimiter">:</span> <span class="string">&quot;#<span class="hidden">&#8681;</span><sub>V</sub> \&lt;AA&gt; = size_atom x ==&gt; Extend ord 0 (CONS x \&lt;AA&gt;) P =
+  CONS (extend ord (eval P 0) x) (Extend ord 0 \&lt;AA&gt; (downshift P))&quot;</span>
+  <span class="command">by</span> transfer <span class="delimiter">(</span>auto simp<span class="delimiter">:</span> extend_def o_def gr0_conv_Suc
+    mono_fMax_commute<span class="delimiter">[</span>of Suc<span class="delimiter">,</span> symmetric<span class="delimiter">,</span> unfolded mono_def<span class="delimiter">,</span> simplified<span class="delimiter">]</span>
+    lift_def upshift_def downshift_def eval_def
+    dest<span class="delimiter">!</span><span class="delimiter">:</span> fsubset_fsingletonD split<span class="delimiter">:</span> order.splits<span class="delimiter">)</span>
+
+<span class="command">lemma</span> size_atom_extend<span class="delimiter">[</span>simp<span class="delimiter">]</span><span class="delimiter">:</span>
+  <span class="string">&quot;size_atom (extend ord b x) = SUC ord (size_atom x)&quot;</span>
+  <span class="command">unfolding</span> extend_def <span class="command">by</span> transfer <span class="delimiter">(</span>simp split<span class="delimiter">:</span> prod.splits order.splits<span class="delimiter">)</span>
+
+<span class="command">lemma</span> size_atom_zero<span class="delimiter">[</span>simp<span class="delimiter">]</span><span class="delimiter">:</span>
+  <span class="string">&quot;size_atom (zero idx) = idx&quot;</span>
+  <span class="command">unfolding</span> extend_def <span class="command">by</span> transfer <span class="delimiter">(</span>simp split<span class="delimiter">:</span> prod.splits order.splits<span class="delimiter">)</span>
+
+<span class="command">lemma</span> interp_eqI<span class="delimiter">:</span>
+  <span class="string">&quot;[|Length \&lt;AA&gt; = Length \&lt;BB&gt;; #<span class="hidden">&#8681;</span><sub>V</sub> \&lt;AA&gt; = #<span class="hidden">&#8681;</span><sub>V</sub> \&lt;BB&gt;; !!m k. LESS k m (#<span class="hidden">&#8681;</span><sub>V</sub> \&lt;AA&gt;) ==&gt; m<span class="hidden">&#8663;</span><sup>\&lt;AA&gt;<span class="hidden">&#8662;</span></sup>k = m<span class="hidden">&#8663;</span><sup>\&lt;BB&gt;<span class="hidden">&#8662;</span></sup>k|] ==&gt; \&lt;AA&gt; = \&lt;BB&gt;&quot;</span>
+  <span class="command">by</span> transfer <span class="delimiter">(</span>force split<span class="delimiter">:</span> order.splits intro<span class="delimiter">!</span><span class="delimiter">:</span> nth_equalityI<span class="delimiter">)</span>
+
+<span class="command">lemma</span> Extend_SNOC_cut<span class="delimiter">[</span>unfolded eval_def cut_def Length_SNOC<span class="delimiter">,</span> simp<span class="delimiter">]</span><span class="delimiter">:</span>
+  <span class="string">&quot;[|len P &le; Length (SNOC x \&lt;AA&gt;); #<span class="hidden">&#8681;</span><sub>V</sub> \&lt;AA&gt; = size_atom x|] ==&gt;
+  Extend ord 0 (SNOC x \&lt;AA&gt;) P =
+    SNOC (extend ord (if eval P (Length \&lt;AA&gt;) then True else False) x) (Extend ord 0 \&lt;AA&gt; (cut (Length \&lt;AA&gt;) P))&quot;</span>
+  <span class="command">by</span> transfer <span class="delimiter">(</span>fastforce simp<span class="delimiter">:</span> extend_def len_def cut_def ffilter_eq_fempty_iff snoc_def eval_def
+    split<span class="delimiter">:</span> if_splits order.splits dest<span class="delimiter">:</span> fMax_ge fMax_boundedD intro<span class="delimiter">:</span> fMax_in<span class="delimiter">)</span>
+
+<span class="command">lemma</span> nth_replicate_simp<span class="delimiter">:</span> <span class="string">&quot;replicate m x ! i = (if i &lt; m then x else [] ! (i - m))&quot;</span>
+  <span class="command">by</span> <span class="delimiter">(</span>induct m arbitrary<span class="delimiter">:</span> i<span class="delimiter">)</span> <span class="delimiter">(</span>auto simp<span class="delimiter">:</span> nth_Cons&#39;<span class="delimiter">)</span>
+
+<span class="command">lemma</span> MSB_eq_SucD<span class="delimiter">:</span> <span class="string">&quot;MSB Is = Suc x ==&gt; &exist;P&isin;set Is. x |&isin;| P&quot;</span>
+  <span class="command">using</span> Max_in<span class="delimiter">[</span>of <span class="string">&quot;\&lt;Union&gt;x&isin;set Is. fset x&quot;</span><span class="delimiter">]</span>
+  <span class="command">unfolding</span> MSB_def <span class="command">by</span> <span class="delimiter">(</span>force simp<span class="delimiter">:</span> fmember_def split<span class="delimiter">:</span> if_splits<span class="delimiter">)</span>
+
+<span class="command">lemma</span> last_enc_atom_MSB<span class="delimiter">:</span>
+  <span class="keyword2">fixes</span> I1 I2
+  <span class="keyword2">defines</span> <span class="string">&quot;xs &equiv; map (enc_atom I1 I2) [0..&lt;MSB (I1 @ I2)]&quot;</span>
+  <span class="keyword2">assumes</span> <span class="string">&quot;m = length I1&quot;</span> <span class="string">&quot;n = length I2&quot;</span> <span class="string">&quot;xs &ne; []&quot;</span>
+  <span class="keyword2">shows</span> <span class="string">&quot;last xs &ne; (replicate m False, replicate n False)&quot;</span>
+<span class="command">proof</span> <span class="delimiter">(</span>rule ccontr<span class="delimiter">,</span> unfold not_not<span class="delimiter">)</span>
+  <span class="command">assume</span> <span class="string">&quot;last xs = (replicate m False, replicate n False)&quot;</span>
+  <span class="command">moreover</span> <span class="command">from</span> <span class="altstring">`xs &ne; []`</span> <span class="command">obtain</span> i <span class="keyword2">where</span> i<span class="delimiter">:</span> <span class="string">&quot;MSB (I1 @ I2) = Suc i&quot;</span>
+    <span class="command">unfolding</span> xs_def <span class="command">by</span> <span class="delimiter">(</span>auto simp<span class="delimiter">:</span> gr0_conv_Suc<span class="delimiter">)</span>
+  <span class="command">ultimately</span> <span class="command">have</span> <span class="string">&quot;enc_atom I1 I2 i = (replicate m False, replicate n False)&quot;</span>
+    <span class="command">unfolding</span> xs_def <span class="command">by</span> auto
+  <span class="command">with</span> i <span class="command">show</span> False
+   <span class="command">by</span> <span class="delimiter">(</span>auto simp<span class="delimiter">:</span> list_eq_iff_nth_eq max_def in_set_conv_nth dest<span class="delimiter">!</span><span class="delimiter">:</span> MSB_eq_SucD split<span class="delimiter">:</span> if_splits<span class="delimiter">)</span>
+<span class="command">qed</span>
+
+<span class="command">lemma</span> append_replicate_inj<span class="delimiter">:</span>
+  <span class="keyword2">assumes</span> <span class="string">&quot;xs &ne; [] ==&gt; last xs &ne; x&quot;</span> <span class="keyword2">and</span> <span class="string">&quot;ys &ne; [] ==&gt; last ys &ne; x&quot;</span>
+  <span class="keyword2">shows</span> <span class="string">&quot;xs @ replicate m x = ys @ replicate n x &lt;-&gt; (xs = ys &and; m = n)&quot;</span>
+<span class="command">proof</span> safe
+  <span class="command">from</span> assms <span class="command">have</span> assms&#39;<span class="delimiter">:</span> <span class="string">&quot;xs &ne; [] ==&gt; rev xs ! 0 &ne; x&quot;</span> <span class="string">&quot;ys &ne; [] ==&gt; rev ys ! 0 &ne; x&quot;</span>
+    <span class="command">by</span> <span class="delimiter">(</span>auto simp<span class="delimiter">:</span> hd_rev hd_conv_nth<span class="delimiter">[</span>symmetric<span class="delimiter">]</span><span class="delimiter">)</span>
+  <span class="command">assume</span> *<span class="delimiter">:</span> <span class="string">&quot;xs @ replicate m x = ys @ replicate n x&quot;</span>
+  <span class="command">then</span> <span class="command">have</span> <span class="string">&quot;rev (xs @ replicate m x) = rev (ys @ replicate n x)&quot;</span> <span class="command">..</span>
+  <span class="command">then</span> <span class="command">have</span> <span class="string">&quot;replicate m x @ rev xs = replicate n x @ rev ys&quot;</span> <span class="command">by</span> simp
+  <span class="command">then</span> <span class="command">have</span> <span class="string">&quot;take (max m n) (replicate m x @ rev xs) = take (max m n) (replicate n x @ rev ys)&quot;</span> <span class="command">by</span> simp
+  <span class="command">then</span> <span class="command">have</span> <span class="string">&quot;replicate m x @ take (max m n - m) (rev xs) =
+    replicate n x @ take (max m n - n) (rev ys)&quot;</span> <span class="command">by</span> <span class="delimiter">(</span>auto simp<span class="delimiter">:</span> min_def max_def split<span class="delimiter">:</span> if_splits<span class="delimiter">)</span>
+  <span class="command">then</span> <span class="command">have</span> <span class="string">&quot;(replicate m x @ take (max m n - m) (rev xs)) ! min m n =
+    (replicate n x @ take (max m n - n) (rev ys)) ! min m n&quot;</span> <span class="command">by</span> simp
+  <span class="command">with</span> arg_cong<span class="delimiter">[</span>OF *<span class="delimiter">,</span> of length<span class="delimiter">,</span> simplified<span class="delimiter">]</span> assms&#39; <span class="command">show</span> <span class="string">&quot;m = n&quot;</span>
+    <span class="command">by</span> <span class="delimiter">(</span>cases <span class="string">&quot;xs = []&quot;</span> <span class="string">&quot;ys = []&quot;</span> rule<span class="delimiter">:</span> bool.exhaust<span class="delimiter">[</span>case_product bool.exhaust<span class="delimiter">]</span><span class="delimiter">)</span>
+      <span class="delimiter">(</span>auto simp<span class="delimiter">:</span> min_def nth_append split<span class="delimiter">:</span> if_splits<span class="delimiter">)</span>
+  <span class="command">with</span> * <span class="command">show</span> <span class="string">&quot;xs = ys&quot;</span> <span class="command">by</span> auto
+<span class="command">qed</span>
+
+<span class="command">lemma</span> enc_inj<span class="delimiter">[</span>simp<span class="delimiter">]</span><span class="delimiter">:</span> <span class="string">&quot;#<span class="hidden">&#8681;</span><sub>V</sub> \&lt;AA&gt; = #<span class="hidden">&#8681;</span><sub>V</sub> \&lt;BB&gt; ==&gt; enc \&lt;AA&gt; = enc \&lt;BB&gt; ==&gt; \&lt;AA&gt; = \&lt;BB&gt;&quot;</span>
+  <span class="command">using</span> MSB_greater
+  <span class="command">by</span> transfer <span class="delimiter">(</span>elim exE conjE<span class="delimiter">,</span> hypsubst<span class="delimiter">,</span> unfold prod.case Pair_eq Let_def<span class="delimiter">,</span> elim conjE<span class="delimiter">,</span> simp only<span class="delimiter">:</span><span class="delimiter">,</span>
+    subst <span class="delimiter">(</span>asm<span class="delimiter">)</span> append_replicate_inj<span class="delimiter">,</span>
+    erule <span class="delimiter">(</span>2<span class="delimiter">)</span> last_enc_atom_MSB<span class="delimiter">[</span>OF sym sym<span class="delimiter">]</span><span class="delimiter">,</span> erule last_enc_atom_MSB<span class="delimiter">[</span>OF refl refl<span class="delimiter">]</span><span class="delimiter">,</span>
+    auto simp<span class="delimiter">:</span> list_eq_iff_nth_eq<span class="delimiter">,</span> <span class="delimiter">(</span>metis less_max_iff_disj<span class="delimiter">)</span><span class="delimiter">+</span><span class="delimiter">)</span>
+
+<span class="command">lemma</span> length_enc<span class="delimiter">[</span>simp<span class="delimiter">]</span><span class="delimiter">:</span> <span class="string">&quot;length (enc \&lt;AA&gt;) = Length \&lt;AA&gt;&quot;</span>
+  <span class="command">by</span> transfer <span class="delimiter">(</span>auto simp<span class="delimiter">:</span> Let_def<span class="delimiter">)</span>
+
+<span class="command">lemma</span> in_set_encD<span class="delimiter">[</span>simp<span class="delimiter">]</span><span class="delimiter">:</span>
+  <span class="string">&quot;x &isin; set (enc \&lt;AA&gt;) ==&gt; #<span class="hidden">&#8681;</span><sub>V</sub> \&lt;AA&gt; = size_atom x&quot;</span>
+  <span class="command">by</span> transfer <span class="delimiter">(</span>auto simp<span class="delimiter">:</span> Let_def split<span class="delimiter">:</span> if_splits<span class="delimiter">)</span>
+
+<span class="command">lemma</span> fin_lift<span class="delimiter">[</span>simp<span class="delimiter">]</span><span class="delimiter">:</span> <span class="string">&quot;m |&isin;| lift bs i (I ! i) &lt;-&gt; (case m of 0 =&gt; bs ! i | Suc m =&gt; m |&isin;| I ! i)&quot;</span>
+  <span class="command">unfolding</span> lift_def upshift_def <span class="command">by</span> <span class="delimiter">(</span>auto split<span class="delimiter">:</span> nat.splits<span class="delimiter">)</span>
+
+<span class="command">lemma</span> enc_CONS<span class="delimiter">[</span>simp<span class="delimiter">]</span><span class="delimiter">:</span>
+  <span class="keyword2">assumes</span> <span class="string">&quot;#<span class="hidden">&#8681;</span><sub>V</sub> \&lt;AA&gt; = size_atom x&quot;</span>
+  <span class="keyword2">shows</span> <span class="string">&quot;enc (CONS x \&lt;AA&gt;) = x # enc \&lt;AA&gt;&quot;</span>
+  <span class="command">using</span> assms <span class="command">by</span> transfer <span class="delimiter">(</span>fastforce simp add<span class="delimiter">:</span> Let_def nth_append nth_Cons
+    simp del<span class="delimiter">:</span> upt_conv_Nil diff_is_0_eq&#39; atLeastLessThan_empty
+    split<span class="delimiter">:</span> prod.splits nat.splits intro<span class="delimiter">!</span><span class="delimiter">:</span> nth_equalityI<span class="delimiter">)</span>
+
+<span class="command">lemma</span> ex_Length_0<span class="delimiter">[</span>simp<span class="delimiter">]</span><span class="delimiter">:</span>
+  <span class="string">&quot;&exist;\&lt;AA&gt;. Length \&lt;AA&gt; = 0 &and; #<span class="hidden">&#8681;</span><sub>V</sub> \&lt;AA&gt; = idx&quot;</span>
+  <span class="command">by</span> transfer <span class="delimiter">(</span>auto intro<span class="delimiter">!</span><span class="delimiter">:</span> exI<span class="delimiter">[</span>of _ <span class="string">&quot;replicate m {||}&quot;</span> <span class="keyword2">for</span> m<span class="delimiter">]</span><span class="delimiter">)</span>
+
+<span class="command">lemma</span> is_empty_inj<span class="delimiter">[</span>simp<span class="delimiter">]</span><span class="delimiter">:</span> <span class="string">&quot;[|Length \&lt;AA&gt; = 0; Length \&lt;BB&gt; = 0; #<span class="hidden">&#8681;</span><sub>V</sub> \&lt;AA&gt; = #<span class="hidden">&#8681;</span><sub>V</sub> \&lt;BB&gt;|] ==&gt; \&lt;AA&gt; = \&lt;BB&gt;&quot;</span>
+  <span class="command">by</span> transfer <span class="delimiter">(</span>simp add<span class="delimiter">:</span> list_eq_iff_nth_eq split<span class="delimiter">:</span> prod.splits<span class="delimiter">,</span>
+    metis MSB_greater fMax_in less_nat_zero_code<span class="delimiter">)</span>
+
+<span class="command">lemma</span> set_&sigma;_length_atom<span class="delimiter">[</span>simp<span class="delimiter">]</span><span class="delimiter">:</span> <span class="string">&quot;(x &isin; set (&sigma; idx)) &lt;-&gt; idx = size_atom x&quot;</span>
+  <span class="command">by</span> transfer <span class="delimiter">(</span>auto simp<span class="delimiter">:</span> set_n_lists enum_UNIV image_iff intro<span class="delimiter">!</span><span class="delimiter">:</span> exI<span class="delimiter">[</span>of _ <span class="string">&quot;I1 @ I2&quot;</span> <span class="keyword2">for</span> I1 I2<span class="delimiter">]</span><span class="delimiter">)</span>
+
+<span class="command">lemma</span> fMin_less_Length<span class="delimiter">[</span>simp<span class="delimiter">]</span><span class="delimiter">:</span> <span class="string">&quot;x |&isin;| m1<span class="hidden">&#8663;</span><sup>\&lt;AA&gt;<span class="hidden">&#8662;</span></sup>k ==&gt; fMin (m1<span class="hidden">&#8663;</span><sup>\&lt;AA&gt;<span class="hidden">&#8662;</span></sup>k) &lt; Length \&lt;AA&gt;&quot;</span>
+  <span class="command">by</span> transfer
+    <span class="delimiter">(</span>force elim<span class="delimiter">:</span> order.strict_trans2<span class="delimiter">[</span>OF MSB_greater<span class="delimiter">,</span> rotated -1<span class="delimiter">]</span> intro<span class="delimiter">:</span> fMin_in split<span class="delimiter">:</span> order.splits<span class="delimiter">)</span>
+
+<span class="command">lemma</span> min_Length_fMin<span class="delimiter">[</span>simp<span class="delimiter">]</span><span class="delimiter">:</span> <span class="string">&quot;x |&isin;| m1<span class="hidden">&#8663;</span><sup>\&lt;AA&gt;<span class="hidden">&#8662;</span></sup>k ==&gt; min (Length \&lt;AA&gt;) (fMin (m1<span class="hidden">&#8663;</span><sup>\&lt;AA&gt;<span class="hidden">&#8662;</span></sup>k)) = fMin (m1<span class="hidden">&#8663;</span><sup>\&lt;AA&gt;<span class="hidden">&#8662;</span></sup>k)&quot;</span>
+  <span class="command">using</span> fMin_less_Length<span class="delimiter">[</span>of x m1 \&lt;AA&gt; k<span class="delimiter">]</span> <span class="command">unfolding</span> fMin_def <span class="command">by</span> auto
+
+<span class="command">lemma</span> assigns_less_Length<span class="delimiter">[</span>simp<span class="delimiter">]</span><span class="delimiter">:</span> <span class="string">&quot;x |&isin;| m1<span class="hidden">&#8663;</span><sup>\&lt;AA&gt;<span class="hidden">&#8662;</span></sup>k ==&gt; x &lt; Length \&lt;AA&gt;&quot;</span>
+  <span class="command">by</span> transfer <span class="delimiter">(</span>force dest<span class="delimiter">:</span> MSB_greater split<span class="delimiter">:</span> order.splits if_splits<span class="delimiter">)</span>
+
+<span class="command">lemma</span> Length_notin_assigns<span class="delimiter">[</span>simp<span class="delimiter">]</span><span class="delimiter">:</span> <span class="string">&quot;Length \&lt;AA&gt; |&notin;| m<span class="hidden">&#8663;</span><sup>\&lt;AA&gt;<span class="hidden">&#8662;</span></sup>k&quot;</span>
+  <span class="command">by</span> <span class="delimiter">(</span>metis assigns_less_Length less_not_refl<span class="delimiter">)</span>
+
+<span class="command">lemma</span> nth_zero<span class="delimiter">[</span>simp<span class="delimiter">]</span><span class="delimiter">:</span> <span class="string">&quot;LESS ord m (#<span class="hidden">&#8681;</span><sub>V</sub> \&lt;AA&gt;) ==&gt; &not; split case_order (zero (#<span class="hidden">&#8681;</span><sub>V</sub> \&lt;AA&gt;)) ord ! m&quot;</span>
+  <span class="command">by</span> transfer <span class="delimiter">(</span>auto split<span class="delimiter">:</span> order.splits<span class="delimiter">)</span>
+
+<span class="command">lemma</span> in_fimage_Suc<span class="delimiter">[</span>simp<span class="delimiter">]</span><span class="delimiter">:</span> <span class="string">&quot;x |&isin;| Suc |`| A &lt;-&gt; (&exist;y. y |&isin;| A &and; x = Suc y)&quot;</span>
+  <span class="command">by</span> blast
+
+<span class="command">lemma</span> fimage_Suc_inj<span class="delimiter">[</span>simp<span class="delimiter">]</span><span class="delimiter">:</span> <span class="string">&quot;Suc |`| A = Suc |`| B &lt;-&gt; A = B&quot;</span>
+  <span class="command">by</span> blast
+
+<span class="command">lemma</span> MSB_eq0_D<span class="delimiter">:</span> <span class="string">&quot;MSB I = 0 ==&gt; x &lt; length I ==&gt; I ! x = {||}&quot;</span>
+  <span class="command">unfolding</span> MSB_def <span class="command">by</span> <span class="delimiter">(</span>auto split<span class="delimiter">:</span> if_splits<span class="delimiter">)</span>
+
+<span class="command">lemma</span> Suc_in_fimage_Suc<span class="delimiter">:</span> <span class="string">&quot;Suc x |&isin;| Suc |`| X &lt;-&gt; x |&isin;| X&quot;</span>
+  <span class="command">by</span> auto
+
+<span class="command">lemma</span> Suc_in_fimage_Suc_o_Suc<span class="delimiter">[</span>simp<span class="delimiter">]</span><span class="delimiter">:</span> <span class="string">&quot;Suc x |&isin;| (Suc o Suc) |`| X &lt;-&gt; x |&isin;| Suc |`| X&quot;</span>
+  <span class="command">by</span> auto
+
+<span class="command">lemma</span> finsert_same_eq_iff<span class="delimiter">[</span>simp<span class="delimiter">]</span><span class="delimiter">:</span> <span class="string">&quot;finsert k X = finsert k Y &lt;-&gt; X |-| {|k|} = Y |-| {|k|}&quot;</span>
+  <span class="command">by</span> auto
+
+
+<span class="command">lemma</span> fimage_Suc_o_Suc_eq_fimage_Suc_iff<span class="delimiter">[</span>simp<span class="delimiter">]</span><span class="delimiter">:</span>
+  <span class="string">&quot;((Suc o Suc) |`| X = Suc |`| Y) &lt;-&gt; (Suc |`| X = Y)&quot;</span>
+  <span class="command">by</span> <span class="delimiter">(</span>metis fimage_Suc_inj fset.map_comp<span class="delimiter">)</span>
+
+<span class="command">lemma</span> fMax_image_Suc<span class="delimiter">[</span>simp<span class="delimiter">]</span><span class="delimiter">:</span> <span class="string">&quot;x |&isin;| P ==&gt; fMax (Suc |`| P) = Suc (fMax P)&quot;</span>
+  <span class="command">by</span> <span class="delimiter">(</span>rule fMax_eqI<span class="delimiter">)</span> <span class="delimiter">(</span>metis Suc_le_mono fMax_ge fimageE<span class="delimiter">,</span> metis fimageI fempty_iff fMax_in<span class="delimiter">)</span>
+
+<span class="command">lemma</span> len_downshift_helper<span class="delimiter">:</span>
+  <span class="string">&quot;x |&isin;| P ==&gt; Suc (fMax ((&lambda;x. x - Suc 0) |`| (P |-| {|0|}))) &ne; fMax P ==&gt; xa |&isin;| P ==&gt; xa = 0&quot;</span>
+<span class="command">proof</span> -
+  <span class="command">assume</span> a1<span class="delimiter">:</span> <span class="string">&quot;xa |&isin;| P&quot;</span>
+  <span class="command">assume</span> a2<span class="delimiter">:</span> <span class="string">&quot;Suc (fMax ((&lambda;x. x - Suc 0) |`| (P |-| {|0|}))) &ne; fMax P&quot;</span>
+  <span class="command">have</span> <span class="string">&quot;xa |&isin;| {|0|} --&gt; xa = 0&quot;</span> <span class="command">by</span> fastforce
+  <span class="command">moreover</span>
+  <span class="command">{</span> <span class="command">assume</span> <span class="string">&quot;xa |&notin;| {|0|}&quot;</span>
+    <span class="command">hence</span> <span class="string">&quot;0 |&notin;| P |-| {|0|} &and; xa |&notin;| {|0|}&quot;</span> <span class="command">by</span> blast
+    <span class="command">then</span> <span class="command">obtain</span> esk1<span class="hidden">&#8681;</span><sub>1</sub> <span class="delimiter">::</span> <span class="string">&quot;nat =&gt; nat&quot;</span> <span class="keyword2">where</span> <span class="string">&quot;xa = 0&quot;</span> <span class="command">using</span> a1 a2 <span class="command">by</span> <span class="delimiter">(</span>metis Suc_fMax_pred_fimage fMax_Diff_0 fminus_iff not0_implies_Suc<span class="delimiter">)</span> <span class="command">}</span>
+  <span class="command">ultimately</span> <span class="command">show</span> <span class="string">&quot;xa = 0&quot;</span> <span class="command">by</span> blast
+<span class="command">qed</span>
+
+<span class="command">declare</span> <span class="delimiter">[</span><span class="delimiter">[</span>goals_limit <span class="delimiter">=</span> 50<span class="delimiter">]</span><span class="delimiter">]</span>
+
+<span class="command">definition</span> <span class="string">&quot;restrict ord P = (case ord of FO =&gt; P &ne; {||} | SO =&gt; True)&quot;</span>
+<span class="command">definition</span> <span class="string">&quot;Restrict ord i = (case ord of FO =&gt; FBase (Q i) | SO =&gt; FBool True)&quot;</span>
+
+<span class="command">permanent_interpretation</span> WS1S<span class="delimiter">:</span> Word_Formula SUC LESS assigns nvars Extend CONS SNOC Length
+  extend size_atom zero eval downshift upshift finsert cut len restrict Restrict
+  left_formula0 FV0 find0 wf0 decr0 satisfies0 nullable0 lderiv0 rderiv0 undefined enc &sigma; ZERO
+  <span class="keyword2">defining</span> norm <span class="delimiter">=</span> <span class="string">&quot;Formula_Operations.norm find0 decr0&quot;</span>
+  <span class="keyword2">and</span> nFOr <span class="delimiter">=</span> <span class="string">&quot;Formula_Operations.nFOr :: formula =&gt; _&quot;</span>
+  <span class="keyword2">and</span> nFAnd <span class="delimiter">=</span> <span class="string">&quot;Formula_Operations.nFAnd :: formula =&gt; _&quot;</span>
+  <span class="keyword2">and</span> nFNot <span class="delimiter">=</span> <span class="string">&quot;Formula_Operations.nFNot :: formula =&gt; _&quot;</span>
+  <span class="keyword2">and</span> nFEx <span class="delimiter">=</span> <span class="string">&quot;Formula_Operations.nFEx find0 decr0&quot;</span>
+  <span class="keyword2">and</span> nFAll <span class="delimiter">=</span> <span class="string">&quot;Formula_Operations.nFAll find0 decr0&quot;</span>
+  <span class="keyword2">and</span> decr <span class="delimiter">=</span> <span class="string">&quot;Formula_Operations.decr decr0 :: _ =&gt; _ =&gt; formula =&gt; _&quot;</span>
+  <span class="keyword2">and</span> find <span class="delimiter">=</span> <span class="string">&quot;Formula_Operations.find find0 :: _ =&gt; _ =&gt; formula =&gt; _&quot;</span>
+  <span class="keyword2">and</span> FV <span class="delimiter">=</span> <span class="string">&quot;Formula_Operations.FV FV0&quot;</span>
+  <span class="keyword2">and</span> RESTR <span class="delimiter">=</span> <span class="string">&quot;Formula_Operations.RESTR Restrict&quot;</span>
+  <span class="keyword2">and</span> RESTRICT <span class="delimiter">=</span> <span class="string">&quot;Formula_Operations.RESTRICT Restrict FV0&quot;</span>
+  <span class="keyword2">and</span> deriv <span class="delimiter">=</span> <span class="string">&quot;&lambda;d0 (a :: atom) (&phi; :: formula). Formula_Operations.deriv extend d0 a &phi;&quot;</span>
+  <span class="keyword2">and</span> nullable <span class="delimiter">=</span> <span class="string">&quot;&lambda;&phi; :: formula. Formula_Operations.nullable nullable0 &phi;&quot;</span>
+  <span class="keyword2">and</span> fut_default <span class="delimiter">=</span> <span class="string">&quot;Formula.fut_default extend zero rderiv0&quot;</span>
+  <span class="keyword2">and</span> fut <span class="delimiter">=</span> <span class="string">&quot;Formula.fut extend zero find0 decr0 rderiv0&quot;</span>
+  <span class="keyword2">and</span> finalize <span class="delimiter">=</span> <span class="string">&quot;Formula.finalize SUC extend zero find0 decr0 rderiv0&quot;</span>
+  <span class="keyword2">and</span> final <span class="delimiter">=</span> <span class="string">&quot;Formula.final SUC extend zero find0 decr0
+     nullable0 rderiv0 :: idx =&gt; formula =&gt; _&quot;</span>
+  <span class="keyword2">and</span> ws1s_wf <span class="delimiter">=</span> <span class="string">&quot;Formula_Operations.wf SUC (wf0 :: idx =&gt; ws1s =&gt; _)&quot;</span>
+  <span class="keyword2">and</span> ws1s_left_formula <span class="delimiter">=</span> <span class="string">&quot;Formula_Operations.left_formula left_formula0 :: formula =&gt; _&quot;</span>
+  <span class="keyword2">and</span> check_eqv <span class="delimiter">=</span> <span class="string">&quot;&lambda;idx. DA.check_eqv (&sigma; idx)
+    (&lambda;&phi;. norm (RESTRICT &phi;) :: (ws1s, order) aformula)
+    (&lambda;a &phi;. norm (deriv (lderiv0 :: _ =&gt; _ =&gt; formula) (a :: atom) &phi;))
+    (final idx) (&lambda;&phi; :: formula. ws1s_wf idx &phi; &and; ws1s_left_formula &phi;)&quot;</span>
+  <span class="keyword2">and</span> bounded_check_eqv <span class="delimiter">=</span> <span class="string">&quot;&lambda;idx. DA.check_eqv (&sigma; idx)
+    (&lambda;&phi;. norm (RESTRICT &phi;) :: (ws1s, order) aformula)
+    (&lambda;a &phi;. norm (deriv (lderiv0 :: _ =&gt; _ =&gt; formula) (a :: atom) &phi;))
+    nullable (&lambda;&phi; :: formula. ws1s_wf idx &phi; &and; ws1s_left_formula &phi;)&quot;</span>
+  <span class="keyword2">and</span> automaton <span class="delimiter">=</span> <span class="string">&quot;DA.automaton
+    (&lambda;a &phi;. norm (deriv lderiv0 (a :: atom) &phi; :: formula))&quot;</span>
+<span class="command">proof</span>
+  <span class="command">fix</span> k idx <span class="keyword2">and</span> a <span class="delimiter">::</span> ws1s <span class="keyword2">and</span> l <span class="command">assume</span> <span class="string">&quot;wf0 (SUC k idx) a&quot;</span> <span class="string">&quot;LESS k l (SUC k idx)&quot;</span> <span class="string">&quot;&not; find0 k l a&quot;</span>
+  <span class="command">then</span> <span class="command">show</span> <span class="string">&quot;wf0 idx (decr0 k l a)&quot;</span>
+    <span class="command">by</span> <span class="delimiter">(</span>induct a<span class="delimiter">)</span> <span class="delimiter">(</span>unfold wf0.simps decr0.simps find0.simps<span class="delimiter">,</span>
+     <span class="delimiter">(</span>transfer<span class="delimiter">,</span> force simp<span class="delimiter">:</span> dec_def split<span class="delimiter">:</span> if_splits order.splits<span class="delimiter">)</span><span class="delimiter">+</span><span class="delimiter">)</span>
+<span class="command">next</span>
+  <span class="command">fix</span> k <span class="keyword2">and</span> a <span class="delimiter">::</span> ws1s <span class="keyword2">and</span> l <span class="command">assume</span> <span class="string">&quot;left_formula0 a&quot;</span>
+  <span class="command">then</span> <span class="command">show</span> <span class="string">&quot;left_formula0 (decr0 k l a)&quot;</span> <span class="command">by</span> <span class="delimiter">(</span>induct a<span class="delimiter">)</span> simp_all
+<span class="command">next</span>
+  <span class="command">fix</span> i k <span class="keyword2">and</span> a <span class="delimiter">::</span> ws1s <span class="keyword2">and</span> \&lt;AA&gt; <span class="delimiter">::</span> interp <span class="keyword2">and</span> P <span class="command">assume</span> <span class="string">&quot;&not; find0 k i a&quot;</span> <span class="string">&quot;LESS k i (SUC k (#<span class="hidden">&#8681;</span><sub>V</sub> \&lt;AA&gt;))&quot;</span>
+  <span class="command">then</span> <span class="command">show</span> <span class="string">&quot;satisfies0 (Extend k i \&lt;AA&gt; P) a = satisfies0 \&lt;AA&gt; (decr0 k i a)&quot;</span>
+    <span class="command">by</span> <span class="delimiter">(</span>induct a<span class="delimiter">)</span> <span class="delimiter">(</span>auto split<span class="delimiter">:</span> if_splits order.splits<span class="delimiter">)</span>
+<span class="command">next</span>
+  <span class="command">fix</span> idx <span class="keyword2">and</span> a <span class="delimiter">::</span> ws1s <span class="keyword2">and</span> x <span class="command">assume</span> <span class="string">&quot;wf0 idx a&quot;</span>
+  <span class="command">then</span> <span class="command">show</span> <span class="string">&quot;Formula_Operations.wf SUC wf0 idx (lderiv0 x a)&quot;</span>
+    <span class="command">by</span> <span class="delimiter">(</span>induct rule<span class="delimiter">:</span> lderiv0.induct<span class="delimiter">)</span>
+      <span class="delimiter">(</span>auto simp<span class="delimiter">:</span> Formula_Operations.wf.simps Let_def split<span class="delimiter">:</span> bool.splits order.splits<span class="delimiter">)</span>
+<span class="command">next</span>
+  <span class="command">fix</span> a <span class="delimiter">::</span> ws1s <span class="keyword2">and</span> x <span class="command">assume</span> <span class="string">&quot;left_formula0 a&quot;</span>
+  <span class="command">then</span> <span class="command">show</span> <span class="string">&quot;Formula_Operations.left_formula left_formula0 (lderiv0 x a)&quot;</span>
+    <span class="command">by</span> <span class="delimiter">(</span>induct a rule<span class="delimiter">:</span> lderiv0.induct<span class="delimiter">)</span>
+      <span class="delimiter">(</span>auto simp<span class="delimiter">:</span> Formula_Operations.left_formula.simps split<span class="delimiter">:</span> bool.splits<span class="delimiter">)</span>
+<span class="command">next</span>
+  <span class="command">fix</span> idx <span class="keyword2">and</span> a <span class="delimiter">::</span> ws1s <span class="keyword2">and</span> x <span class="command">assume</span> <span class="string">&quot;wf0 idx a&quot;</span>
+  <span class="command">then</span> <span class="command">show</span> <span class="string">&quot;Formula_Operations.wf SUC wf0 idx (rderiv0 x a)&quot;</span>
+    <span class="command">by</span> <span class="delimiter">(</span>induct rule<span class="delimiter">:</span> lderiv0.induct<span class="delimiter">)</span>
+      <span class="delimiter">(</span>auto simp<span class="delimiter">:</span> Formula_Operations.wf.simps Let_def split<span class="delimiter">:</span> bool.splits order.splits<span class="delimiter">)</span>
+<span class="command">next</span>
+  <span class="command">fix</span> \&lt;AA&gt; <span class="delimiter">::</span> interp <span class="keyword2">and</span> a <span class="delimiter">::</span> ws1s
+  <span class="command">assume</span> <span class="string">&quot;Length \&lt;AA&gt; = 0&quot;</span>
+  <span class="command">then</span> <span class="command">show</span> <span class="string">&quot;nullable0 a = satisfies0 \&lt;AA&gt; a&quot;</span>
+    <span class="command">by</span> <span class="delimiter">(</span>induct a<span class="delimiter">,</span> unfold wf0.simps nullable0.simps satisfies0.simps Let_def<span class="delimiter">)</span>
+      <span class="delimiter">(</span>transfer<span class="delimiter">,</span> <span class="delimiter">(</span>auto 0 2 dest<span class="delimiter">:</span> MSB_greater split<span class="delimiter">:</span> prod.splits if_splits<span class="delimiter">)</span> <span class="delimiter">[</span><span class="delimiter">]</span><span class="delimiter">)</span><span class="delimiter">+</span>
+<span class="command">next</span>
+   <span class="command">note</span> Formula_Operations.satisfies_gen.simps<span class="delimiter">[</span>simp<span class="delimiter">]</span> Let_def<span class="delimiter">[</span>simp<span class="delimiter">]</span> upshift_def<span class="delimiter">[</span>simp<span class="delimiter">]</span>
+   <span class="command">fix</span> x <span class="delimiter">::</span> atom <span class="keyword2">and</span> a <span class="delimiter">::</span> ws1s <span class="keyword2">and</span> \&lt;AA&gt; <span class="delimiter">::</span> interp
+   <span class="command">assume</span> <span class="string">&quot;wf0 (#<span class="hidden">&#8681;</span><sub>V</sub> \&lt;AA&gt;) a&quot;</span> <span class="string">&quot;#<span class="hidden">&#8681;</span><sub>V</sub> \&lt;AA&gt; = size_atom x&quot;</span>
+   <span class="command">then</span> <span class="command">show</span> <span class="string">&quot;Formula_Operations.satisfies Extend Length satisfies0 \&lt;AA&gt; (lderiv0 x a) = satisfies0 (CONS x \&lt;AA&gt;) a&quot;</span>
+   <span class="command">proof</span> <span class="delimiter">(</span>induct a<span class="delimiter">)</span>
+   <span class="command">qed</span> <span class="delimiter">(</span>auto split<span class="delimiter">:</span> prod.splits bool.splits<span class="delimiter">)</span>
+<span class="command">next</span>
+   <span class="command">note</span> Formula_Operations.satisfies_gen.simps<span class="delimiter">[</span>simp<span class="delimiter">]</span> Let_def<span class="delimiter">[</span>simp<span class="delimiter">]</span> upshift_def<span class="delimiter">[</span>simp<span class="delimiter">]</span>
+   <span class="command">fix</span> x <span class="delimiter">::</span> atom <span class="keyword2">and</span> a <span class="delimiter">::</span> ws1s <span class="keyword2">and</span> \&lt;AA&gt; <span class="delimiter">::</span> interp
+   <span class="command">assume</span> <span class="string">&quot;wf0 (#<span class="hidden">&#8681;</span><sub>V</sub> \&lt;AA&gt;) a&quot;</span> <span class="string">&quot;#<span class="hidden">&#8681;</span><sub>V</sub> \&lt;AA&gt; = size_atom x&quot;</span>
+   <span class="command">then</span> <span class="command">show</span> <span class="string">&quot;Formula_Operations.satisfies_bounded Extend Length len satisfies0 \&lt;AA&gt; (lderiv0 x a) = satisfies0 (CONS x \&lt;AA&gt;) a&quot;</span>
+   <span class="command">proof</span> <span class="delimiter">(</span>induct a<span class="delimiter">)</span>
+   <span class="command">qed</span> <span class="delimiter">(</span>auto split<span class="delimiter">:</span> prod.splits bool.splits<span class="delimiter">)</span>
+<span class="command">next</span>
+   <span class="command">note</span> Formula_Operations.satisfies_gen.simps<span class="delimiter">[</span>simp<span class="delimiter">]</span> Let_def<span class="delimiter">[</span>simp<span class="delimiter">]</span>
+   <span class="command">fix</span> x <span class="delimiter">::</span> atom <span class="keyword2">and</span> a <span class="delimiter">::</span> ws1s <span class="keyword2">and</span> \&lt;AA&gt; <span class="delimiter">::</span> interp
+   <span class="command">assume</span> <span class="string">&quot;wf0 (#<span class="hidden">&#8681;</span><sub>V</sub> \&lt;AA&gt;) a&quot;</span> <span class="string">&quot;#<span class="hidden">&#8681;</span><sub>V</sub> \&lt;AA&gt; = size_atom x&quot;</span>
+   <span class="command">then</span> <span class="command">show</span> <span class="string">&quot;Formula_Operations.satisfies_bounded Extend Length len satisfies0
+         \&lt;AA&gt; (rderiv0 x a) = satisfies0 (SNOC x \&lt;AA&gt;) a&quot;</span>
+   <span class="command">proof</span> <span class="delimiter">(</span>induct a<span class="delimiter">)</span>
+     <span class="command">case</span> Less <span class="command">then</span> <span class="command">show</span> <span class="var">?case</span> <span class="command">by</span> <span class="delimiter">(</span>auto split<span class="delimiter">:</span> prod.splits<span class="delimiter">)</span> <span class="delimiter">(</span>metis fMin_less_Length less_not_sym<span class="delimiter">)</span>
+   <span class="command">next</span>
+     <span class="command">case</span> LessT <span class="command">then</span> <span class="command">show</span> <span class="var">?case</span> <span class="command">by</span> <span class="delimiter">(</span>auto split<span class="delimiter">:</span> prod.splits<span class="delimiter">)</span> <span class="delimiter">(</span>metis fMin_less_Length less_not_sym<span class="delimiter">)</span>
+   <span class="command">next</span>
+     <span class="command">case</span> LessF <span class="command">then</span> <span class="command">show</span> <span class="var">?case</span> <span class="command">by</span> <span class="delimiter">(</span>auto split<span class="delimiter">:</span> prod.splits<span class="delimiter">)</span> <span class="delimiter">(</span>metis fMin_less_Length less_not_sym<span class="delimiter">)</span>
+   <span class="command">next</span>
+     <span class="command">case</span> In <span class="command">then</span> <span class="command">show</span> <span class="var">?case</span> <span class="command">by</span> <span class="delimiter">(</span>auto split<span class="delimiter">:</span> prod.splits<span class="delimiter">)</span> <span class="delimiter">(</span>metis fMin_less_Length less_not_sym<span class="delimiter">)</span><span class="delimiter">+</span>
+   <span class="command">next</span>
+     <span class="command">case</span> InT <span class="command">then</span> <span class="command">show</span> <span class="var">?case</span> <span class="command">by</span> <span class="delimiter">(</span>auto split<span class="delimiter">:</span> prod.splits<span class="delimiter">)</span> <span class="delimiter">(</span>metis fMin_less_Length less_not_sym<span class="delimiter">)</span><span class="delimiter">+</span>
+   <span class="command">qed</span> <span class="delimiter">(</span>auto split<span class="delimiter">:</span> prod.splits<span class="delimiter">)</span>
+<span class="command">next</span>
+   <span class="command">fix</span> a <span class="delimiter">::</span> ws1s <span class="keyword2">and</span> \&lt;AA&gt; \&lt;BB&gt; <span class="delimiter">::</span> interp
+   <span class="command">assume</span> <span class="string">&quot;wf0 (#<span class="hidden">&#8681;</span><sub>V</sub> \&lt;BB&gt;) a&quot;</span> <span class="string">&quot;#<span class="hidden">&#8681;</span><sub>V</sub> \&lt;AA&gt; = #<span class="hidden">&#8681;</span><sub>V</sub> \&lt;BB&gt;&quot;</span> <span class="string">&quot;(!!m k. LESS k m (#<span class="hidden">&#8681;</span><sub>V</sub> \&lt;BB&gt;) ==&gt; m<span class="hidden">&#8663;</span><sup>\&lt;AA&gt;<span class="hidden">&#8662;</span></sup>k = m<span class="hidden">&#8663;</span><sup>\&lt;BB&gt;<span class="hidden">&#8662;</span></sup>k)&quot;</span>
+     <span class="string">&quot;left_formula0 a&quot;</span>
+   <span class="command">then</span> <span class="command">show</span> <span class="string">&quot;satisfies0 \&lt;AA&gt; a &lt;-&gt; satisfies0 \&lt;BB&gt; a&quot;</span> <span class="command">by</span> <span class="delimiter">(</span>induct a<span class="delimiter">)</span> simp_all
+<span class="command">next</span>
+   <span class="command">fix</span> a <span class="delimiter">::</span> ws1s
+   <span class="command">let</span> <span class="var">?d</span> <span class="delimiter">=</span> <span class="string">&quot;Formula_Operations.deriv extend lderiv0&quot;</span>
+   <span class="command">def</span> &Phi; <span class="delimiter">&equiv;</span> <span class="string">&quot;&lambda;a. (case a of
+       Q i =&gt; {FBase (Q i), FBool True}
+     | Less i j =&gt; {FBase (Less i j), FBase (Q j), FBool True, FBool False}
+     | LessT i j =&gt; {FBase (LessT i j), FBool True, FBool False}
+     | LessF i j =&gt; {FBase (LessF i j), FBool True, FBool False}
+     | In i I =&gt; {FBase (In i I), FBool True, FBool False}
+     | InT i I =&gt; {FBase (InT i I), FBool True, FBool False}) :: (ws1s, order) aformula set&quot;</span>
+   <span class="command">{</span> <span class="command">fix</span> xs
+     <span class="command">note</span> Formula_Operations.fold_deriv_FBool<span class="delimiter">[</span>simp<span class="delimiter">]</span> Formula_Operations.deriv.simps<span class="delimiter">[</span>simp<span class="delimiter">]</span> &Phi;_def<span class="delimiter">[</span>simp<span class="delimiter">]</span>
+     <span class="command">have</span> <span class="string">&quot;&forall;a. fold ?d xs (FBase a) &isin; &Phi; a&quot;</span>
+      <span class="command">by</span> <span class="delimiter">(</span>induct xs<span class="delimiter">)</span> <span class="delimiter">(</span>auto split<span class="delimiter">:</span> ws1s.splits bool.splits if_splits<span class="delimiter">,</span> metis<span class="delimiter">+</span><span class="delimiter">)</span>
+   <span class="command">}</span>
+   <span class="command">moreover</span> <span class="command">have</span> <span class="string">&quot;finite (&Phi; a)&quot;</span> <span class="command">unfolding</span> &Phi;_def <span class="command">by</span> <span class="delimiter">(</span>auto split<span class="delimiter">:</span> ws1s.splits<span class="delimiter">)</span>
+   <span class="command">ultimately</span> <span class="command">show</span> <span class="string">&quot;finite {fold ?d xs (FBase a) | xs. True}&quot;</span>
+     <span class="command">by</span> <span class="delimiter">(</span>blast intro<span class="delimiter">:</span> finite_subset<span class="delimiter">)</span>
+<span class="command">next</span>
+   <span class="command">fix</span> a <span class="delimiter">::</span> ws1s
+   <span class="command">let</span> <span class="var">?d</span> <span class="delimiter">=</span> <span class="string">&quot;Formula_Operations.deriv extend rderiv0&quot;</span>
+   <span class="command">def</span> &Phi; <span class="delimiter">&equiv;</span> <span class="string">&quot;&lambda;a. (case a of
+       Q i =&gt; {FBase (Q i), FBool True}
+     | Less i j =&gt; {FBase (Less i j), FBase (LessF i j), FBase (LessT i j)}
+     | LessT i j =&gt; {FBase (LessT i j), FBase (LessF i j)}
+     | LessF i j =&gt; {FBase (LessF i j), FBase (LessT i j)}
+     | In i I =&gt; {FBase (In i I), FBase (InT i I)}
+     | InT i I =&gt; {FBase (InT i I), FBase (In i I)}) :: (ws1s, order) aformula set&quot;</span>
+   <span class="command">{</span> <span class="command">fix</span> x xs
+     <span class="command">note</span> Formula_Operations.fold_deriv_FBool<span class="delimiter">[</span>simp<span class="delimiter">]</span> Formula_Operations.deriv.simps<span class="delimiter">[</span>simp<span class="delimiter">]</span> &Phi;_def<span class="delimiter">[</span>simp<span class="delimiter">]</span>
+     <span class="command">have</span> <span class="string">&quot;&forall;a. fold ?d xs (FBase a) &isin; &Phi; a&quot;</span>
+      <span class="command">by</span> <span class="delimiter">(</span>induct xs<span class="delimiter">)</span> <span class="delimiter">(</span>auto split<span class="delimiter">:</span> ws1s.splits bool.splits if_splits<span class="delimiter">,</span> metis<span class="delimiter">+</span><span class="delimiter">)</span>
+   <span class="command">}</span>
+   <span class="command">moreover</span> <span class="command">have</span> <span class="string">&quot;finite (&Phi; a)&quot;</span> <span class="command">unfolding</span> &Phi;_def <span class="command">by</span> <span class="delimiter">(</span>auto split<span class="delimiter">:</span> ws1s.splits<span class="delimiter">)</span>
+   <span class="command">ultimately</span> <span class="command">show</span> <span class="string">&quot;finite {fold ?d xs (FBase a) | xs. True}&quot;</span>
+     <span class="command">by</span> <span class="delimiter">(</span>blast intro<span class="delimiter">:</span> finite_subset<span class="delimiter">)</span>
+<span class="command">next</span>
+  <span class="command">fix</span> k l <span class="keyword2">and</span> a <span class="delimiter">::</span> ws1s
+  <span class="command">show</span> <span class="string">&quot;find0 k l a &lt;-&gt; (k, l) &isin; set (FV0 a)&quot;</span> <span class="command">by</span> <span class="delimiter">(</span>induct a rule<span class="delimiter">:</span> find0.induct<span class="delimiter">)</span> auto
+<span class="command">next</span>
+  <span class="command">fix</span> a <span class="delimiter">::</span> ws1s
+  <span class="command">show</span> <span class="string">&quot;distinct (FV0 a)&quot;</span> <span class="command">by</span> <span class="delimiter">(</span>induct a<span class="delimiter">)</span> auto
+<span class="command">next</span>
+  <span class="command">fix</span> idx a k v
+  <span class="command">assume</span> <span class="string">&quot;wf0 idx a&quot;</span> <span class="string">&quot;(k, v) &isin; set (FV0 a)&quot;</span>
+  <span class="command">then</span> <span class="command">show</span> <span class="string">&quot;LESS k v idx&quot;</span> <span class="command">by</span> <span class="delimiter">(</span>induct a<span class="delimiter">)</span> auto
+<span class="command">next</span>
+  <span class="command">fix</span> idx k i
+  <span class="command">assume</span> <span class="string">&quot;LESS k i idx&quot;</span>
+  <span class="command">then</span> <span class="command">show</span> <span class="string">&quot;Formula_Operations.wf SUC wf0 idx (Restrict k i)&quot;</span>
+     <span class="command">unfolding</span> Restrict_def <span class="command">by</span> <span class="delimiter">(</span>cases k<span class="delimiter">)</span> <span class="delimiter">(</span>auto simp<span class="delimiter">:</span> Formula_Operations.wf.simps<span class="delimiter">)</span>
+<span class="command">next</span>
+  <span class="command">fix</span> k i
+  <span class="command">show</span> <span class="string">&quot;Formula_Operations.left_formula left_formula0 (Restrict k i)&quot;</span>
+    <span class="command">unfolding</span> Restrict_def <span class="command">by</span> <span class="delimiter">(</span>cases k<span class="delimiter">)</span> <span class="delimiter">(</span>auto simp<span class="delimiter">:</span> Formula_Operations.left_formula.simps<span class="delimiter">)</span>
+<span class="command">next</span>
+  <span class="command">fix</span> i \&lt;AA&gt; k P
+  <span class="command">assume</span> <span class="string">&quot;i<span class="hidden">&#8663;</span><sup>\&lt;AA&gt;<span class="hidden">&#8662;</span></sup>k = P&quot;</span>
+  <span class="command">then</span> <span class="command">show</span> <span class="string">&quot;restrict k P &lt;-&gt;
+    Formula_Operations.satisfies_gen Extend Length satisfies0 (&lambda;_ _ _. True) \&lt;AA&gt; (Restrict k i)&quot;</span>
+    <span class="command">unfolding</span> restrict_def Restrict_def
+    <span class="command">by</span> <span class="delimiter">(</span>cases k<span class="delimiter">)</span> <span class="delimiter">(</span>auto simp<span class="delimiter">:</span> Formula_Operations.satisfies_gen.simps<span class="delimiter">)</span>
+<span class="command">next</span>
+  <span class="command">fix</span> i \&lt;AA&gt; k P
+  <span class="command">assume</span> <span class="string">&quot;i<span class="hidden">&#8663;</span><sup>\&lt;AA&gt;<span class="hidden">&#8662;</span></sup>k = P&quot;</span>
+  <span class="command">then</span> <span class="command">show</span> <span class="string">&quot;restrict k P &lt;-&gt;
+    Formula_Operations.satisfies_gen Extend Length satisfies0 (&lambda;_ P n. len P &le; n) \&lt;AA&gt; (Restrict k i)&quot;</span>
+    <span class="command">unfolding</span> restrict_def Restrict_def
+    <span class="command">by</span> <span class="delimiter">(</span>cases k<span class="delimiter">)</span> <span class="delimiter">(</span>auto simp<span class="delimiter">:</span> Formula_Operations.satisfies_gen.simps<span class="delimiter">)</span>
+<span class="command">qed</span> <span class="delimiter">(</span>auto simp<span class="delimiter">:</span> Extend_commute_unsafe downshift_def upshift_def fimage_iff Suc_le_eq len_def
+  eval_def cut_def len_downshift_helper
+  dest<span class="delimiter">:</span> fMax_ge fMax_ffilter_less fMax_boundedD fsubset_fsingletonD
+  split<span class="delimiter">:</span> order.splits if_splits<span class="delimiter">)</span>
+
+<span class="comment">(*Workaround for code generation*)</span>
+<span class="command">lemma</span> <span class="delimiter">[</span>code<span class="delimiter">]</span><span class="delimiter">:</span> <span class="string">&quot;check_eqv idx r s =
+  ((ws1s_wf idx r &and; ws1s_left_formula r) &and; (ws1s_wf idx s &and; ws1s_left_formula s) &and;
+  (case rtrancl_while (&lambda;(p, q). final idx p = final idx q)
+    (&lambda;(p, q). map (&lambda;a. (norm (deriv lderiv0 a p), norm (deriv lderiv0 a q))) (&sigma; idx))
+    (norm (RESTRICT r), norm (RESTRICT s)) of
+    None =&gt; False
+  | Some ([], x) =&gt; True
+  | Some (a # list, x) =&gt; False))&quot;</span>
+  <span class="command">unfolding</span> check_eqv_def WS1S.check_eqv_def <span class="command">..</span>
+
+<span class="command">definition</span> while <span class="keyword2">where</span> <span class="delimiter">[</span>code del<span class="delimiter">,</span> code_abbrev<span class="delimiter">]</span><span class="delimiter">:</span> <span class="string">&quot;while idx &phi; = while_default (fut_default idx &phi;)&quot;</span>
+<span class="command">declare</span> while_default_code<span class="delimiter">[</span>of <span class="string">&quot;fut_default idx &phi;&quot;</span> <span class="keyword2">for</span> idx &phi;<span class="delimiter">,</span> folded while_def<span class="delimiter">,</span> code<span class="delimiter">]</span>
+
+<span class="command">export_code</span> check_eqv <span class="keyword2">in</span> SML <span class="keyword2">module_name</span> WS1S_Generated <span class="comment">(*file &quot;WS1S_Generated&quot;*)</span>
+
+<span class="command">lemma</span> check_eqv_sound<span class="delimiter">:</span> 
+  <span class="string">&quot;[|#<span class="hidden">&#8681;</span><sub>V</sub> \&lt;AA&gt; = idx; check_eqv idx &phi; &psi;|] ==&gt; (WS1S.sat \&lt;AA&gt; &phi; &lt;-&gt; WS1S.sat \&lt;AA&gt; &psi;)&quot;</span>
+  <span class="command">unfolding</span> check_eqv_def <span class="command">by</span> <span class="delimiter">(</span>rule WS1S.check_eqv_soundness<span class="delimiter">)</span>
+
+<span class="command">lemma</span> bounded_check_eqv_sound<span class="delimiter">:</span>
+  <span class="string">&quot;[|#<span class="hidden">&#8681;</span><sub>V</sub> \&lt;AA&gt; = idx; bounded_check_eqv idx &phi; &psi;|] ==&gt; (WS1S.sat<span class="hidden">&#8681;</span><sub>b</sub> \&lt;AA&gt; &phi; &lt;-&gt; WS1S.sat<span class="hidden">&#8681;</span><sub>b</sub> \&lt;AA&gt; &psi;)&quot;</span>
+  <span class="command">unfolding</span> bounded_check_eqv_def <span class="command">by</span> <span class="delimiter">(</span>rule WS1S.bounded_check_eqv_soundness<span class="delimiter">)</span>
+
+<span class="command">end</span>
+</pre>
+
+</div>
+</body>
+</html>

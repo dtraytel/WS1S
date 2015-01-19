@@ -1,0 +1,1100 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+<html xmlns="http://www.w3.org/1999/xhtml">
+<head>
+<meta http-equiv="Content-Type" content="text/html; charset=utf-8"/>
+<title>Theory FSet (Isabelle2014: August 2014)</title>
+<link media="all" rel="stylesheet" type="text/css" href="isabelle.css"/>
+</head>
+
+<body>
+<div class="head"><h1>Theory FSet</h1>
+
+<span class="command">theory</span> <span class="name">FSet</span><br/>
+<span class="keyword">imports</span> <a href="../../HOL/HOL/Conditionally_Complete_Lattices.html"><span class="name">Conditionally_Complete_Lattices</span></a><br/>
+
+</div>
+<div class="source">
+<pre><span class="comment">(*  Title:      HOL/Library/FSet.thy
+    Author:     Ondrej Kuncar, TU Muenchen
+    Author:     Cezary Kaliszyk and Christian Urban
+    Author:     Andrei Popescu, TU Muenchen
+*)</span>
+
+<span class="command">header</span> <span class="verbatim">{* Type of finite sets defined as a subtype of sets *}</span>
+
+<span class="command">theory</span> FSet
+<span class="keyword2">imports</span> Conditionally_Complete_Lattices
+<span class="keyword2">begin</span>
+
+<span class="command">subsection</span> <span class="verbatim">{* Definition of the type *}</span>
+
+<span class="command">typedef</span> <span class="tfree">&#39;a</span> fset <span class="delimiter">=</span> <span class="string">&quot;{A :: &#39;a set. finite A}&quot;</span>  <span class="keyword2">morphisms</span> fset Abs_fset
+<span class="command">by</span> auto
+
+<span class="command">setup_lifting</span> type_definition_fset
+
+
+<span class="command">subsection</span> <span class="verbatim">{* Basic operations and type class instantiations *}</span>
+
+<span class="comment">(* FIXME transfer and right_total vs. bi_total *)</span>
+<span class="command">instantiation</span> fset <span class="delimiter">::</span> <span class="delimiter">(</span>finite<span class="delimiter">)</span> finite
+<span class="keyword2">begin</span>
+<span class="command">instance</span> <span class="command">by</span> default <span class="delimiter">(</span>transfer<span class="delimiter">,</span> simp<span class="delimiter">)</span>
+<span class="command">end</span>
+
+<span class="command">instantiation</span> fset <span class="delimiter">::</span> <span class="delimiter">(</span>type<span class="delimiter">)</span> <span class="string">&quot;{bounded_lattice_bot, distrib_lattice, minus}&quot;</span>
+<span class="keyword2">begin</span>
+
+<span class="command">interpretation</span> lifting_syntax <span class="command">.</span>
+
+<span class="command">lift_definition</span> bot_fset <span class="delimiter">::</span> <span class="string">&quot;&#39;a fset&quot;</span> <span class="keyword2">is</span> <span class="string">&quot;{}&quot;</span> <span class="keyword2">parametric</span> empty_transfer <span class="command">by</span> simp 
+
+<span class="command">lift_definition</span> less_eq_fset <span class="delimiter">::</span> <span class="string">&quot;&#39;a fset =&gt; &#39;a fset =&gt; bool&quot;</span> <span class="keyword2">is</span> subset_eq <span class="keyword2">parametric</span> subset_transfer 
+  <span class="command">.</span>
+
+<span class="command">definition</span> less_fset <span class="delimiter">::</span> <span class="string">&quot;&#39;a fset =&gt; &#39;a fset =&gt; bool&quot;</span> <span class="keyword2">where</span> <span class="string">&quot;xs &lt; ys &equiv; xs &le; ys &and; xs &ne; (ys::&#39;a fset)&quot;</span>
+
+<span class="command">lemma</span> less_fset_transfer<span class="delimiter">[</span>transfer_rule<span class="delimiter">]</span><span class="delimiter">:</span>
+  <span class="keyword2">assumes</span> <span class="delimiter">[</span>transfer_rule<span class="delimiter">]</span><span class="delimiter">:</span> <span class="string">&quot;bi_unique A&quot;</span> 
+  <span class="keyword2">shows</span> <span class="string">&quot;((pcr_fset A) ===&gt; (pcr_fset A) ===&gt; op =) op &sub; op &lt;&quot;</span>
+  <span class="command">unfolding</span> less_fset_def<span class="delimiter">[</span>abs_def<span class="delimiter">]</span> psubset_eq<span class="delimiter">[</span>abs_def<span class="delimiter">]</span> <span class="command">by</span> transfer_prover
+  
+
+<span class="command">lift_definition</span> sup_fset <span class="delimiter">::</span> <span class="string">&quot;&#39;a fset =&gt; &#39;a fset =&gt; &#39;a fset&quot;</span> <span class="keyword2">is</span> union <span class="keyword2">parametric</span> union_transfer
+  <span class="command">by</span> simp
+
+<span class="command">lift_definition</span> inf_fset <span class="delimiter">::</span> <span class="string">&quot;&#39;a fset =&gt; &#39;a fset =&gt; &#39;a fset&quot;</span> <span class="keyword2">is</span> inter <span class="keyword2">parametric</span> inter_transfer
+  <span class="command">by</span> simp
+
+<span class="command">lift_definition</span> minus_fset <span class="delimiter">::</span> <span class="string">&quot;&#39;a fset =&gt; &#39;a fset =&gt; &#39;a fset&quot;</span> <span class="keyword2">is</span> minus <span class="keyword2">parametric</span> Diff_transfer
+  <span class="command">by</span> simp
+
+<span class="command">instance</span>
+<span class="command">by</span> default <span class="delimiter">(</span>transfer<span class="delimiter">,</span> auto<span class="delimiter">)</span><span class="delimiter">+</span>
+
+<span class="command">end</span>
+
+<span class="command">abbreviation</span> fempty <span class="delimiter">::</span> <span class="string">&quot;&#39;a fset&quot;</span> <span class="delimiter">(</span><span class="string">&quot;{||}&quot;</span><span class="delimiter">)</span> <span class="keyword2">where</span> <span class="string">&quot;{||} &equiv; bot&quot;</span>
+<span class="command">abbreviation</span> fsubset_eq <span class="delimiter">::</span> <span class="string">&quot;&#39;a fset =&gt; &#39;a fset =&gt; bool&quot;</span> <span class="delimiter">(</span><span class="keyword2">infix</span> <span class="string">&quot;|&sube;|&quot;</span> 50<span class="delimiter">)</span> <span class="keyword2">where</span> <span class="string">&quot;xs |&sube;| ys &equiv; xs &le; ys&quot;</span>
+<span class="command">abbreviation</span> fsubset <span class="delimiter">::</span> <span class="string">&quot;&#39;a fset =&gt; &#39;a fset =&gt; bool&quot;</span> <span class="delimiter">(</span><span class="keyword2">infix</span> <span class="string">&quot;|&sub;|&quot;</span> 50<span class="delimiter">)</span> <span class="keyword2">where</span> <span class="string">&quot;xs |&sub;| ys &equiv; xs &lt; ys&quot;</span>
+<span class="command">abbreviation</span> funion <span class="delimiter">::</span> <span class="string">&quot;&#39;a fset =&gt; &#39;a fset =&gt; &#39;a fset&quot;</span> <span class="delimiter">(</span><span class="keyword2">infixl</span> <span class="string">&quot;|&cup;|&quot;</span> 65<span class="delimiter">)</span> <span class="keyword2">where</span> <span class="string">&quot;xs |&cup;| ys &equiv; sup xs ys&quot;</span>
+<span class="command">abbreviation</span> finter <span class="delimiter">::</span> <span class="string">&quot;&#39;a fset =&gt; &#39;a fset =&gt; &#39;a fset&quot;</span> <span class="delimiter">(</span><span class="keyword2">infixl</span> <span class="string">&quot;|&cap;|&quot;</span> 65<span class="delimiter">)</span> <span class="keyword2">where</span> <span class="string">&quot;xs |&cap;| ys &equiv; inf xs ys&quot;</span>
+<span class="command">abbreviation</span> fminus <span class="delimiter">::</span> <span class="string">&quot;&#39;a fset =&gt; &#39;a fset =&gt; &#39;a fset&quot;</span> <span class="delimiter">(</span><span class="keyword2">infixl</span> <span class="string">&quot;|-|&quot;</span> 65<span class="delimiter">)</span> <span class="keyword2">where</span> <span class="string">&quot;xs |-| ys &equiv; minus xs ys&quot;</span>
+
+<span class="command">instantiation</span> fset <span class="delimiter">::</span> <span class="delimiter">(</span>equal<span class="delimiter">)</span> equal
+<span class="keyword2">begin</span>
+<span class="command">definition</span> <span class="string">&quot;HOL.equal A B &lt;-&gt; A |&sube;| B &and; B |&sube;| A&quot;</span>
+<span class="command">instance</span> <span class="command">by</span> intro_classes <span class="delimiter">(</span>auto simp add<span class="delimiter">:</span> equal_fset_def<span class="delimiter">)</span>
+<span class="command">end</span> 
+
+<span class="command">instantiation</span> fset <span class="delimiter">::</span> <span class="delimiter">(</span>type<span class="delimiter">)</span> conditionally_complete_lattice
+<span class="keyword2">begin</span>
+
+<span class="command">interpretation</span> lifting_syntax <span class="command">.</span>
+
+<span class="command">lemma</span> right_total_Inf_fset_transfer<span class="delimiter">:</span>
+  <span class="keyword2">assumes</span> <span class="delimiter">[</span>transfer_rule<span class="delimiter">]</span><span class="delimiter">:</span> <span class="string">&quot;bi_unique A&quot;</span> <span class="keyword2">and</span> <span class="delimiter">[</span>transfer_rule<span class="delimiter">]</span><span class="delimiter">:</span> <span class="string">&quot;right_total A&quot;</span>
+  <span class="keyword2">shows</span> <span class="string">&quot;(rel_set (rel_set A) ===&gt; rel_set A) 
+    (&lambda;S. if finite (Inter S &cap; Collect (Domainp A)) then Inter S &cap; Collect (Domainp A) else {}) 
+      (&lambda;S. if finite (Inf S) then Inf S else {})&quot;</span>
+    <span class="command">by</span> transfer_prover
+
+<span class="command">lemma</span> Inf_fset_transfer<span class="delimiter">:</span>
+  <span class="keyword2">assumes</span> <span class="delimiter">[</span>transfer_rule<span class="delimiter">]</span><span class="delimiter">:</span> <span class="string">&quot;bi_unique A&quot;</span> <span class="keyword2">and</span> <span class="delimiter">[</span>transfer_rule<span class="delimiter">]</span><span class="delimiter">:</span> <span class="string">&quot;bi_total A&quot;</span>
+  <span class="keyword2">shows</span> <span class="string">&quot;(rel_set (rel_set A) ===&gt; rel_set A) (&lambda;A. if finite (Inf A) then Inf A else {}) 
+    (&lambda;A. if finite (Inf A) then Inf A else {})&quot;</span>
+  <span class="command">by</span> transfer_prover
+
+<span class="command">lift_definition</span> Inf_fset <span class="delimiter">::</span> <span class="string">&quot;&#39;a fset set =&gt; &#39;a fset&quot;</span> <span class="keyword2">is</span> <span class="string">&quot;&lambda;A. if finite (Inf A) then Inf A else {}&quot;</span> 
+<span class="keyword2">parametric</span> right_total_Inf_fset_transfer Inf_fset_transfer <span class="command">by</span> simp
+
+<span class="command">lemma</span> Sup_fset_transfer<span class="delimiter">:</span>
+  <span class="keyword2">assumes</span> <span class="delimiter">[</span>transfer_rule<span class="delimiter">]</span><span class="delimiter">:</span> <span class="string">&quot;bi_unique A&quot;</span>
+  <span class="keyword2">shows</span> <span class="string">&quot;(rel_set (rel_set A) ===&gt; rel_set A) (&lambda;A. if finite (Sup A) then Sup A else {})
+  (&lambda;A. if finite (Sup A) then Sup A else {})&quot;</span> <span class="command">by</span> transfer_prover
+
+<span class="command">lift_definition</span> Sup_fset <span class="delimiter">::</span> <span class="string">&quot;&#39;a fset set =&gt; &#39;a fset&quot;</span> <span class="keyword2">is</span> <span class="string">&quot;&lambda;A. if finite (Sup A) then Sup A else {}&quot;</span>
+<span class="keyword2">parametric</span> Sup_fset_transfer <span class="command">by</span> simp
+
+<span class="command">lemma</span> finite_Sup<span class="delimiter">:</span> <span class="string">&quot;&exist;z. finite z &and; (&forall;a. a &isin; X --&gt; a &le; z) ==&gt; finite (Sup X)&quot;</span>
+<span class="command">by</span> <span class="delimiter">(</span>auto intro<span class="delimiter">:</span> finite_subset<span class="delimiter">)</span>
+
+<span class="command">lemma</span> transfer_bdd_below<span class="delimiter">[</span>transfer_rule<span class="delimiter">]</span><span class="delimiter">:</span> <span class="string">&quot;(rel_set (pcr_fset op =) ===&gt; op =) bdd_below bdd_below&quot;</span>
+  <span class="command">by</span> auto
+
+<span class="command">instance</span>
+<span class="command">proof</span> 
+  <span class="command">fix</span> x z <span class="delimiter">::</span> <span class="string">&quot;&#39;a fset&quot;</span>
+  <span class="command">fix</span> X <span class="delimiter">::</span> <span class="string">&quot;&#39;a fset set&quot;</span>
+  <span class="command">{</span>
+    <span class="command">assume</span> <span class="string">&quot;x &isin; X&quot;</span> <span class="string">&quot;bdd_below X&quot;</span> 
+    <span class="command">then</span> <span class="command">show</span> <span class="string">&quot;Inf X |&sube;| x&quot;</span> <span class="command">by</span> transfer auto
+  <span class="command">next</span>
+    <span class="command">assume</span> <span class="string">&quot;X &ne; {}&quot;</span> <span class="string">&quot;(!!x. x &isin; X ==&gt; z |&sube;| x)&quot;</span>
+    <span class="command">then</span> <span class="command">show</span> <span class="string">&quot;z |&sube;| Inf X&quot;</span> <span class="command">by</span> transfer <span class="delimiter">(</span>clarsimp<span class="delimiter">,</span> blast<span class="delimiter">)</span>
+  <span class="command">next</span>
+    <span class="command">assume</span> <span class="string">&quot;x &isin; X&quot;</span> <span class="string">&quot;bdd_above X&quot;</span>
+    <span class="command">then</span> <span class="command">obtain</span> z <span class="keyword2">where</span> <span class="string">&quot;x &isin; X&quot;</span> <span class="string">&quot;(!!x. x &isin; X ==&gt; x |&sube;| z)&quot;</span>
+      <span class="command">by</span> <span class="delimiter">(</span>auto simp<span class="delimiter">:</span> bdd_above_def<span class="delimiter">)</span>
+    <span class="command">then</span> <span class="command">show</span> <span class="string">&quot;x |&sube;| Sup X&quot;</span>
+      <span class="command">by</span> transfer <span class="delimiter">(</span>auto intro<span class="delimiter">!</span><span class="delimiter">:</span> finite_Sup<span class="delimiter">)</span>
+  <span class="command">next</span>
+    <span class="command">assume</span> <span class="string">&quot;X &ne; {}&quot;</span> <span class="string">&quot;(!!x. x &isin; X ==&gt; x |&sube;| z)&quot;</span>
+    <span class="command">then</span> <span class="command">show</span> <span class="string">&quot;Sup X |&sube;| z&quot;</span> <span class="command">by</span> transfer <span class="delimiter">(</span>clarsimp<span class="delimiter">,</span> blast<span class="delimiter">)</span>
+  <span class="command">}</span>
+<span class="command">qed</span>
+<span class="command">end</span>
+
+<span class="command">instantiation</span> fset <span class="delimiter">::</span> <span class="delimiter">(</span>finite<span class="delimiter">)</span> complete_lattice 
+<span class="keyword2">begin</span>
+
+<span class="command">lift_definition</span> top_fset <span class="delimiter">::</span> <span class="string">&quot;&#39;a fset&quot;</span> <span class="keyword2">is</span> UNIV <span class="keyword2">parametric</span> right_total_UNIV_transfer UNIV_transfer <span class="command">by</span> simp
+
+<span class="command">instance</span> <span class="command">by</span> default <span class="delimiter">(</span>transfer<span class="delimiter">,</span> auto<span class="delimiter">)</span><span class="delimiter">+</span>
+<span class="command">end</span>
+
+<span class="command">instantiation</span> fset <span class="delimiter">::</span> <span class="delimiter">(</span>finite<span class="delimiter">)</span> complete_boolean_algebra
+<span class="keyword2">begin</span>
+
+<span class="command">lift_definition</span> uminus_fset <span class="delimiter">::</span> <span class="string">&quot;&#39;a fset =&gt; &#39;a fset&quot;</span> <span class="keyword2">is</span> uminus 
+  <span class="keyword2">parametric</span> right_total_Compl_transfer Compl_transfer <span class="command">by</span> simp
+
+<span class="command">instance</span> <span class="command">by</span> <span class="delimiter">(</span>default<span class="delimiter">,</span> simp_all only<span class="delimiter">:</span> INF_def SUP_def<span class="delimiter">)</span> <span class="delimiter">(</span>transfer<span class="delimiter">,</span> simp add<span class="delimiter">:</span> Compl_partition Diff_eq<span class="delimiter">)</span><span class="delimiter">+</span>
+
+<span class="command">end</span>
+
+<span class="command">abbreviation</span> fUNIV <span class="delimiter">::</span> <span class="string">&quot;&#39;a::finite fset&quot;</span> <span class="keyword2">where</span> <span class="string">&quot;fUNIV &equiv; top&quot;</span>
+<span class="command">abbreviation</span> fuminus <span class="delimiter">::</span> <span class="string">&quot;&#39;a::finite fset =&gt; &#39;a fset&quot;</span> <span class="delimiter">(</span><span class="string">&quot;|-| _&quot;</span> <span class="delimiter">[</span>81<span class="delimiter">]</span> 80<span class="delimiter">)</span> <span class="keyword2">where</span> <span class="string">&quot;|-| x &equiv; uminus x&quot;</span>
+
+<span class="command">declare</span> top_fset.rep_eq<span class="delimiter">[</span>simp<span class="delimiter">]</span>
+
+
+<span class="command">subsection</span> <span class="verbatim">{* Other operations *}</span>
+
+<span class="command">lift_definition</span> finsert <span class="delimiter">::</span> <span class="string">&quot;&#39;a =&gt; &#39;a fset =&gt; &#39;a fset&quot;</span> <span class="keyword2">is</span> insert <span class="keyword2">parametric</span> Lifting_Set.insert_transfer
+  <span class="command">by</span> simp
+
+<span class="command">syntax</span>
+  <span class="string">&quot;_insert_fset&quot;</span>     <span class="delimiter">::</span> <span class="string">&quot;args =&gt; &#39;a fset&quot;</span>  <span class="delimiter">(</span><span class="string">&quot;{|(_)|}&quot;</span><span class="delimiter">)</span>
+
+<span class="command">translations</span>
+  <span class="string">&quot;{|x, xs|}&quot;</span> <span class="delimiter">==</span> <span class="string">&quot;CONST finsert x {|xs|}&quot;</span>
+  <span class="string">&quot;{|x|}&quot;</span>     <span class="delimiter">==</span> <span class="string">&quot;CONST finsert x {||}&quot;</span>
+
+<span class="command">lift_definition</span> fmember <span class="delimiter">::</span> <span class="string">&quot;&#39;a =&gt; &#39;a fset =&gt; bool&quot;</span> <span class="delimiter">(</span><span class="keyword2">infix</span> <span class="string">&quot;|&isin;|&quot;</span> 50<span class="delimiter">)</span> <span class="keyword2">is</span> Set.member 
+  <span class="keyword2">parametric</span> member_transfer <span class="command">.</span>
+
+<span class="command">abbreviation</span> notin_fset <span class="delimiter">::</span> <span class="string">&quot;&#39;a =&gt; &#39;a fset =&gt; bool&quot;</span> <span class="delimiter">(</span><span class="keyword2">infix</span> <span class="string">&quot;|&notin;|&quot;</span> 50<span class="delimiter">)</span> <span class="keyword2">where</span> <span class="string">&quot;x |&notin;| S &equiv; &not; (x |&isin;| S)&quot;</span>
+
+<span class="command">context</span>
+<span class="keyword2">begin</span>
+
+<span class="command">interpretation</span> lifting_syntax <span class="command">.</span>
+
+<span class="command">lift_definition</span> ffilter <span class="delimiter">::</span> <span class="string">&quot;(&#39;a =&gt; bool) =&gt; &#39;a fset =&gt; &#39;a fset&quot;</span> <span class="keyword2">is</span> Set.filter 
+  <span class="keyword2">parametric</span> Lifting_Set.filter_transfer <span class="command">unfolding</span> Set.filter_def <span class="command">by</span> simp
+
+<span class="command">lift_definition</span> fPow <span class="delimiter">::</span> <span class="string">&quot;&#39;a fset =&gt; &#39;a fset fset&quot;</span> <span class="keyword2">is</span> Pow <span class="keyword2">parametric</span> Pow_transfer 
+<span class="command">by</span> <span class="delimiter">(</span>simp add<span class="delimiter">:</span> finite_subset<span class="delimiter">)</span>
+
+<span class="command">lift_definition</span> fcard <span class="delimiter">::</span> <span class="string">&quot;&#39;a fset =&gt; nat&quot;</span> <span class="keyword2">is</span> card <span class="keyword2">parametric</span> card_transfer <span class="command">.</span>
+
+<span class="command">lift_definition</span> fimage <span class="delimiter">::</span> <span class="string">&quot;(&#39;a =&gt; &#39;b) =&gt; &#39;a fset =&gt; &#39;b fset&quot;</span> <span class="delimiter">(</span><span class="keyword2">infixr</span> <span class="string">&quot;|`|&quot;</span> 90<span class="delimiter">)</span> <span class="keyword2">is</span> image 
+  <span class="keyword2">parametric</span> image_transfer <span class="command">by</span> simp
+
+<span class="command">lift_definition</span> fthe_elem <span class="delimiter">::</span> <span class="string">&quot;&#39;a fset =&gt; &#39;a&quot;</span> <span class="keyword2">is</span> the_elem <span class="command">.</span>
+
+<span class="command">lift_definition</span> fbind <span class="delimiter">::</span> <span class="string">&quot;&#39;a fset =&gt; (&#39;a =&gt; &#39;b fset) =&gt; &#39;b fset&quot;</span> <span class="keyword2">is</span> Set.bind <span class="keyword2">parametric</span> bind_transfer 
+<span class="command">by</span> <span class="delimiter">(</span>simp add<span class="delimiter">:</span> Set.bind_def<span class="delimiter">)</span>
+
+<span class="command">lift_definition</span> ffUnion <span class="delimiter">::</span> <span class="string">&quot;&#39;a fset fset =&gt; &#39;a fset&quot;</span> <span class="keyword2">is</span> Union <span class="keyword2">parametric</span> Union_transfer <span class="command">by</span> simp
+
+<span class="command">lift_definition</span> fBall <span class="delimiter">::</span> <span class="string">&quot;&#39;a fset =&gt; (&#39;a =&gt; bool) =&gt; bool&quot;</span> <span class="keyword2">is</span> Ball <span class="keyword2">parametric</span> Ball_transfer <span class="command">.</span>
+<span class="command">lift_definition</span> fBex <span class="delimiter">::</span> <span class="string">&quot;&#39;a fset =&gt; (&#39;a =&gt; bool) =&gt; bool&quot;</span> <span class="keyword2">is</span> Bex <span class="keyword2">parametric</span> Bex_transfer <span class="command">.</span>
+
+<span class="command">lift_definition</span> ffold <span class="delimiter">::</span> <span class="string">&quot;(&#39;a =&gt; &#39;b =&gt; &#39;b) =&gt; &#39;b =&gt; &#39;a fset =&gt; &#39;b&quot;</span> <span class="keyword2">is</span> Finite_Set.fold <span class="command">.</span>
+
+
+<span class="command">subsection</span> <span class="verbatim">{* Transferred lemmas from Set.thy *}</span>
+
+<span class="command">lemmas</span> fset_eqI <span class="delimiter">=</span> set_eqI<span class="delimiter">[</span>Transfer.transferred<span class="delimiter">]</span>
+<span class="command">lemmas</span> fset_eq_iff<span class="delimiter">[</span>no_atp<span class="delimiter">]</span> <span class="delimiter">=</span> set_eq_iff<span class="delimiter">[</span>Transfer.transferred<span class="delimiter">]</span>
+<span class="command">lemmas</span> fBallI<span class="delimiter">[</span>intro<span class="delimiter">!</span><span class="delimiter">]</span> <span class="delimiter">=</span> ballI<span class="delimiter">[</span>Transfer.transferred<span class="delimiter">]</span>
+<span class="command">lemmas</span> fbspec<span class="delimiter">[</span>dest<span class="delimiter">?</span><span class="delimiter">]</span> <span class="delimiter">=</span> bspec<span class="delimiter">[</span>Transfer.transferred<span class="delimiter">]</span>
+<span class="command">lemmas</span> fBallE<span class="delimiter">[</span>elim<span class="delimiter">]</span> <span class="delimiter">=</span> ballE<span class="delimiter">[</span>Transfer.transferred<span class="delimiter">]</span>
+<span class="command">lemmas</span> fBexI<span class="delimiter">[</span>intro<span class="delimiter">]</span> <span class="delimiter">=</span> bexI<span class="delimiter">[</span>Transfer.transferred<span class="delimiter">]</span>
+<span class="command">lemmas</span> rev_fBexI<span class="delimiter">[</span>intro<span class="delimiter">?</span><span class="delimiter">]</span> <span class="delimiter">=</span> rev_bexI<span class="delimiter">[</span>Transfer.transferred<span class="delimiter">]</span>
+<span class="command">lemmas</span> fBexCI <span class="delimiter">=</span> bexCI<span class="delimiter">[</span>Transfer.transferred<span class="delimiter">]</span>
+<span class="command">lemmas</span> fBexE<span class="delimiter">[</span>elim<span class="delimiter">!</span><span class="delimiter">]</span> <span class="delimiter">=</span> bexE<span class="delimiter">[</span>Transfer.transferred<span class="delimiter">]</span>
+<span class="command">lemmas</span> fBall_triv<span class="delimiter">[</span>simp<span class="delimiter">]</span> <span class="delimiter">=</span> ball_triv<span class="delimiter">[</span>Transfer.transferred<span class="delimiter">]</span>
+<span class="command">lemmas</span> fBex_triv<span class="delimiter">[</span>simp<span class="delimiter">]</span> <span class="delimiter">=</span> bex_triv<span class="delimiter">[</span>Transfer.transferred<span class="delimiter">]</span>
+<span class="command">lemmas</span> fBex_triv_one_point1<span class="delimiter">[</span>simp<span class="delimiter">]</span> <span class="delimiter">=</span> bex_triv_one_point1<span class="delimiter">[</span>Transfer.transferred<span class="delimiter">]</span>
+<span class="command">lemmas</span> fBex_triv_one_point2<span class="delimiter">[</span>simp<span class="delimiter">]</span> <span class="delimiter">=</span> bex_triv_one_point2<span class="delimiter">[</span>Transfer.transferred<span class="delimiter">]</span>
+<span class="command">lemmas</span> fBex_one_point1<span class="delimiter">[</span>simp<span class="delimiter">]</span> <span class="delimiter">=</span> bex_one_point1<span class="delimiter">[</span>Transfer.transferred<span class="delimiter">]</span>
+<span class="command">lemmas</span> fBex_one_point2<span class="delimiter">[</span>simp<span class="delimiter">]</span> <span class="delimiter">=</span> bex_one_point2<span class="delimiter">[</span>Transfer.transferred<span class="delimiter">]</span>
+<span class="command">lemmas</span> fBall_one_point1<span class="delimiter">[</span>simp<span class="delimiter">]</span> <span class="delimiter">=</span> ball_one_point1<span class="delimiter">[</span>Transfer.transferred<span class="delimiter">]</span>
+<span class="command">lemmas</span> fBall_one_point2<span class="delimiter">[</span>simp<span class="delimiter">]</span> <span class="delimiter">=</span> ball_one_point2<span class="delimiter">[</span>Transfer.transferred<span class="delimiter">]</span>
+<span class="command">lemmas</span> fBall_conj_distrib <span class="delimiter">=</span> ball_conj_distrib<span class="delimiter">[</span>Transfer.transferred<span class="delimiter">]</span>
+<span class="command">lemmas</span> fBex_disj_distrib <span class="delimiter">=</span> bex_disj_distrib<span class="delimiter">[</span>Transfer.transferred<span class="delimiter">]</span>
+<span class="command">lemmas</span> fBall_cong <span class="delimiter">=</span> ball_cong<span class="delimiter">[</span>Transfer.transferred<span class="delimiter">]</span>
+<span class="command">lemmas</span> fBex_cong <span class="delimiter">=</span> bex_cong<span class="delimiter">[</span>Transfer.transferred<span class="delimiter">]</span>
+<span class="command">lemmas</span> fsubsetI<span class="delimiter">[</span>intro<span class="delimiter">!</span><span class="delimiter">]</span> <span class="delimiter">=</span> subsetI<span class="delimiter">[</span>Transfer.transferred<span class="delimiter">]</span>
+<span class="command">lemmas</span> fsubsetD<span class="delimiter">[</span>elim<span class="delimiter">,</span> intro<span class="delimiter">?</span><span class="delimiter">]</span> <span class="delimiter">=</span> subsetD<span class="delimiter">[</span>Transfer.transferred<span class="delimiter">]</span>
+<span class="command">lemmas</span> rev_fsubsetD<span class="delimiter">[</span>no_atp<span class="delimiter">,</span>intro<span class="delimiter">?</span><span class="delimiter">]</span> <span class="delimiter">=</span> rev_subsetD<span class="delimiter">[</span>Transfer.transferred<span class="delimiter">]</span>
+<span class="command">lemmas</span> fsubsetCE<span class="delimiter">[</span>no_atp<span class="delimiter">,</span>elim<span class="delimiter">]</span> <span class="delimiter">=</span> subsetCE<span class="delimiter">[</span>Transfer.transferred<span class="delimiter">]</span>
+<span class="command">lemmas</span> fsubset_eq<span class="delimiter">[</span>no_atp<span class="delimiter">]</span> <span class="delimiter">=</span> subset_eq<span class="delimiter">[</span>Transfer.transferred<span class="delimiter">]</span>
+<span class="command">lemmas</span> contra_fsubsetD<span class="delimiter">[</span>no_atp<span class="delimiter">]</span> <span class="delimiter">=</span> contra_subsetD<span class="delimiter">[</span>Transfer.transferred<span class="delimiter">]</span>
+<span class="command">lemmas</span> fsubset_refl <span class="delimiter">=</span> subset_refl<span class="delimiter">[</span>Transfer.transferred<span class="delimiter">]</span>
+<span class="command">lemmas</span> fsubset_trans <span class="delimiter">=</span> subset_trans<span class="delimiter">[</span>Transfer.transferred<span class="delimiter">]</span>
+<span class="command">lemmas</span> fset_rev_mp <span class="delimiter">=</span> set_rev_mp<span class="delimiter">[</span>Transfer.transferred<span class="delimiter">]</span>
+<span class="command">lemmas</span> fset_mp <span class="delimiter">=</span> set_mp<span class="delimiter">[</span>Transfer.transferred<span class="delimiter">]</span>
+<span class="command">lemmas</span> fsubset_not_fsubset_eq<span class="delimiter">[</span>code<span class="delimiter">]</span> <span class="delimiter">=</span> subset_not_subset_eq<span class="delimiter">[</span>Transfer.transferred<span class="delimiter">]</span>
+<span class="command">lemmas</span> eq_fmem_trans <span class="delimiter">=</span> eq_mem_trans<span class="delimiter">[</span>Transfer.transferred<span class="delimiter">]</span>
+<span class="command">lemmas</span> fsubset_antisym<span class="delimiter">[</span>intro<span class="delimiter">!</span><span class="delimiter">]</span> <span class="delimiter">=</span> subset_antisym<span class="delimiter">[</span>Transfer.transferred<span class="delimiter">]</span>
+<span class="command">lemmas</span> fequalityD1 <span class="delimiter">=</span> equalityD1<span class="delimiter">[</span>Transfer.transferred<span class="delimiter">]</span>
+<span class="command">lemmas</span> fequalityD2 <span class="delimiter">=</span> equalityD2<span class="delimiter">[</span>Transfer.transferred<span class="delimiter">]</span>
+<span class="command">lemmas</span> fequalityE <span class="delimiter">=</span> equalityE<span class="delimiter">[</span>Transfer.transferred<span class="delimiter">]</span>
+<span class="command">lemmas</span> fequalityCE<span class="delimiter">[</span>elim<span class="delimiter">]</span> <span class="delimiter">=</span> equalityCE<span class="delimiter">[</span>Transfer.transferred<span class="delimiter">]</span>
+<span class="command">lemmas</span> eqfset_imp_iff <span class="delimiter">=</span> eqset_imp_iff<span class="delimiter">[</span>Transfer.transferred<span class="delimiter">]</span>
+<span class="command">lemmas</span> eqfelem_imp_iff <span class="delimiter">=</span> eqelem_imp_iff<span class="delimiter">[</span>Transfer.transferred<span class="delimiter">]</span>
+<span class="command">lemmas</span> fempty_iff<span class="delimiter">[</span>simp<span class="delimiter">]</span> <span class="delimiter">=</span> empty_iff<span class="delimiter">[</span>Transfer.transferred<span class="delimiter">]</span>
+<span class="command">lemmas</span> fempty_fsubsetI<span class="delimiter">[</span>iff<span class="delimiter">]</span> <span class="delimiter">=</span> empty_subsetI<span class="delimiter">[</span>Transfer.transferred<span class="delimiter">]</span>
+<span class="command">lemmas</span> equalsffemptyI <span class="delimiter">=</span> equals0I<span class="delimiter">[</span>Transfer.transferred<span class="delimiter">]</span>
+<span class="command">lemmas</span> equalsffemptyD <span class="delimiter">=</span> equals0D<span class="delimiter">[</span>Transfer.transferred<span class="delimiter">]</span>
+<span class="command">lemmas</span> fBall_fempty<span class="delimiter">[</span>simp<span class="delimiter">]</span> <span class="delimiter">=</span> ball_empty<span class="delimiter">[</span>Transfer.transferred<span class="delimiter">]</span>
+<span class="command">lemmas</span> fBex_fempty<span class="delimiter">[</span>simp<span class="delimiter">]</span> <span class="delimiter">=</span> bex_empty<span class="delimiter">[</span>Transfer.transferred<span class="delimiter">]</span>
+<span class="command">lemmas</span> fPow_iff<span class="delimiter">[</span>iff<span class="delimiter">]</span> <span class="delimiter">=</span> Pow_iff<span class="delimiter">[</span>Transfer.transferred<span class="delimiter">]</span>
+<span class="command">lemmas</span> fPowI <span class="delimiter">=</span> PowI<span class="delimiter">[</span>Transfer.transferred<span class="delimiter">]</span>
+<span class="command">lemmas</span> fPowD <span class="delimiter">=</span> PowD<span class="delimiter">[</span>Transfer.transferred<span class="delimiter">]</span>
+<span class="command">lemmas</span> fPow_bottom <span class="delimiter">=</span> Pow_bottom<span class="delimiter">[</span>Transfer.transferred<span class="delimiter">]</span>
+<span class="command">lemmas</span> fPow_top <span class="delimiter">=</span> Pow_top<span class="delimiter">[</span>Transfer.transferred<span class="delimiter">]</span>
+<span class="command">lemmas</span> fPow_not_fempty <span class="delimiter">=</span> Pow_not_empty<span class="delimiter">[</span>Transfer.transferred<span class="delimiter">]</span>
+<span class="command">lemmas</span> finter_iff<span class="delimiter">[</span>simp<span class="delimiter">]</span> <span class="delimiter">=</span> Int_iff<span class="delimiter">[</span>Transfer.transferred<span class="delimiter">]</span>
+<span class="command">lemmas</span> finterI<span class="delimiter">[</span>intro<span class="delimiter">!</span><span class="delimiter">]</span> <span class="delimiter">=</span> IntI<span class="delimiter">[</span>Transfer.transferred<span class="delimiter">]</span>
+<span class="command">lemmas</span> finterD1 <span class="delimiter">=</span> IntD1<span class="delimiter">[</span>Transfer.transferred<span class="delimiter">]</span>
+<span class="command">lemmas</span> finterD2 <span class="delimiter">=</span> IntD2<span class="delimiter">[</span>Transfer.transferred<span class="delimiter">]</span>
+<span class="command">lemmas</span> finterE<span class="delimiter">[</span>elim<span class="delimiter">!</span><span class="delimiter">]</span> <span class="delimiter">=</span> IntE<span class="delimiter">[</span>Transfer.transferred<span class="delimiter">]</span>
+<span class="command">lemmas</span> funion_iff<span class="delimiter">[</span>simp<span class="delimiter">]</span> <span class="delimiter">=</span> Un_iff<span class="delimiter">[</span>Transfer.transferred<span class="delimiter">]</span>
+<span class="command">lemmas</span> funionI1<span class="delimiter">[</span>elim<span class="delimiter">?</span><span class="delimiter">]</span> <span class="delimiter">=</span> UnI1<span class="delimiter">[</span>Transfer.transferred<span class="delimiter">]</span>
+<span class="command">lemmas</span> funionI2<span class="delimiter">[</span>elim<span class="delimiter">?</span><span class="delimiter">]</span> <span class="delimiter">=</span> UnI2<span class="delimiter">[</span>Transfer.transferred<span class="delimiter">]</span>
+<span class="command">lemmas</span> funionCI<span class="delimiter">[</span>intro<span class="delimiter">!</span><span class="delimiter">]</span> <span class="delimiter">=</span> UnCI<span class="delimiter">[</span>Transfer.transferred<span class="delimiter">]</span>
+<span class="command">lemmas</span> funionE<span class="delimiter">[</span>elim<span class="delimiter">!</span><span class="delimiter">]</span> <span class="delimiter">=</span> UnE<span class="delimiter">[</span>Transfer.transferred<span class="delimiter">]</span>
+<span class="command">lemmas</span> fminus_iff<span class="delimiter">[</span>simp<span class="delimiter">]</span> <span class="delimiter">=</span> Diff_iff<span class="delimiter">[</span>Transfer.transferred<span class="delimiter">]</span>
+<span class="command">lemmas</span> fminusI<span class="delimiter">[</span>intro<span class="delimiter">!</span><span class="delimiter">]</span> <span class="delimiter">=</span> DiffI<span class="delimiter">[</span>Transfer.transferred<span class="delimiter">]</span>
+<span class="command">lemmas</span> fminusD1 <span class="delimiter">=</span> DiffD1<span class="delimiter">[</span>Transfer.transferred<span class="delimiter">]</span>
+<span class="command">lemmas</span> fminusD2 <span class="delimiter">=</span> DiffD2<span class="delimiter">[</span>Transfer.transferred<span class="delimiter">]</span>
+<span class="command">lemmas</span> fminusE<span class="delimiter">[</span>elim<span class="delimiter">!</span><span class="delimiter">]</span> <span class="delimiter">=</span> DiffE<span class="delimiter">[</span>Transfer.transferred<span class="delimiter">]</span>
+<span class="command">lemmas</span> finsert_iff<span class="delimiter">[</span>simp<span class="delimiter">]</span> <span class="delimiter">=</span> insert_iff<span class="delimiter">[</span>Transfer.transferred<span class="delimiter">]</span>
+<span class="command">lemmas</span> finsertI1 <span class="delimiter">=</span> insertI1<span class="delimiter">[</span>Transfer.transferred<span class="delimiter">]</span>
+<span class="command">lemmas</span> finsertI2 <span class="delimiter">=</span> insertI2<span class="delimiter">[</span>Transfer.transferred<span class="delimiter">]</span>
+<span class="command">lemmas</span> finsertE<span class="delimiter">[</span>elim<span class="delimiter">!</span><span class="delimiter">]</span> <span class="delimiter">=</span> insertE<span class="delimiter">[</span>Transfer.transferred<span class="delimiter">]</span>
+<span class="command">lemmas</span> finsertCI<span class="delimiter">[</span>intro<span class="delimiter">!</span><span class="delimiter">]</span> <span class="delimiter">=</span> insertCI<span class="delimiter">[</span>Transfer.transferred<span class="delimiter">]</span>
+<span class="command">lemmas</span> fsubset_finsert_iff <span class="delimiter">=</span> subset_insert_iff<span class="delimiter">[</span>Transfer.transferred<span class="delimiter">]</span>
+<span class="command">lemmas</span> finsert_ident <span class="delimiter">=</span> insert_ident<span class="delimiter">[</span>Transfer.transferred<span class="delimiter">]</span>
+<span class="command">lemmas</span> fsingletonI<span class="delimiter">[</span>intro<span class="delimiter">!</span><span class="delimiter">,</span>no_atp<span class="delimiter">]</span> <span class="delimiter">=</span> singletonI<span class="delimiter">[</span>Transfer.transferred<span class="delimiter">]</span>
+<span class="command">lemmas</span> fsingletonD<span class="delimiter">[</span>dest<span class="delimiter">!</span><span class="delimiter">,</span>no_atp<span class="delimiter">]</span> <span class="delimiter">=</span> singletonD<span class="delimiter">[</span>Transfer.transferred<span class="delimiter">]</span>
+<span class="command">lemmas</span> fsingleton_iff <span class="delimiter">=</span> singleton_iff<span class="delimiter">[</span>Transfer.transferred<span class="delimiter">]</span>
+<span class="command">lemmas</span> fsingleton_inject<span class="delimiter">[</span>dest<span class="delimiter">!</span><span class="delimiter">]</span> <span class="delimiter">=</span> singleton_inject<span class="delimiter">[</span>Transfer.transferred<span class="delimiter">]</span>
+<span class="command">lemmas</span> fsingleton_finsert_inj_eq<span class="delimiter">[</span>iff<span class="delimiter">,</span>no_atp<span class="delimiter">]</span> <span class="delimiter">=</span> singleton_insert_inj_eq<span class="delimiter">[</span>Transfer.transferred<span class="delimiter">]</span>
+<span class="command">lemmas</span> fsingleton_finsert_inj_eq&#39;<span class="delimiter">[</span>iff<span class="delimiter">,</span>no_atp<span class="delimiter">]</span> <span class="delimiter">=</span> singleton_insert_inj_eq&#39;<span class="delimiter">[</span>Transfer.transferred<span class="delimiter">]</span>
+<span class="command">lemmas</span> fsubset_fsingletonD <span class="delimiter">=</span> subset_singletonD<span class="delimiter">[</span>Transfer.transferred<span class="delimiter">]</span>
+<span class="command">lemmas</span> fminus_single_finsert <span class="delimiter">=</span> diff_single_insert<span class="delimiter">[</span>Transfer.transferred<span class="delimiter">]</span>
+<span class="command">lemmas</span> fdoubleton_eq_iff <span class="delimiter">=</span> doubleton_eq_iff<span class="delimiter">[</span>Transfer.transferred<span class="delimiter">]</span>
+<span class="command">lemmas</span> funion_fsingleton_iff <span class="delimiter">=</span> Un_singleton_iff<span class="delimiter">[</span>Transfer.transferred<span class="delimiter">]</span>
+<span class="command">lemmas</span> fsingleton_funion_iff <span class="delimiter">=</span> singleton_Un_iff<span class="delimiter">[</span>Transfer.transferred<span class="delimiter">]</span>
+<span class="command">lemmas</span> fimage_eqI<span class="delimiter">[</span>simp<span class="delimiter">,</span> intro<span class="delimiter">]</span> <span class="delimiter">=</span> image_eqI<span class="delimiter">[</span>Transfer.transferred<span class="delimiter">]</span>
+<span class="command">lemmas</span> fimageI <span class="delimiter">=</span> imageI<span class="delimiter">[</span>Transfer.transferred<span class="delimiter">]</span>
+<span class="command">lemmas</span> rev_fimage_eqI <span class="delimiter">=</span> rev_image_eqI<span class="delimiter">[</span>Transfer.transferred<span class="delimiter">]</span>
+<span class="command">lemmas</span> fimageE<span class="delimiter">[</span>elim<span class="delimiter">!</span><span class="delimiter">]</span> <span class="delimiter">=</span> imageE<span class="delimiter">[</span>Transfer.transferred<span class="delimiter">]</span>
+<span class="command">lemmas</span> Compr_fimage_eq <span class="delimiter">=</span> Compr_image_eq<span class="delimiter">[</span>Transfer.transferred<span class="delimiter">]</span>
+<span class="command">lemmas</span> fimage_funion <span class="delimiter">=</span> image_Un<span class="delimiter">[</span>Transfer.transferred<span class="delimiter">]</span>
+<span class="command">lemmas</span> fimage_iff <span class="delimiter">=</span> image_iff<span class="delimiter">[</span>Transfer.transferred<span class="delimiter">]</span>
+<span class="command">lemmas</span> fimage_fsubset_iff<span class="delimiter">[</span>no_atp<span class="delimiter">]</span> <span class="delimiter">=</span> image_subset_iff<span class="delimiter">[</span>Transfer.transferred<span class="delimiter">]</span>
+<span class="command">lemmas</span> fimage_fsubsetI <span class="delimiter">=</span> image_subsetI<span class="delimiter">[</span>Transfer.transferred<span class="delimiter">]</span>
+<span class="command">lemmas</span> fimage_ident<span class="delimiter">[</span>simp<span class="delimiter">]</span> <span class="delimiter">=</span> image_ident<span class="delimiter">[</span>Transfer.transferred<span class="delimiter">]</span>
+<span class="command">lemmas</span> split_if_fmem1 <span class="delimiter">=</span> split_if_mem1<span class="delimiter">[</span>Transfer.transferred<span class="delimiter">]</span>
+<span class="command">lemmas</span> split_if_fmem2 <span class="delimiter">=</span> split_if_mem2<span class="delimiter">[</span>Transfer.transferred<span class="delimiter">]</span>
+<span class="command">lemmas</span> pfsubsetI<span class="delimiter">[</span>intro<span class="delimiter">!</span><span class="delimiter">,</span>no_atp<span class="delimiter">]</span> <span class="delimiter">=</span> psubsetI<span class="delimiter">[</span>Transfer.transferred<span class="delimiter">]</span>
+<span class="command">lemmas</span> pfsubsetE<span class="delimiter">[</span>elim<span class="delimiter">!</span><span class="delimiter">,</span>no_atp<span class="delimiter">]</span> <span class="delimiter">=</span> psubsetE<span class="delimiter">[</span>Transfer.transferred<span class="delimiter">]</span>
+<span class="command">lemmas</span> pfsubset_finsert_iff <span class="delimiter">=</span> psubset_insert_iff<span class="delimiter">[</span>Transfer.transferred<span class="delimiter">]</span>
+<span class="command">lemmas</span> pfsubset_eq <span class="delimiter">=</span> psubset_eq<span class="delimiter">[</span>Transfer.transferred<span class="delimiter">]</span>
+<span class="command">lemmas</span> pfsubset_imp_fsubset <span class="delimiter">=</span> psubset_imp_subset<span class="delimiter">[</span>Transfer.transferred<span class="delimiter">]</span>
+<span class="command">lemmas</span> pfsubset_trans <span class="delimiter">=</span> psubset_trans<span class="delimiter">[</span>Transfer.transferred<span class="delimiter">]</span>
+<span class="command">lemmas</span> pfsubsetD <span class="delimiter">=</span> psubsetD<span class="delimiter">[</span>Transfer.transferred<span class="delimiter">]</span>
+<span class="command">lemmas</span> pfsubset_fsubset_trans <span class="delimiter">=</span> psubset_subset_trans<span class="delimiter">[</span>Transfer.transferred<span class="delimiter">]</span>
+<span class="command">lemmas</span> fsubset_pfsubset_trans <span class="delimiter">=</span> subset_psubset_trans<span class="delimiter">[</span>Transfer.transferred<span class="delimiter">]</span>
+<span class="command">lemmas</span> pfsubset_imp_ex_fmem <span class="delimiter">=</span> psubset_imp_ex_mem<span class="delimiter">[</span>Transfer.transferred<span class="delimiter">]</span>
+<span class="command">lemmas</span> fimage_fPow_mono <span class="delimiter">=</span> image_Pow_mono<span class="delimiter">[</span>Transfer.transferred<span class="delimiter">]</span>
+<span class="command">lemmas</span> fimage_fPow_surj <span class="delimiter">=</span> image_Pow_surj<span class="delimiter">[</span>Transfer.transferred<span class="delimiter">]</span>
+<span class="command">lemmas</span> fsubset_finsertI <span class="delimiter">=</span> subset_insertI<span class="delimiter">[</span>Transfer.transferred<span class="delimiter">]</span>
+<span class="command">lemmas</span> fsubset_finsertI2 <span class="delimiter">=</span> subset_insertI2<span class="delimiter">[</span>Transfer.transferred<span class="delimiter">]</span>
+<span class="command">lemmas</span> fsubset_finsert <span class="delimiter">=</span> subset_insert<span class="delimiter">[</span>Transfer.transferred<span class="delimiter">]</span>
+<span class="command">lemmas</span> funion_upper1 <span class="delimiter">=</span> Un_upper1<span class="delimiter">[</span>Transfer.transferred<span class="delimiter">]</span>
+<span class="command">lemmas</span> funion_upper2 <span class="delimiter">=</span> Un_upper2<span class="delimiter">[</span>Transfer.transferred<span class="delimiter">]</span>
+<span class="command">lemmas</span> funion_least <span class="delimiter">=</span> Un_least<span class="delimiter">[</span>Transfer.transferred<span class="delimiter">]</span>
+<span class="command">lemmas</span> finter_lower1 <span class="delimiter">=</span> Int_lower1<span class="delimiter">[</span>Transfer.transferred<span class="delimiter">]</span>
+<span class="command">lemmas</span> finter_lower2 <span class="delimiter">=</span> Int_lower2<span class="delimiter">[</span>Transfer.transferred<span class="delimiter">]</span>
+<span class="command">lemmas</span> finter_greatest <span class="delimiter">=</span> Int_greatest<span class="delimiter">[</span>Transfer.transferred<span class="delimiter">]</span>
+<span class="command">lemmas</span> fminus_fsubset <span class="delimiter">=</span> Diff_subset<span class="delimiter">[</span>Transfer.transferred<span class="delimiter">]</span>
+<span class="command">lemmas</span> fminus_fsubset_conv <span class="delimiter">=</span> Diff_subset_conv<span class="delimiter">[</span>Transfer.transferred<span class="delimiter">]</span>
+<span class="command">lemmas</span> fsubset_fempty<span class="delimiter">[</span>simp<span class="delimiter">]</span> <span class="delimiter">=</span> subset_empty<span class="delimiter">[</span>Transfer.transferred<span class="delimiter">]</span>
+<span class="command">lemmas</span> not_pfsubset_fempty<span class="delimiter">[</span>iff<span class="delimiter">]</span> <span class="delimiter">=</span> not_psubset_empty<span class="delimiter">[</span>Transfer.transferred<span class="delimiter">]</span>
+<span class="command">lemmas</span> finsert_is_funion <span class="delimiter">=</span> insert_is_Un<span class="delimiter">[</span>Transfer.transferred<span class="delimiter">]</span>
+<span class="command">lemmas</span> finsert_not_fempty<span class="delimiter">[</span>simp<span class="delimiter">]</span> <span class="delimiter">=</span> insert_not_empty<span class="delimiter">[</span>Transfer.transferred<span class="delimiter">]</span>
+<span class="command">lemmas</span> fempty_not_finsert <span class="delimiter">=</span> empty_not_insert<span class="delimiter">[</span>Transfer.transferred<span class="delimiter">]</span>
+<span class="command">lemmas</span> finsert_absorb <span class="delimiter">=</span> insert_absorb<span class="delimiter">[</span>Transfer.transferred<span class="delimiter">]</span>
+<span class="command">lemmas</span> finsert_absorb2<span class="delimiter">[</span>simp<span class="delimiter">]</span> <span class="delimiter">=</span> insert_absorb2<span class="delimiter">[</span>Transfer.transferred<span class="delimiter">]</span>
+<span class="command">lemmas</span> finsert_commute <span class="delimiter">=</span> insert_commute<span class="delimiter">[</span>Transfer.transferred<span class="delimiter">]</span>
+<span class="command">lemmas</span> finsert_fsubset<span class="delimiter">[</span>simp<span class="delimiter">]</span> <span class="delimiter">=</span> insert_subset<span class="delimiter">[</span>Transfer.transferred<span class="delimiter">]</span>
+<span class="command">lemmas</span> finsert_inter_finsert<span class="delimiter">[</span>simp<span class="delimiter">]</span> <span class="delimiter">=</span> insert_inter_insert<span class="delimiter">[</span>Transfer.transferred<span class="delimiter">]</span>
+<span class="command">lemmas</span> finsert_disjoint<span class="delimiter">[</span>simp<span class="delimiter">,</span>no_atp<span class="delimiter">]</span> <span class="delimiter">=</span> insert_disjoint<span class="delimiter">[</span>Transfer.transferred<span class="delimiter">]</span>
+<span class="command">lemmas</span> disjoint_finsert<span class="delimiter">[</span>simp<span class="delimiter">,</span>no_atp<span class="delimiter">]</span> <span class="delimiter">=</span> disjoint_insert<span class="delimiter">[</span>Transfer.transferred<span class="delimiter">]</span>
+<span class="command">lemmas</span> fimage_fempty<span class="delimiter">[</span>simp<span class="delimiter">]</span> <span class="delimiter">=</span> image_empty<span class="delimiter">[</span>Transfer.transferred<span class="delimiter">]</span>
+<span class="command">lemmas</span> fimage_finsert<span class="delimiter">[</span>simp<span class="delimiter">]</span> <span class="delimiter">=</span> image_insert<span class="delimiter">[</span>Transfer.transferred<span class="delimiter">]</span>
+<span class="command">lemmas</span> fimage_constant <span class="delimiter">=</span> image_constant<span class="delimiter">[</span>Transfer.transferred<span class="delimiter">]</span>
+<span class="command">lemmas</span> fimage_constant_conv <span class="delimiter">=</span> image_constant_conv<span class="delimiter">[</span>Transfer.transferred<span class="delimiter">]</span>
+<span class="command">lemmas</span> fimage_fimage <span class="delimiter">=</span> image_image<span class="delimiter">[</span>Transfer.transferred<span class="delimiter">]</span>
+<span class="command">lemmas</span> finsert_fimage<span class="delimiter">[</span>simp<span class="delimiter">]</span> <span class="delimiter">=</span> insert_image<span class="delimiter">[</span>Transfer.transferred<span class="delimiter">]</span>
+<span class="command">lemmas</span> fimage_is_fempty<span class="delimiter">[</span>iff<span class="delimiter">]</span> <span class="delimiter">=</span> image_is_empty<span class="delimiter">[</span>Transfer.transferred<span class="delimiter">]</span>
+<span class="command">lemmas</span> fempty_is_fimage<span class="delimiter">[</span>iff<span class="delimiter">]</span> <span class="delimiter">=</span> empty_is_image<span class="delimiter">[</span>Transfer.transferred<span class="delimiter">]</span>
+<span class="command">lemmas</span> fimage_cong <span class="delimiter">=</span> image_cong<span class="delimiter">[</span>Transfer.transferred<span class="delimiter">]</span>
+<span class="command">lemmas</span> fimage_finter_fsubset <span class="delimiter">=</span> image_Int_subset<span class="delimiter">[</span>Transfer.transferred<span class="delimiter">]</span>
+<span class="command">lemmas</span> fimage_fminus_fsubset <span class="delimiter">=</span> image_diff_subset<span class="delimiter">[</span>Transfer.transferred<span class="delimiter">]</span>
+<span class="command">lemmas</span> finter_absorb <span class="delimiter">=</span> Int_absorb<span class="delimiter">[</span>Transfer.transferred<span class="delimiter">]</span>
+<span class="command">lemmas</span> finter_left_absorb <span class="delimiter">=</span> Int_left_absorb<span class="delimiter">[</span>Transfer.transferred<span class="delimiter">]</span>
+<span class="command">lemmas</span> finter_commute <span class="delimiter">=</span> Int_commute<span class="delimiter">[</span>Transfer.transferred<span class="delimiter">]</span>
+<span class="command">lemmas</span> finter_left_commute <span class="delimiter">=</span> Int_left_commute<span class="delimiter">[</span>Transfer.transferred<span class="delimiter">]</span>
+<span class="command">lemmas</span> finter_assoc <span class="delimiter">=</span> Int_assoc<span class="delimiter">[</span>Transfer.transferred<span class="delimiter">]</span>
+<span class="command">lemmas</span> finter_ac <span class="delimiter">=</span> Int_ac<span class="delimiter">[</span>Transfer.transferred<span class="delimiter">]</span>
+<span class="command">lemmas</span> finter_absorb1 <span class="delimiter">=</span> Int_absorb1<span class="delimiter">[</span>Transfer.transferred<span class="delimiter">]</span>
+<span class="command">lemmas</span> finter_absorb2 <span class="delimiter">=</span> Int_absorb2<span class="delimiter">[</span>Transfer.transferred<span class="delimiter">]</span>
+<span class="command">lemmas</span> finter_fempty_left <span class="delimiter">=</span> Int_empty_left<span class="delimiter">[</span>Transfer.transferred<span class="delimiter">]</span>
+<span class="command">lemmas</span> finter_fempty_right <span class="delimiter">=</span> Int_empty_right<span class="delimiter">[</span>Transfer.transferred<span class="delimiter">]</span>
+<span class="command">lemmas</span> disjoint_iff_fnot_equal <span class="delimiter">=</span> disjoint_iff_not_equal<span class="delimiter">[</span>Transfer.transferred<span class="delimiter">]</span>
+<span class="command">lemmas</span> finter_funion_distrib <span class="delimiter">=</span> Int_Un_distrib<span class="delimiter">[</span>Transfer.transferred<span class="delimiter">]</span>
+<span class="command">lemmas</span> finter_funion_distrib2 <span class="delimiter">=</span> Int_Un_distrib2<span class="delimiter">[</span>Transfer.transferred<span class="delimiter">]</span>
+<span class="command">lemmas</span> finter_fsubset_iff<span class="delimiter">[</span>no_atp<span class="delimiter">,</span> simp<span class="delimiter">]</span> <span class="delimiter">=</span> Int_subset_iff<span class="delimiter">[</span>Transfer.transferred<span class="delimiter">]</span>
+<span class="command">lemmas</span> funion_absorb <span class="delimiter">=</span> Un_absorb<span class="delimiter">[</span>Transfer.transferred<span class="delimiter">]</span>
+<span class="command">lemmas</span> funion_left_absorb <span class="delimiter">=</span> Un_left_absorb<span class="delimiter">[</span>Transfer.transferred<span class="delimiter">]</span>
+<span class="command">lemmas</span> funion_commute <span class="delimiter">=</span> Un_commute<span class="delimiter">[</span>Transfer.transferred<span class="delimiter">]</span>
+<span class="command">lemmas</span> funion_left_commute <span class="delimiter">=</span> Un_left_commute<span class="delimiter">[</span>Transfer.transferred<span class="delimiter">]</span>
+<span class="command">lemmas</span> funion_assoc <span class="delimiter">=</span> Un_assoc<span class="delimiter">[</span>Transfer.transferred<span class="delimiter">]</span>
+<span class="command">lemmas</span> funion_ac <span class="delimiter">=</span> Un_ac<span class="delimiter">[</span>Transfer.transferred<span class="delimiter">]</span>
+<span class="command">lemmas</span> funion_absorb1 <span class="delimiter">=</span> Un_absorb1<span class="delimiter">[</span>Transfer.transferred<span class="delimiter">]</span>
+<span class="command">lemmas</span> funion_absorb2 <span class="delimiter">=</span> Un_absorb2<span class="delimiter">[</span>Transfer.transferred<span class="delimiter">]</span>
+<span class="command">lemmas</span> funion_fempty_left <span class="delimiter">=</span> Un_empty_left<span class="delimiter">[</span>Transfer.transferred<span class="delimiter">]</span>
+<span class="command">lemmas</span> funion_fempty_right <span class="delimiter">=</span> Un_empty_right<span class="delimiter">[</span>Transfer.transferred<span class="delimiter">]</span>
+<span class="command">lemmas</span> funion_finsert_left<span class="delimiter">[</span>simp<span class="delimiter">]</span> <span class="delimiter">=</span> Un_insert_left<span class="delimiter">[</span>Transfer.transferred<span class="delimiter">]</span>
+<span class="command">lemmas</span> funion_finsert_right<span class="delimiter">[</span>simp<span class="delimiter">]</span> <span class="delimiter">=</span> Un_insert_right<span class="delimiter">[</span>Transfer.transferred<span class="delimiter">]</span>
+<span class="command">lemmas</span> finter_finsert_left <span class="delimiter">=</span> Int_insert_left<span class="delimiter">[</span>Transfer.transferred<span class="delimiter">]</span>
+<span class="command">lemmas</span> finter_finsert_left_ifffempty<span class="delimiter">[</span>simp<span class="delimiter">]</span> <span class="delimiter">=</span> Int_insert_left_if0<span class="delimiter">[</span>Transfer.transferred<span class="delimiter">]</span>
+<span class="command">lemmas</span> finter_finsert_left_if1<span class="delimiter">[</span>simp<span class="delimiter">]</span> <span class="delimiter">=</span> Int_insert_left_if1<span class="delimiter">[</span>Transfer.transferred<span class="delimiter">]</span>
+<span class="command">lemmas</span> finter_finsert_right <span class="delimiter">=</span> Int_insert_right<span class="delimiter">[</span>Transfer.transferred<span class="delimiter">]</span>
+<span class="command">lemmas</span> finter_finsert_right_ifffempty<span class="delimiter">[</span>simp<span class="delimiter">]</span> <span class="delimiter">=</span> Int_insert_right_if0<span class="delimiter">[</span>Transfer.transferred<span class="delimiter">]</span>
+<span class="command">lemmas</span> finter_finsert_right_if1<span class="delimiter">[</span>simp<span class="delimiter">]</span> <span class="delimiter">=</span> Int_insert_right_if1<span class="delimiter">[</span>Transfer.transferred<span class="delimiter">]</span>
+<span class="command">lemmas</span> funion_finter_distrib <span class="delimiter">=</span> Un_Int_distrib<span class="delimiter">[</span>Transfer.transferred<span class="delimiter">]</span>
+<span class="command">lemmas</span> funion_finter_distrib2 <span class="delimiter">=</span> Un_Int_distrib2<span class="delimiter">[</span>Transfer.transferred<span class="delimiter">]</span>
+<span class="command">lemmas</span> funion_finter_crazy <span class="delimiter">=</span> Un_Int_crazy<span class="delimiter">[</span>Transfer.transferred<span class="delimiter">]</span>
+<span class="command">lemmas</span> fsubset_funion_eq <span class="delimiter">=</span> subset_Un_eq<span class="delimiter">[</span>Transfer.transferred<span class="delimiter">]</span>
+<span class="command">lemmas</span> funion_fempty<span class="delimiter">[</span>iff<span class="delimiter">]</span> <span class="delimiter">=</span> Un_empty<span class="delimiter">[</span>Transfer.transferred<span class="delimiter">]</span>
+<span class="command">lemmas</span> funion_fsubset_iff<span class="delimiter">[</span>no_atp<span class="delimiter">,</span> simp<span class="delimiter">]</span> <span class="delimiter">=</span> Un_subset_iff<span class="delimiter">[</span>Transfer.transferred<span class="delimiter">]</span>
+<span class="command">lemmas</span> funion_fminus_finter <span class="delimiter">=</span> Un_Diff_Int<span class="delimiter">[</span>Transfer.transferred<span class="delimiter">]</span>
+<span class="command">lemmas</span> fminus_finter2 <span class="delimiter">=</span> Diff_Int2<span class="delimiter">[</span>Transfer.transferred<span class="delimiter">]</span>
+<span class="command">lemmas</span> funion_finter_assoc_eq <span class="delimiter">=</span> Un_Int_assoc_eq<span class="delimiter">[</span>Transfer.transferred<span class="delimiter">]</span>
+<span class="command">lemmas</span> fBall_funion <span class="delimiter">=</span> ball_Un<span class="delimiter">[</span>Transfer.transferred<span class="delimiter">]</span>
+<span class="command">lemmas</span> fBex_funion <span class="delimiter">=</span> bex_Un<span class="delimiter">[</span>Transfer.transferred<span class="delimiter">]</span>
+<span class="command">lemmas</span> fminus_eq_fempty_iff<span class="delimiter">[</span>simp<span class="delimiter">,</span>no_atp<span class="delimiter">]</span> <span class="delimiter">=</span> Diff_eq_empty_iff<span class="delimiter">[</span>Transfer.transferred<span class="delimiter">]</span>
+<span class="command">lemmas</span> fminus_cancel<span class="delimiter">[</span>simp<span class="delimiter">]</span> <span class="delimiter">=</span> Diff_cancel<span class="delimiter">[</span>Transfer.transferred<span class="delimiter">]</span>
+<span class="command">lemmas</span> fminus_idemp<span class="delimiter">[</span>simp<span class="delimiter">]</span> <span class="delimiter">=</span> Diff_idemp<span class="delimiter">[</span>Transfer.transferred<span class="delimiter">]</span>
+<span class="command">lemmas</span> fminus_triv <span class="delimiter">=</span> Diff_triv<span class="delimiter">[</span>Transfer.transferred<span class="delimiter">]</span>
+<span class="command">lemmas</span> fempty_fminus<span class="delimiter">[</span>simp<span class="delimiter">]</span> <span class="delimiter">=</span> empty_Diff<span class="delimiter">[</span>Transfer.transferred<span class="delimiter">]</span>
+<span class="command">lemmas</span> fminus_fempty<span class="delimiter">[</span>simp<span class="delimiter">]</span> <span class="delimiter">=</span> Diff_empty<span class="delimiter">[</span>Transfer.transferred<span class="delimiter">]</span>
+<span class="command">lemmas</span> fminus_finsertffempty<span class="delimiter">[</span>simp<span class="delimiter">,</span>no_atp<span class="delimiter">]</span> <span class="delimiter">=</span> Diff_insert0<span class="delimiter">[</span>Transfer.transferred<span class="delimiter">]</span>
+<span class="command">lemmas</span> fminus_finsert <span class="delimiter">=</span> Diff_insert<span class="delimiter">[</span>Transfer.transferred<span class="delimiter">]</span>
+<span class="command">lemmas</span> fminus_finsert2 <span class="delimiter">=</span> Diff_insert2<span class="delimiter">[</span>Transfer.transferred<span class="delimiter">]</span>
+<span class="command">lemmas</span> finsert_fminus_if <span class="delimiter">=</span> insert_Diff_if<span class="delimiter">[</span>Transfer.transferred<span class="delimiter">]</span>
+<span class="command">lemmas</span> finsert_fminus1<span class="delimiter">[</span>simp<span class="delimiter">]</span> <span class="delimiter">=</span> insert_Diff1<span class="delimiter">[</span>Transfer.transferred<span class="delimiter">]</span>
+<span class="command">lemmas</span> finsert_fminus_single<span class="delimiter">[</span>simp<span class="delimiter">]</span> <span class="delimiter">=</span> insert_Diff_single<span class="delimiter">[</span>Transfer.transferred<span class="delimiter">]</span>
+<span class="command">lemmas</span> finsert_fminus <span class="delimiter">=</span> insert_Diff<span class="delimiter">[</span>Transfer.transferred<span class="delimiter">]</span>
+<span class="command">lemmas</span> fminus_finsert_absorb <span class="delimiter">=</span> Diff_insert_absorb<span class="delimiter">[</span>Transfer.transferred<span class="delimiter">]</span>
+<span class="command">lemmas</span> fminus_disjoint<span class="delimiter">[</span>simp<span class="delimiter">]</span> <span class="delimiter">=</span> Diff_disjoint<span class="delimiter">[</span>Transfer.transferred<span class="delimiter">]</span>
+<span class="command">lemmas</span> fminus_partition <span class="delimiter">=</span> Diff_partition<span class="delimiter">[</span>Transfer.transferred<span class="delimiter">]</span>
+<span class="command">lemmas</span> double_fminus <span class="delimiter">=</span> double_diff<span class="delimiter">[</span>Transfer.transferred<span class="delimiter">]</span>
+<span class="command">lemmas</span> funion_fminus_cancel<span class="delimiter">[</span>simp<span class="delimiter">]</span> <span class="delimiter">=</span> Un_Diff_cancel<span class="delimiter">[</span>Transfer.transferred<span class="delimiter">]</span>
+<span class="command">lemmas</span> funion_fminus_cancel2<span class="delimiter">[</span>simp<span class="delimiter">]</span> <span class="delimiter">=</span> Un_Diff_cancel2<span class="delimiter">[</span>Transfer.transferred<span class="delimiter">]</span>
+<span class="command">lemmas</span> fminus_funion <span class="delimiter">=</span> Diff_Un<span class="delimiter">[</span>Transfer.transferred<span class="delimiter">]</span>
+<span class="command">lemmas</span> fminus_finter <span class="delimiter">=</span> Diff_Int<span class="delimiter">[</span>Transfer.transferred<span class="delimiter">]</span>
+<span class="command">lemmas</span> funion_fminus <span class="delimiter">=</span> Un_Diff<span class="delimiter">[</span>Transfer.transferred<span class="delimiter">]</span>
+<span class="command">lemmas</span> finter_fminus <span class="delimiter">=</span> Int_Diff<span class="delimiter">[</span>Transfer.transferred<span class="delimiter">]</span>
+<span class="command">lemmas</span> fminus_finter_distrib <span class="delimiter">=</span> Diff_Int_distrib<span class="delimiter">[</span>Transfer.transferred<span class="delimiter">]</span>
+<span class="command">lemmas</span> fminus_finter_distrib2 <span class="delimiter">=</span> Diff_Int_distrib2<span class="delimiter">[</span>Transfer.transferred<span class="delimiter">]</span>
+<span class="command">lemmas</span> fUNIV_bool<span class="delimiter">[</span>no_atp<span class="delimiter">]</span> <span class="delimiter">=</span> UNIV_bool<span class="delimiter">[</span>Transfer.transferred<span class="delimiter">]</span>
+<span class="command">lemmas</span> fPow_fempty<span class="delimiter">[</span>simp<span class="delimiter">]</span> <span class="delimiter">=</span> Pow_empty<span class="delimiter">[</span>Transfer.transferred<span class="delimiter">]</span>
+<span class="command">lemmas</span> fPow_finsert <span class="delimiter">=</span> Pow_insert<span class="delimiter">[</span>Transfer.transferred<span class="delimiter">]</span>
+<span class="command">lemmas</span> funion_fPow_fsubset <span class="delimiter">=</span> Un_Pow_subset<span class="delimiter">[</span>Transfer.transferred<span class="delimiter">]</span>
+<span class="command">lemmas</span> fPow_finter_eq<span class="delimiter">[</span>simp<span class="delimiter">]</span> <span class="delimiter">=</span> Pow_Int_eq<span class="delimiter">[</span>Transfer.transferred<span class="delimiter">]</span>
+<span class="command">lemmas</span> fset_eq_fsubset <span class="delimiter">=</span> set_eq_subset<span class="delimiter">[</span>Transfer.transferred<span class="delimiter">]</span>
+<span class="command">lemmas</span> fsubset_iff<span class="delimiter">[</span>no_atp<span class="delimiter">]</span> <span class="delimiter">=</span> subset_iff<span class="delimiter">[</span>Transfer.transferred<span class="delimiter">]</span>
+<span class="command">lemmas</span> fsubset_iff_pfsubset_eq <span class="delimiter">=</span> subset_iff_psubset_eq<span class="delimiter">[</span>Transfer.transferred<span class="delimiter">]</span>
+<span class="command">lemmas</span> all_not_fin_conv<span class="delimiter">[</span>simp<span class="delimiter">]</span> <span class="delimiter">=</span> all_not_in_conv<span class="delimiter">[</span>Transfer.transferred<span class="delimiter">]</span>
+<span class="command">lemmas</span> ex_fin_conv <span class="delimiter">=</span> ex_in_conv<span class="delimiter">[</span>Transfer.transferred<span class="delimiter">]</span>
+<span class="command">lemmas</span> fimage_mono <span class="delimiter">=</span> image_mono<span class="delimiter">[</span>Transfer.transferred<span class="delimiter">]</span>
+<span class="command">lemmas</span> fPow_mono <span class="delimiter">=</span> Pow_mono<span class="delimiter">[</span>Transfer.transferred<span class="delimiter">]</span>
+<span class="command">lemmas</span> finsert_mono <span class="delimiter">=</span> insert_mono<span class="delimiter">[</span>Transfer.transferred<span class="delimiter">]</span>
+<span class="command">lemmas</span> funion_mono <span class="delimiter">=</span> Un_mono<span class="delimiter">[</span>Transfer.transferred<span class="delimiter">]</span>
+<span class="command">lemmas</span> finter_mono <span class="delimiter">=</span> Int_mono<span class="delimiter">[</span>Transfer.transferred<span class="delimiter">]</span>
+<span class="command">lemmas</span> fminus_mono <span class="delimiter">=</span> Diff_mono<span class="delimiter">[</span>Transfer.transferred<span class="delimiter">]</span>
+<span class="command">lemmas</span> fin_mono <span class="delimiter">=</span> in_mono<span class="delimiter">[</span>Transfer.transferred<span class="delimiter">]</span>
+<span class="command">lemmas</span> fthe_felem_eq<span class="delimiter">[</span>simp<span class="delimiter">]</span> <span class="delimiter">=</span> the_elem_eq<span class="delimiter">[</span>Transfer.transferred<span class="delimiter">]</span>
+<span class="command">lemmas</span> fLeast_mono <span class="delimiter">=</span> Least_mono<span class="delimiter">[</span>Transfer.transferred<span class="delimiter">]</span>
+<span class="command">lemmas</span> fbind_fbind <span class="delimiter">=</span> bind_bind<span class="delimiter">[</span>Transfer.transferred<span class="delimiter">]</span>
+<span class="command">lemmas</span> fempty_fbind<span class="delimiter">[</span>simp<span class="delimiter">]</span> <span class="delimiter">=</span> empty_bind<span class="delimiter">[</span>Transfer.transferred<span class="delimiter">]</span>
+<span class="command">lemmas</span> nonfempty_fbind_const <span class="delimiter">=</span> nonempty_bind_const<span class="delimiter">[</span>Transfer.transferred<span class="delimiter">]</span>
+<span class="command">lemmas</span> fbind_const <span class="delimiter">=</span> bind_const<span class="delimiter">[</span>Transfer.transferred<span class="delimiter">]</span>
+<span class="command">lemmas</span> ffmember_filter<span class="delimiter">[</span>simp<span class="delimiter">]</span> <span class="delimiter">=</span> member_filter<span class="delimiter">[</span>Transfer.transferred<span class="delimiter">]</span>
+<span class="command">lemmas</span> fequalityI <span class="delimiter">=</span> equalityI<span class="delimiter">[</span>Transfer.transferred<span class="delimiter">]</span>
+
+
+<span class="command">subsection</span> <span class="verbatim">{* Additional lemmas*}</span>
+
+<span class="command">subsubsection</span> <span class="verbatim">{* @{text fsingleton} *}</span>
+
+<span class="command">lemmas</span> fsingletonE <span class="delimiter">=</span> fsingletonD <span class="delimiter">[</span>elim_format<span class="delimiter">]</span>
+
+
+<span class="command">subsubsection</span> <span class="verbatim">{* @{text femepty} *}</span>
+
+<span class="command">lemma</span> fempty_ffilter<span class="delimiter">[</span>simp<span class="delimiter">]</span><span class="delimiter">:</span> <span class="string">&quot;ffilter (&lambda;_. False) A = {||}&quot;</span>
+<span class="command">by</span> transfer auto
+
+<span class="comment">(* FIXME, transferred doesn&#39;t work here *)</span>
+<span class="command">lemma</span> femptyE <span class="delimiter">[</span>elim<span class="delimiter">!</span><span class="delimiter">]</span><span class="delimiter">:</span> <span class="string">&quot;a |&isin;| {||} ==&gt; P&quot;</span>
+  <span class="command">by</span> simp
+
+
+<span class="command">subsubsection</span> <span class="verbatim">{* @{text fset} *}</span>
+
+<span class="command">lemmas</span> fset_simps<span class="delimiter">[</span>simp<span class="delimiter">]</span> <span class="delimiter">=</span> bot_fset.rep_eq finsert.rep_eq
+
+<span class="command">lemma</span> finite_fset <span class="delimiter">[</span>simp<span class="delimiter">]</span><span class="delimiter">:</span> 
+  <span class="keyword2">shows</span> <span class="string">&quot;finite (fset S)&quot;</span>
+  <span class="command">by</span> transfer simp
+
+<span class="command">lemmas</span> fset_cong <span class="delimiter">=</span> fset_inject
+
+<span class="command">lemma</span> filter_fset <span class="delimiter">[</span>simp<span class="delimiter">]</span><span class="delimiter">:</span>
+  <span class="keyword2">shows</span> <span class="string">&quot;fset (ffilter P xs) = Collect P &cap; fset xs&quot;</span>
+  <span class="command">by</span> transfer auto
+
+<span class="command">lemma</span> notin_fset<span class="delimiter">:</span> <span class="string">&quot;x |&notin;| S &lt;-&gt; x &notin; fset S&quot;</span> <span class="command">by</span> <span class="delimiter">(</span>simp add<span class="delimiter">:</span> fmember.rep_eq<span class="delimiter">)</span>
+
+<span class="command">lemmas</span> inter_fset<span class="delimiter">[</span>simp<span class="delimiter">]</span> <span class="delimiter">=</span> inf_fset.rep_eq
+
+<span class="command">lemmas</span> union_fset<span class="delimiter">[</span>simp<span class="delimiter">]</span> <span class="delimiter">=</span> sup_fset.rep_eq
+
+<span class="command">lemmas</span> minus_fset<span class="delimiter">[</span>simp<span class="delimiter">]</span> <span class="delimiter">=</span> minus_fset.rep_eq
+
+
+<span class="command">subsubsection</span> <span class="verbatim">{* @{text filter_fset} *}</span>
+
+<span class="command">lemma</span> subset_ffilter<span class="delimiter">:</span> 
+  <span class="string">&quot;ffilter P A |&sube;| ffilter Q A = (&forall; x. x |&isin;| A --&gt; P x --&gt; Q x)&quot;</span>
+  <span class="command">by</span> transfer auto
+
+<span class="command">lemma</span> eq_ffilter<span class="delimiter">:</span> 
+  <span class="string">&quot;(ffilter P A = ffilter Q A) = (&forall;x. x |&isin;| A --&gt; P x = Q x)&quot;</span>
+  <span class="command">by</span> transfer auto
+
+<span class="command">lemma</span> pfsubset_ffilter<span class="delimiter">:</span>
+  <span class="string">&quot;(!!x. x |&isin;| A ==&gt; P x ==&gt; Q x) ==&gt; (x |&isin;| A &amp; &not; P x &amp; Q x) ==&gt; 
+    ffilter P A |&sub;| ffilter Q A&quot;</span>
+  <span class="command">unfolding</span> less_fset_def <span class="command">by</span> <span class="delimiter">(</span>auto simp add<span class="delimiter">:</span> subset_ffilter eq_ffilter<span class="delimiter">)</span>
+
+
+<span class="command">subsubsection</span> <span class="verbatim">{* @{text finsert} *}</span>
+
+<span class="comment">(* FIXME, transferred doesn&#39;t work here *)</span>
+<span class="command">lemma</span> set_finsert<span class="delimiter">:</span>
+  <span class="keyword2">assumes</span> <span class="string">&quot;x |&isin;| A&quot;</span>
+  <span class="keyword2">obtains</span> B <span class="keyword2">where</span> <span class="string">&quot;A = finsert x B&quot;</span> <span class="keyword2">and</span> <span class="string">&quot;x |&notin;| B&quot;</span>
+<span class="command">using</span> assms <span class="command">by</span> transfer <span class="delimiter">(</span>metis Set.set_insert finite_insert<span class="delimiter">)</span>
+
+<span class="command">lemma</span> mk_disjoint_finsert<span class="delimiter">:</span> <span class="string">&quot;a |&isin;| A ==&gt; &exist;B. A = finsert a B &and; a |&notin;| B&quot;</span>
+  <span class="command">by</span> <span class="delimiter">(</span>rule_tac x <span class="delimiter">=</span> <span class="string">&quot;A |-| {|a|}&quot;</span> <span class="keyword2">in</span> exI<span class="delimiter">,</span> blast<span class="delimiter">)</span>
+
+
+<span class="command">subsubsection</span> <span class="verbatim">{* @{text fimage} *}</span>
+
+<span class="command">lemma</span> subset_fimage_iff<span class="delimiter">:</span> <span class="string">&quot;(B |&sube;| f|`|A) = (&exist; AA. AA |&sube;| A &and; B = f|`|AA)&quot;</span>
+<span class="command">by</span> transfer <span class="delimiter">(</span>metis mem_Collect_eq rev_finite_subset subset_image_iff<span class="delimiter">)</span>
+
+
+<span class="command">subsubsection</span> <span class="verbatim">{* bounded quantification *}</span>
+
+<span class="command">lemma</span> bex_simps <span class="delimiter">[</span>simp<span class="delimiter">,</span> no_atp<span class="delimiter">]</span><span class="delimiter">:</span>
+  <span class="string">&quot;!!A P Q. fBex A (&lambda;x. P x &and; Q) = (fBex A P &and; Q)&quot;</span> 
+  <span class="string">&quot;!!A P Q. fBex A (&lambda;x. P &and; Q x) = (P &and; fBex A Q)&quot;</span>
+  <span class="string">&quot;!!P. fBex {||} P = False&quot;</span> 
+  <span class="string">&quot;!!a B P. fBex (finsert a B) P = (P a &or; fBex B P)&quot;</span>
+  <span class="string">&quot;!!A P f. fBex (f |`| A) P = fBex A (&lambda;x. P (f x))&quot;</span>
+  <span class="string">&quot;!!A P. (&not; fBex A P) = fBall A (&lambda;x. &not; P x)&quot;</span>
+<span class="command">by</span> auto
+
+<span class="command">lemma</span> ball_simps <span class="delimiter">[</span>simp<span class="delimiter">,</span> no_atp<span class="delimiter">]</span><span class="delimiter">:</span>
+  <span class="string">&quot;!!A P Q. fBall A (&lambda;x. P x &or; Q) = (fBall A P &or; Q)&quot;</span>
+  <span class="string">&quot;!!A P Q. fBall A (&lambda;x. P &or; Q x) = (P &or; fBall A Q)&quot;</span>
+  <span class="string">&quot;!!A P Q. fBall A (&lambda;x. P --&gt; Q x) = (P --&gt; fBall A Q)&quot;</span>
+  <span class="string">&quot;!!A P Q. fBall A (&lambda;x. P x --&gt; Q) = (fBex A P --&gt; Q)&quot;</span>
+  <span class="string">&quot;!!P. fBall {||} P = True&quot;</span>
+  <span class="string">&quot;!!a B P. fBall (finsert a B) P = (P a &and; fBall B P)&quot;</span>
+  <span class="string">&quot;!!A P f. fBall (f |`| A) P = fBall A (&lambda;x. P (f x))&quot;</span>
+  <span class="string">&quot;!!A P. (&not; fBall A P) = fBex A (&lambda;x. &not; P x)&quot;</span>
+<span class="command">by</span> auto
+
+<span class="command">lemma</span> atomize_fBall<span class="delimiter">:</span>
+    <span class="string">&quot;(!!x. x |&isin;| A ==&gt; P x) == Trueprop (fBall A (&lambda;x. P x))&quot;</span>
+<span class="command">apply</span> <span class="delimiter">(</span>simp only<span class="delimiter">:</span> atomize_all atomize_imp<span class="delimiter">)</span>
+<span class="command">apply</span> <span class="delimiter">(</span>rule equal_intr_rule<span class="delimiter">)</span>
+<span class="command">by</span> <span class="delimiter">(</span>transfer<span class="delimiter">,</span> simp<span class="delimiter">)</span><span class="delimiter">+</span>
+
+<span class="command">end</span>
+
+
+<span class="command">subsubsection</span> <span class="verbatim">{* @{text fcard} *}</span>
+
+<span class="comment">(* FIXME: improve transferred to handle bounded meta quantification *)</span>
+
+<span class="command">lemma</span> fcard_fempty<span class="delimiter">:</span>
+  <span class="string">&quot;fcard {||} = 0&quot;</span>
+  <span class="command">by</span> transfer <span class="delimiter">(</span>rule card_empty<span class="delimiter">)</span>
+
+<span class="command">lemma</span> fcard_finsert_disjoint<span class="delimiter">:</span>
+  <span class="string">&quot;x |&notin;| A ==&gt; fcard (finsert x A) = Suc (fcard A)&quot;</span>
+  <span class="command">by</span> transfer <span class="delimiter">(</span>rule card_insert_disjoint<span class="delimiter">)</span>
+
+<span class="command">lemma</span> fcard_finsert_if<span class="delimiter">:</span>
+  <span class="string">&quot;fcard (finsert x A) = (if x |&isin;| A then fcard A else Suc (fcard A))&quot;</span>
+  <span class="command">by</span> transfer <span class="delimiter">(</span>rule card_insert_if<span class="delimiter">)</span>
+
+<span class="command">lemma</span> card_0_eq <span class="delimiter">[</span>simp<span class="delimiter">,</span> no_atp<span class="delimiter">]</span><span class="delimiter">:</span>
+  <span class="string">&quot;fcard A = 0 &lt;-&gt; A = {||}&quot;</span>
+  <span class="command">by</span> transfer <span class="delimiter">(</span>rule card_0_eq<span class="delimiter">)</span>
+
+<span class="command">lemma</span> fcard_Suc_fminus1<span class="delimiter">:</span>
+  <span class="string">&quot;x |&isin;| A ==&gt; Suc (fcard (A |-| {|x|})) = fcard A&quot;</span>
+  <span class="command">by</span> transfer <span class="delimiter">(</span>rule card_Suc_Diff1<span class="delimiter">)</span>
+
+<span class="command">lemma</span> fcard_fminus_fsingleton<span class="delimiter">:</span>
+  <span class="string">&quot;x |&isin;| A ==&gt; fcard (A |-| {|x|}) = fcard A - 1&quot;</span>
+  <span class="command">by</span> transfer <span class="delimiter">(</span>rule card_Diff_singleton<span class="delimiter">)</span>
+
+<span class="command">lemma</span> fcard_fminus_fsingleton_if<span class="delimiter">:</span>
+  <span class="string">&quot;fcard (A |-| {|x|}) = (if x |&isin;| A then fcard A - 1 else fcard A)&quot;</span>
+  <span class="command">by</span> transfer <span class="delimiter">(</span>rule card_Diff_singleton_if<span class="delimiter">)</span>
+
+<span class="command">lemma</span> fcard_fminus_finsert<span class="delimiter">[</span>simp<span class="delimiter">]</span><span class="delimiter">:</span>
+  <span class="keyword2">assumes</span> <span class="string">&quot;a |&isin;| A&quot;</span> <span class="keyword2">and</span> <span class="string">&quot;a |&notin;| B&quot;</span>
+  <span class="keyword2">shows</span> <span class="string">&quot;fcard (A |-| finsert a B) = fcard (A |-| B) - 1&quot;</span>
+<span class="command">using</span> assms <span class="command">by</span> transfer <span class="delimiter">(</span>rule card_Diff_insert<span class="delimiter">)</span>
+
+<span class="command">lemma</span> fcard_finsert<span class="delimiter">:</span> <span class="string">&quot;fcard (finsert x A) = Suc (fcard (A |-| {|x|}))&quot;</span>
+<span class="command">by</span> transfer <span class="delimiter">(</span>rule card_insert<span class="delimiter">)</span>
+
+<span class="command">lemma</span> fcard_finsert_le<span class="delimiter">:</span> <span class="string">&quot;fcard A &le; fcard (finsert x A)&quot;</span>
+<span class="command">by</span> transfer <span class="delimiter">(</span>rule card_insert_le<span class="delimiter">)</span>
+
+<span class="command">lemma</span> fcard_mono<span class="delimiter">:</span>
+  <span class="string">&quot;A |&sube;| B ==&gt; fcard A &le; fcard B&quot;</span>
+<span class="command">by</span> transfer <span class="delimiter">(</span>rule card_mono<span class="delimiter">)</span>
+
+<span class="command">lemma</span> fcard_seteq<span class="delimiter">:</span> <span class="string">&quot;A |&sube;| B ==&gt; fcard B &le; fcard A ==&gt; A = B&quot;</span>
+<span class="command">by</span> transfer <span class="delimiter">(</span>rule card_seteq<span class="delimiter">)</span>
+
+<span class="command">lemma</span> pfsubset_fcard_mono<span class="delimiter">:</span> <span class="string">&quot;A |&sub;| B ==&gt; fcard A &lt; fcard B&quot;</span>
+<span class="command">by</span> transfer <span class="delimiter">(</span>rule psubset_card_mono<span class="delimiter">)</span>
+
+<span class="command">lemma</span> fcard_funion_finter<span class="delimiter">:</span> 
+  <span class="string">&quot;fcard A + fcard B = fcard (A |&cup;| B) + fcard (A |&cap;| B)&quot;</span>
+<span class="command">by</span> transfer <span class="delimiter">(</span>rule card_Un_Int<span class="delimiter">)</span>
+
+<span class="command">lemma</span> fcard_funion_disjoint<span class="delimiter">:</span>
+  <span class="string">&quot;A |&cap;| B = {||} ==&gt; fcard (A |&cup;| B) = fcard A + fcard B&quot;</span>
+<span class="command">by</span> transfer <span class="delimiter">(</span>rule card_Un_disjoint<span class="delimiter">)</span>
+
+<span class="command">lemma</span> fcard_funion_fsubset<span class="delimiter">:</span>
+  <span class="string">&quot;B |&sube;| A ==&gt; fcard (A |-| B) = fcard A - fcard B&quot;</span>
+<span class="command">by</span> transfer <span class="delimiter">(</span>rule card_Diff_subset<span class="delimiter">)</span>
+
+<span class="command">lemma</span> diff_fcard_le_fcard_fminus<span class="delimiter">:</span>
+  <span class="string">&quot;fcard A - fcard B &le; fcard(A |-| B)&quot;</span>
+<span class="command">by</span> transfer <span class="delimiter">(</span>rule diff_card_le_card_Diff<span class="delimiter">)</span>
+
+<span class="command">lemma</span> fcard_fminus1_less<span class="delimiter">:</span> <span class="string">&quot;x |&isin;| A ==&gt; fcard (A |-| {|x|}) &lt; fcard A&quot;</span>
+<span class="command">by</span> transfer <span class="delimiter">(</span>rule card_Diff1_less<span class="delimiter">)</span>
+
+<span class="command">lemma</span> fcard_fminus2_less<span class="delimiter">:</span>
+  <span class="string">&quot;x |&isin;| A ==&gt; y |&isin;| A ==&gt; fcard (A |-| {|x|} |-| {|y|}) &lt; fcard A&quot;</span>
+<span class="command">by</span> transfer <span class="delimiter">(</span>rule card_Diff2_less<span class="delimiter">)</span>
+
+<span class="command">lemma</span> fcard_fminus1_le<span class="delimiter">:</span> <span class="string">&quot;fcard (A |-| {|x|}) &le; fcard A&quot;</span>
+<span class="command">by</span> transfer <span class="delimiter">(</span>rule card_Diff1_le<span class="delimiter">)</span>
+
+<span class="command">lemma</span> fcard_pfsubset<span class="delimiter">:</span> <span class="string">&quot;A |&sube;| B ==&gt; fcard A &lt; fcard B ==&gt; A &lt; B&quot;</span>
+<span class="command">by</span> transfer <span class="delimiter">(</span>rule card_psubset<span class="delimiter">)</span>
+
+
+<span class="command">subsubsection</span> <span class="verbatim">{* @{text ffold} *}</span>
+
+<span class="comment">(* FIXME: improve transferred to handle bounded meta quantification *)</span>
+
+<span class="command">context</span> comp_fun_commute
+<span class="keyword2">begin</span>
+  <span class="command">lemmas</span> ffold_empty<span class="delimiter">[</span>simp<span class="delimiter">]</span> <span class="delimiter">=</span> fold_empty<span class="delimiter">[</span>Transfer.transferred<span class="delimiter">]</span>
+
+  <span class="command">lemma</span> ffold_finsert <span class="delimiter">[</span>simp<span class="delimiter">]</span><span class="delimiter">:</span>
+    <span class="keyword2">assumes</span> <span class="string">&quot;x |&notin;| A&quot;</span>
+    <span class="keyword2">shows</span> <span class="string">&quot;ffold f z (finsert x A) = f x (ffold f z A)&quot;</span>
+    <span class="command">using</span> assms <span class="command">by</span> <span class="delimiter">(</span>transfer fixing<span class="delimiter">:</span> f<span class="delimiter">)</span> <span class="delimiter">(</span>rule fold_insert<span class="delimiter">)</span>
+
+  <span class="command">lemma</span> ffold_fun_left_comm<span class="delimiter">:</span>
+    <span class="string">&quot;f x (ffold f z A) = ffold f (f x z) A&quot;</span>
+    <span class="command">by</span> <span class="delimiter">(</span>transfer fixing<span class="delimiter">:</span> f<span class="delimiter">)</span> <span class="delimiter">(</span>rule fold_fun_left_comm<span class="delimiter">)</span>
+
+  <span class="command">lemma</span> ffold_finsert2<span class="delimiter">:</span>
+    <span class="string">&quot;x |&notin;| A ==&gt; ffold f z (finsert x A) = ffold f (f x z) A&quot;</span>
+    <span class="command">by</span> <span class="delimiter">(</span>transfer fixing<span class="delimiter">:</span> f<span class="delimiter">)</span> <span class="delimiter">(</span>rule fold_insert2<span class="delimiter">)</span>
+
+  <span class="command">lemma</span> ffold_rec<span class="delimiter">:</span>
+    <span class="keyword2">assumes</span> <span class="string">&quot;x |&isin;| A&quot;</span>
+    <span class="keyword2">shows</span> <span class="string">&quot;ffold f z A = f x (ffold f z (A |-| {|x|}))&quot;</span>
+    <span class="command">using</span> assms <span class="command">by</span> <span class="delimiter">(</span>transfer fixing<span class="delimiter">:</span> f<span class="delimiter">)</span> <span class="delimiter">(</span>rule fold_rec<span class="delimiter">)</span>
+  
+  <span class="command">lemma</span> ffold_finsert_fremove<span class="delimiter">:</span>
+    <span class="string">&quot;ffold f z (finsert x A) = f x (ffold f z (A |-| {|x|}))&quot;</span>
+     <span class="command">by</span> <span class="delimiter">(</span>transfer fixing<span class="delimiter">:</span> f<span class="delimiter">)</span> <span class="delimiter">(</span>rule fold_insert_remove<span class="delimiter">)</span>
+<span class="command">end</span>
+
+<span class="command">lemma</span> ffold_fimage<span class="delimiter">:</span>
+  <span class="keyword2">assumes</span> <span class="string">&quot;inj_on g (fset A)&quot;</span>
+  <span class="keyword2">shows</span> <span class="string">&quot;ffold f z (g |`| A) = ffold (f o g) z A&quot;</span>
+<span class="command">using</span> assms <span class="command">by</span> transfer&#39; <span class="delimiter">(</span>rule fold_image<span class="delimiter">)</span>
+
+<span class="command">lemma</span> ffold_cong<span class="delimiter">:</span>
+  <span class="keyword2">assumes</span> <span class="string">&quot;comp_fun_commute f&quot;</span> <span class="string">&quot;comp_fun_commute g&quot;</span>
+  <span class="string">&quot;!!x. x |&isin;| A ==&gt; f x = g x&quot;</span>
+    <span class="keyword2">and</span> <span class="string">&quot;s = t&quot;</span> <span class="keyword2">and</span> <span class="string">&quot;A = B&quot;</span>
+  <span class="keyword2">shows</span> <span class="string">&quot;ffold f s A = ffold g t B&quot;</span>
+<span class="command">using</span> assms <span class="command">by</span> transfer <span class="delimiter">(</span>metis Finite_Set.fold_cong<span class="delimiter">)</span>
+
+<span class="command">context</span> comp_fun_idem
+<span class="keyword2">begin</span>
+
+  <span class="command">lemma</span> ffold_finsert_idem<span class="delimiter">:</span>
+    <span class="string">&quot;ffold f z (finsert x A) = f x (ffold f z A)&quot;</span>
+    <span class="command">by</span> <span class="delimiter">(</span>transfer fixing<span class="delimiter">:</span> f<span class="delimiter">)</span> <span class="delimiter">(</span>rule fold_insert_idem<span class="delimiter">)</span>
+  
+  <span class="command">declare</span> ffold_finsert <span class="delimiter">[</span>simp del<span class="delimiter">]</span> ffold_finsert_idem <span class="delimiter">[</span>simp<span class="delimiter">]</span>
+  
+  <span class="command">lemma</span> ffold_finsert_idem2<span class="delimiter">:</span>
+    <span class="string">&quot;ffold f z (finsert x A) = ffold f (f x z) A&quot;</span>
+    <span class="command">by</span> <span class="delimiter">(</span>transfer fixing<span class="delimiter">:</span> f<span class="delimiter">)</span> <span class="delimiter">(</span>rule fold_insert_idem2<span class="delimiter">)</span>
+
+<span class="command">end</span>
+
+
+<span class="command">subsection</span> <span class="verbatim">{* Choice in fsets *}</span>
+
+<span class="command">lemma</span> fset_choice<span class="delimiter">:</span> 
+  <span class="keyword2">assumes</span> <span class="string">&quot;&forall;x. x |&isin;| A --&gt; (&exist;y. P x y)&quot;</span>
+  <span class="keyword2">shows</span> <span class="string">&quot;&exist;f. &forall;x. x |&isin;| A --&gt; P x (f x)&quot;</span>
+  <span class="command">using</span> assms <span class="command">by</span> transfer metis
+
+
+<span class="command">subsection</span> <span class="verbatim">{* Induction and Cases rules for fsets *}</span>
+
+<span class="command">lemma</span> fset_exhaust <span class="delimiter">[</span>case_names empty insert<span class="delimiter">,</span> cases type<span class="delimiter">:</span> fset<span class="delimiter">]</span><span class="delimiter">:</span>
+  <span class="keyword2">assumes</span> fempty_case<span class="delimiter">:</span> <span class="string">&quot;S = {||} ==&gt; P&quot;</span> 
+  <span class="keyword2">and</span>     finsert_case<span class="delimiter">:</span> <span class="string">&quot;!!x S&#39;. S = finsert x S&#39; ==&gt; P&quot;</span>
+  <span class="keyword2">shows</span> <span class="string">&quot;P&quot;</span>
+  <span class="command">using</span> assms <span class="command">by</span> transfer blast
+
+<span class="command">lemma</span> fset_induct <span class="delimiter">[</span>case_names empty insert<span class="delimiter">]</span><span class="delimiter">:</span>
+  <span class="keyword2">assumes</span> fempty_case<span class="delimiter">:</span> <span class="string">&quot;P {||}&quot;</span>
+  <span class="keyword2">and</span>     finsert_case<span class="delimiter">:</span> <span class="string">&quot;!!x S. P S ==&gt; P (finsert x S)&quot;</span>
+  <span class="keyword2">shows</span> <span class="string">&quot;P S&quot;</span>
+<span class="command">proof</span> -
+  <span class="comment">(* FIXME transfer and right_total vs. bi_total *)</span>
+  <span class="command">note</span> Domainp_forall_transfer<span class="delimiter">[</span>transfer_rule<span class="delimiter">]</span>
+  <span class="command">show</span> <span class="var">?thesis</span>
+  <span class="command">using</span> assms <span class="command">by</span> transfer <span class="delimiter">(</span>auto intro<span class="delimiter">:</span> finite_induct<span class="delimiter">)</span>
+<span class="command">qed</span>
+
+<span class="command">lemma</span> fset_induct_stronger <span class="delimiter">[</span>case_names empty insert<span class="delimiter">,</span> induct type<span class="delimiter">:</span> fset<span class="delimiter">]</span><span class="delimiter">:</span>
+  <span class="keyword2">assumes</span> empty_fset_case<span class="delimiter">:</span> <span class="string">&quot;P {||}&quot;</span>
+  <span class="keyword2">and</span>     insert_fset_case<span class="delimiter">:</span> <span class="string">&quot;!!x S. [|x |&notin;| S; P S|] ==&gt; P (finsert x S)&quot;</span>
+  <span class="keyword2">shows</span> <span class="string">&quot;P S&quot;</span>
+<span class="command">proof</span> -
+  <span class="comment">(* FIXME transfer and right_total vs. bi_total *)</span>
+  <span class="command">note</span> Domainp_forall_transfer<span class="delimiter">[</span>transfer_rule<span class="delimiter">]</span>
+  <span class="command">show</span> <span class="var">?thesis</span>
+  <span class="command">using</span> assms <span class="command">by</span> transfer <span class="delimiter">(</span>auto intro<span class="delimiter">:</span> finite_induct<span class="delimiter">)</span>
+<span class="command">qed</span>
+
+<span class="command">lemma</span> fset_card_induct<span class="delimiter">:</span>
+  <span class="keyword2">assumes</span> empty_fset_case<span class="delimiter">:</span> <span class="string">&quot;P {||}&quot;</span>
+  <span class="keyword2">and</span>     card_fset_Suc_case<span class="delimiter">:</span> <span class="string">&quot;!!S T. Suc (fcard S) = (fcard T) ==&gt; P S ==&gt; P T&quot;</span>
+  <span class="keyword2">shows</span> <span class="string">&quot;P S&quot;</span>
+<span class="command">proof</span> <span class="delimiter">(</span>induct S<span class="delimiter">)</span>
+  <span class="command">case</span> empty
+  <span class="command">show</span> <span class="string">&quot;P {||}&quot;</span> <span class="command">by</span> <span class="delimiter">(</span>rule empty_fset_case<span class="delimiter">)</span>
+<span class="command">next</span>
+  <span class="command">case</span> <span class="delimiter">(</span>insert x S<span class="delimiter">)</span>
+  <span class="command">have</span> h<span class="delimiter">:</span> <span class="string">&quot;P S&quot;</span> <span class="command">by</span> fact
+  <span class="command">have</span> <span class="string">&quot;x |&notin;| S&quot;</span> <span class="command">by</span> fact
+  <span class="command">then</span> <span class="command">have</span> <span class="string">&quot;Suc (fcard S) = fcard (finsert x S)&quot;</span> 
+    <span class="command">by</span> transfer auto
+  <span class="command">then</span> <span class="command">show</span> <span class="string">&quot;P (finsert x S)&quot;</span> 
+    <span class="command">using</span> h card_fset_Suc_case <span class="command">by</span> simp
+<span class="command">qed</span>
+
+<span class="command">lemma</span> fset_strong_cases<span class="delimiter">:</span>
+  <span class="keyword2">obtains</span> <span class="string">&quot;xs = {||}&quot;</span>
+    <span class="delimiter">|</span> ys x <span class="keyword2">where</span> <span class="string">&quot;x |&notin;| ys&quot;</span> <span class="keyword2">and</span> <span class="string">&quot;xs = finsert x ys&quot;</span>
+<span class="command">by</span> transfer blast
+
+<span class="command">lemma</span> fset_induct2<span class="delimiter">:</span>
+  <span class="string">&quot;P {||} {||} ==&gt;
+  (!!x xs. x |&notin;| xs ==&gt; P (finsert x xs) {||}) ==&gt;
+  (!!y ys. y |&notin;| ys ==&gt; P {||} (finsert y ys)) ==&gt;
+  (!!x xs y ys. [|P xs ys; x |&notin;| xs; y |&notin;| ys|] ==&gt; P (finsert x xs) (finsert y ys)) ==&gt;
+  P xsa ysa&quot;</span>
+  <span class="command">apply</span> <span class="delimiter">(</span>induct xsa arbitrary<span class="delimiter">:</span> ysa<span class="delimiter">)</span>
+  <span class="command">apply</span> <span class="delimiter">(</span>induct_tac x rule<span class="delimiter">:</span> fset_induct_stronger<span class="delimiter">)</span>
+  <span class="command">apply</span> simp_all
+  <span class="command">apply</span> <span class="delimiter">(</span>induct_tac xa rule<span class="delimiter">:</span> fset_induct_stronger<span class="delimiter">)</span>
+  <span class="command">apply</span> simp_all
+  <span class="command">done</span>
+
+
+<span class="command">subsection</span> <span class="verbatim">{* Setup for Lifting/Transfer *}</span>
+
+<span class="command">subsubsection</span> <span class="verbatim">{* Relator and predicator properties *}</span>
+
+<span class="command">lift_definition</span> rel_fset <span class="delimiter">::</span> <span class="string">&quot;(&#39;a =&gt; &#39;b =&gt; bool) =&gt; &#39;a fset =&gt; &#39;b fset =&gt; bool&quot;</span> <span class="keyword2">is</span> rel_set
+<span class="keyword2">parametric</span> rel_set_transfer <span class="command">.</span>
+
+<span class="command">lemma</span> rel_fset_alt_def<span class="delimiter">:</span> <span class="string">&quot;rel_fset R = (&lambda;A B. (&forall;x.&exist;y. x|&isin;|A --&gt; y|&isin;|B &and; R x y) 
+  &and; (&forall;y. &exist;x. y|&isin;|B --&gt; x|&isin;|A &and; R x y))&quot;</span>
+<span class="command">apply</span> <span class="delimiter">(</span>rule ext<span class="delimiter">)</span><span class="delimiter">+</span>
+<span class="command">apply</span> transfer&#39;
+<span class="command">apply</span> <span class="delimiter">(</span>subst rel_set_def<span class="delimiter">[</span>unfolded fun_eq_iff<span class="delimiter">]</span><span class="delimiter">)</span> 
+<span class="command">by</span> blast
+
+<span class="command">lemma</span> finite_rel_set<span class="delimiter">:</span>
+  <span class="keyword2">assumes</span> fin<span class="delimiter">:</span> <span class="string">&quot;finite X&quot;</span> <span class="string">&quot;finite Z&quot;</span>
+  <span class="keyword2">assumes</span> R_S<span class="delimiter">:</span> <span class="string">&quot;rel_set (R OO S) X Z&quot;</span>
+  <span class="keyword2">shows</span> <span class="string">&quot;&exist;Y. finite Y &and; rel_set R X Y &and; rel_set S Y Z&quot;</span>
+<span class="command">proof</span> -
+  <span class="command">obtain</span> f <span class="keyword2">where</span> f<span class="delimiter">:</span> <span class="string">&quot;&forall;x&isin;X. R x (f x) &and; (&exist;z&isin;Z. S (f x) z)&quot;</span>
+  <span class="command">apply</span> atomize_elim
+  <span class="command">apply</span> <span class="delimiter">(</span>subst bchoice_iff<span class="delimiter">[</span>symmetric<span class="delimiter">]</span><span class="delimiter">)</span>
+  <span class="command">using</span> R_S<span class="delimiter">[</span>unfolded rel_set_def OO_def<span class="delimiter">]</span> <span class="command">by</span> blast
+  
+  <span class="command">obtain</span> g <span class="keyword2">where</span> g<span class="delimiter">:</span> <span class="string">&quot;&forall;z&isin;Z. S (g z) z &and; (&exist;x&isin;X. R x (g z))&quot;</span>
+  <span class="command">apply</span> atomize_elim
+  <span class="command">apply</span> <span class="delimiter">(</span>subst bchoice_iff<span class="delimiter">[</span>symmetric<span class="delimiter">]</span><span class="delimiter">)</span>
+  <span class="command">using</span> R_S<span class="delimiter">[</span>unfolded rel_set_def OO_def<span class="delimiter">]</span> <span class="command">by</span> blast
+  
+  <span class="command">let</span> <span class="var">?Y</span> <span class="delimiter">=</span> <span class="string">&quot;f ` X &cup; g ` Z&quot;</span>
+  <span class="command">have</span> <span class="string">&quot;finite ?Y&quot;</span> <span class="command">by</span> <span class="delimiter">(</span>simp add<span class="delimiter">:</span> fin<span class="delimiter">)</span>
+  <span class="command">moreover</span> <span class="command">have</span> <span class="string">&quot;rel_set R X ?Y&quot;</span>
+    <span class="command">unfolding</span> rel_set_def
+    <span class="command">using</span> f g <span class="command">by</span> clarsimp blast
+  <span class="command">moreover</span> <span class="command">have</span> <span class="string">&quot;rel_set S ?Y Z&quot;</span>
+    <span class="command">unfolding</span> rel_set_def
+    <span class="command">using</span> f g <span class="command">by</span> clarsimp blast
+  <span class="command">ultimately</span> <span class="command">show</span> <span class="var">?thesis</span> <span class="command">by</span> metis
+<span class="command">qed</span>
+
+<span class="command">subsubsection</span> <span class="verbatim">{* Transfer rules for the Transfer package *}</span>
+
+<span class="command">text</span> <span class="verbatim">{* Unconditional transfer rules *}</span>
+
+<span class="command">context</span>
+<span class="keyword2">begin</span>
+
+<span class="command">interpretation</span> lifting_syntax <span class="command">.</span>
+
+<span class="command">lemmas</span> fempty_transfer <span class="delimiter">[</span>transfer_rule<span class="delimiter">]</span> <span class="delimiter">=</span> empty_transfer<span class="delimiter">[</span>Transfer.transferred<span class="delimiter">]</span>
+
+<span class="command">lemma</span> finsert_transfer <span class="delimiter">[</span>transfer_rule<span class="delimiter">]</span><span class="delimiter">:</span>
+  <span class="string">&quot;(A ===&gt; rel_fset A ===&gt; rel_fset A) finsert finsert&quot;</span>
+  <span class="command">unfolding</span> rel_fun_def rel_fset_alt_def <span class="command">by</span> blast
+
+<span class="command">lemma</span> funion_transfer <span class="delimiter">[</span>transfer_rule<span class="delimiter">]</span><span class="delimiter">:</span>
+  <span class="string">&quot;(rel_fset A ===&gt; rel_fset A ===&gt; rel_fset A) funion funion&quot;</span>
+  <span class="command">unfolding</span> rel_fun_def rel_fset_alt_def <span class="command">by</span> blast
+
+<span class="command">lemma</span> ffUnion_transfer <span class="delimiter">[</span>transfer_rule<span class="delimiter">]</span><span class="delimiter">:</span>
+  <span class="string">&quot;(rel_fset (rel_fset A) ===&gt; rel_fset A) ffUnion ffUnion&quot;</span>
+  <span class="command">unfolding</span> rel_fun_def rel_fset_alt_def <span class="command">by</span> transfer <span class="delimiter">(</span>simp<span class="delimiter">,</span> fast<span class="delimiter">)</span>
+
+<span class="command">lemma</span> fimage_transfer <span class="delimiter">[</span>transfer_rule<span class="delimiter">]</span><span class="delimiter">:</span>
+  <span class="string">&quot;((A ===&gt; B) ===&gt; rel_fset A ===&gt; rel_fset B) fimage fimage&quot;</span>
+  <span class="command">unfolding</span> rel_fun_def rel_fset_alt_def <span class="command">by</span> simp blast
+
+<span class="command">lemma</span> fBall_transfer <span class="delimiter">[</span>transfer_rule<span class="delimiter">]</span><span class="delimiter">:</span>
+  <span class="string">&quot;(rel_fset A ===&gt; (A ===&gt; op =) ===&gt; op =) fBall fBall&quot;</span>
+  <span class="command">unfolding</span> rel_fset_alt_def rel_fun_def <span class="command">by</span> blast
+
+<span class="command">lemma</span> fBex_transfer <span class="delimiter">[</span>transfer_rule<span class="delimiter">]</span><span class="delimiter">:</span>
+  <span class="string">&quot;(rel_fset A ===&gt; (A ===&gt; op =) ===&gt; op =) fBex fBex&quot;</span>
+  <span class="command">unfolding</span> rel_fset_alt_def rel_fun_def <span class="command">by</span> blast
+
+<span class="comment">(* FIXME transfer doesn&#39;t work here *)</span>
+<span class="command">lemma</span> fPow_transfer <span class="delimiter">[</span>transfer_rule<span class="delimiter">]</span><span class="delimiter">:</span>
+  <span class="string">&quot;(rel_fset A ===&gt; rel_fset (rel_fset A)) fPow fPow&quot;</span>
+  <span class="command">unfolding</span> rel_fun_def
+  <span class="command">using</span> Pow_transfer<span class="delimiter">[</span>unfolded rel_fun_def<span class="delimiter">,</span> rule_format<span class="delimiter">,</span> Transfer.transferred<span class="delimiter">]</span>
+  <span class="command">by</span> blast
+
+<span class="command">lemma</span> rel_fset_transfer <span class="delimiter">[</span>transfer_rule<span class="delimiter">]</span><span class="delimiter">:</span>
+  <span class="string">&quot;((A ===&gt; B ===&gt; op =) ===&gt; rel_fset A ===&gt; rel_fset B ===&gt; op =)
+    rel_fset rel_fset&quot;</span>
+  <span class="command">unfolding</span> rel_fun_def
+  <span class="command">using</span> rel_set_transfer<span class="delimiter">[</span>unfolded rel_fun_def<span class="delimiter">,</span>rule_format<span class="delimiter">,</span> Transfer.transferred<span class="delimiter">,</span> <span class="keyword2">where</span> A <span class="delimiter">=</span> A <span class="keyword2">and</span> B <span class="delimiter">=</span> B<span class="delimiter">]</span>
+  <span class="command">by</span> simp
+
+<span class="command">lemma</span> bind_transfer <span class="delimiter">[</span>transfer_rule<span class="delimiter">]</span><span class="delimiter">:</span>
+  <span class="string">&quot;(rel_fset A ===&gt; (A ===&gt; rel_fset B) ===&gt; rel_fset B) fbind fbind&quot;</span>
+  <span class="command">using</span> assms <span class="command">unfolding</span> rel_fun_def
+  <span class="command">using</span> bind_transfer<span class="delimiter">[</span>unfolded rel_fun_def<span class="delimiter">,</span> rule_format<span class="delimiter">,</span> Transfer.transferred<span class="delimiter">]</span> <span class="command">by</span> blast
+
+<span class="command">text</span> <span class="verbatim">{* Rules requiring bi-unique, bi-total or right-total relations *}</span>
+
+<span class="command">lemma</span> fmember_transfer <span class="delimiter">[</span>transfer_rule<span class="delimiter">]</span><span class="delimiter">:</span>
+  <span class="keyword2">assumes</span> <span class="string">&quot;bi_unique A&quot;</span>
+  <span class="keyword2">shows</span> <span class="string">&quot;(A ===&gt; rel_fset A ===&gt; op =) (op |&isin;|) (op |&isin;|)&quot;</span>
+  <span class="command">using</span> assms <span class="command">unfolding</span> rel_fun_def rel_fset_alt_def bi_unique_def <span class="command">by</span> metis
+
+<span class="command">lemma</span> finter_transfer <span class="delimiter">[</span>transfer_rule<span class="delimiter">]</span><span class="delimiter">:</span>
+  <span class="keyword2">assumes</span> <span class="string">&quot;bi_unique A&quot;</span>
+  <span class="keyword2">shows</span> <span class="string">&quot;(rel_fset A ===&gt; rel_fset A ===&gt; rel_fset A) finter finter&quot;</span>
+  <span class="command">using</span> assms <span class="command">unfolding</span> rel_fun_def
+  <span class="command">using</span> inter_transfer<span class="delimiter">[</span>unfolded rel_fun_def<span class="delimiter">,</span> rule_format<span class="delimiter">,</span> Transfer.transferred<span class="delimiter">]</span> <span class="command">by</span> blast
+
+<span class="command">lemma</span> fminus_transfer <span class="delimiter">[</span>transfer_rule<span class="delimiter">]</span><span class="delimiter">:</span>
+  <span class="keyword2">assumes</span> <span class="string">&quot;bi_unique A&quot;</span>
+  <span class="keyword2">shows</span> <span class="string">&quot;(rel_fset A ===&gt; rel_fset A ===&gt; rel_fset A) (op |-|) (op |-|)&quot;</span>
+  <span class="command">using</span> assms <span class="command">unfolding</span> rel_fun_def
+  <span class="command">using</span> Diff_transfer<span class="delimiter">[</span>unfolded rel_fun_def<span class="delimiter">,</span> rule_format<span class="delimiter">,</span> Transfer.transferred<span class="delimiter">]</span> <span class="command">by</span> blast
+
+<span class="command">lemma</span> fsubset_transfer <span class="delimiter">[</span>transfer_rule<span class="delimiter">]</span><span class="delimiter">:</span>
+  <span class="keyword2">assumes</span> <span class="string">&quot;bi_unique A&quot;</span>
+  <span class="keyword2">shows</span> <span class="string">&quot;(rel_fset A ===&gt; rel_fset A ===&gt; op =) (op |&sube;|) (op |&sube;|)&quot;</span>
+  <span class="command">using</span> assms <span class="command">unfolding</span> rel_fun_def
+  <span class="command">using</span> subset_transfer<span class="delimiter">[</span>unfolded rel_fun_def<span class="delimiter">,</span> rule_format<span class="delimiter">,</span> Transfer.transferred<span class="delimiter">]</span> <span class="command">by</span> blast
+
+<span class="command">lemma</span> fSup_transfer <span class="delimiter">[</span>transfer_rule<span class="delimiter">]</span><span class="delimiter">:</span>
+  <span class="string">&quot;bi_unique A ==&gt; (rel_set (rel_fset A) ===&gt; rel_fset A) Sup Sup&quot;</span>
+  <span class="command">using</span> assms <span class="command">unfolding</span> rel_fun_def
+  <span class="command">apply</span> clarify
+  <span class="command">apply</span> transfer&#39;
+  <span class="command">using</span> Sup_fset_transfer<span class="delimiter">[</span>unfolded rel_fun_def<span class="delimiter">]</span> <span class="command">by</span> blast
+
+<span class="comment">(* FIXME: add right_total_fInf_transfer *)</span>
+
+<span class="command">lemma</span> fInf_transfer <span class="delimiter">[</span>transfer_rule<span class="delimiter">]</span><span class="delimiter">:</span>
+  <span class="keyword2">assumes</span> <span class="string">&quot;bi_unique A&quot;</span> <span class="keyword2">and</span> <span class="string">&quot;bi_total A&quot;</span>
+  <span class="keyword2">shows</span> <span class="string">&quot;(rel_set (rel_fset A) ===&gt; rel_fset A) Inf Inf&quot;</span>
+  <span class="command">using</span> assms <span class="command">unfolding</span> rel_fun_def
+  <span class="command">apply</span> clarify
+  <span class="command">apply</span> transfer&#39;
+  <span class="command">using</span> Inf_fset_transfer<span class="delimiter">[</span>unfolded rel_fun_def<span class="delimiter">]</span> <span class="command">by</span> blast
+
+<span class="command">lemma</span> ffilter_transfer <span class="delimiter">[</span>transfer_rule<span class="delimiter">]</span><span class="delimiter">:</span>
+  <span class="keyword2">assumes</span> <span class="string">&quot;bi_unique A&quot;</span>
+  <span class="keyword2">shows</span> <span class="string">&quot;((A ===&gt; op=) ===&gt; rel_fset A ===&gt; rel_fset A) ffilter ffilter&quot;</span>
+  <span class="command">using</span> assms <span class="command">unfolding</span> rel_fun_def
+  <span class="command">using</span> Lifting_Set.filter_transfer<span class="delimiter">[</span>unfolded rel_fun_def<span class="delimiter">,</span> rule_format<span class="delimiter">,</span> Transfer.transferred<span class="delimiter">]</span> <span class="command">by</span> blast
+
+<span class="command">lemma</span> card_transfer <span class="delimiter">[</span>transfer_rule<span class="delimiter">]</span><span class="delimiter">:</span>
+  <span class="string">&quot;bi_unique A ==&gt; (rel_fset A ===&gt; op =) fcard fcard&quot;</span>
+  <span class="command">using</span> assms <span class="command">unfolding</span> rel_fun_def
+  <span class="command">using</span> card_transfer<span class="delimiter">[</span>unfolded rel_fun_def<span class="delimiter">,</span> rule_format<span class="delimiter">,</span> Transfer.transferred<span class="delimiter">]</span> <span class="command">by</span> blast
+
+<span class="command">end</span>
+
+<span class="command">lifting_update</span> fset.lifting
+<span class="command">lifting_forget</span> fset.lifting
+
+
+<span class="command">subsection</span> <span class="verbatim">{* BNF setup *}</span>
+
+<span class="command">context</span>
+<span class="keyword2">includes</span> fset.lifting
+<span class="keyword2">begin</span>
+
+<span class="command">lemma</span> rel_fset_alt<span class="delimiter">:</span>
+  <span class="string">&quot;rel_fset R a b &lt;-&gt; (&forall;t &isin; fset a. &exist;u &isin; fset b. R t u) &and; (&forall;t &isin; fset b. &exist;u &isin; fset a. R u t)&quot;</span>
+<span class="command">by</span> transfer <span class="delimiter">(</span>simp add<span class="delimiter">:</span> rel_set_def<span class="delimiter">)</span>
+
+<span class="command">lemma</span> fset_to_fset<span class="delimiter">:</span> <span class="string">&quot;finite A ==&gt; fset (the_inv fset A) = A&quot;</span>
+<span class="command">apply</span> <span class="delimiter">(</span>rule f_the_inv_into_f<span class="delimiter">[</span>unfolded inj_on_def<span class="delimiter">]</span><span class="delimiter">)</span>
+<span class="command">apply</span> <span class="delimiter">(</span>simp add<span class="delimiter">:</span> fset_inject<span class="delimiter">)</span>
+<span class="command">apply</span> <span class="delimiter">(</span>rule range_eqI Abs_fset_inverse<span class="delimiter">[</span>symmetric<span class="delimiter">]</span> CollectI<span class="delimiter">)</span><span class="delimiter">+</span>
+<span class="command">.</span>
+
+<span class="command">lemma</span> rel_fset_aux<span class="delimiter">:</span>
+<span class="string">&quot;(&forall;t &isin; fset a. &exist;u &isin; fset b. R t u) &and; (&forall;u &isin; fset b. &exist;t &isin; fset a. R t u) &lt;-&gt;
+ ((BNF_Def.Grp {a. fset a &sube; {(a, b). R a b}} (fimage fst))&macr;&macr; OO
+  BNF_Def.Grp {a. fset a &sube; {(a, b). R a b}} (fimage snd)) a b&quot;</span> <span class="delimiter">(</span><span class="keyword2">is</span> <span class="string">&quot;?L = ?R&quot;</span><span class="delimiter">)</span>
+<span class="command">proof</span>
+  <span class="command">assume</span> <span class="var">?L</span>
+  <span class="command">def</span> R&#39; <span class="delimiter">&equiv;</span> <span class="string">&quot;the_inv fset (Collect (split R) &cap; (fset a &times; fset b))&quot;</span> <span class="delimiter">(</span><span class="keyword2">is</span> <span class="string">&quot;the_inv fset ?L&#39;&quot;</span><span class="delimiter">)</span>
+  <span class="command">have</span> <span class="string">&quot;finite ?L&#39;&quot;</span> <span class="command">by</span> <span class="delimiter">(</span>intro finite_Int<span class="delimiter">[</span>OF disjI2<span class="delimiter">]</span> finite_cartesian_product<span class="delimiter">)</span> <span class="delimiter">(</span>transfer<span class="delimiter">,</span> simp<span class="delimiter">)</span><span class="delimiter">+</span>
+  <span class="command">hence</span> *<span class="delimiter">:</span> <span class="string">&quot;fset R&#39; = ?L&#39;&quot;</span> <span class="command">unfolding</span> R&#39;_def <span class="command">by</span> <span class="delimiter">(</span>intro fset_to_fset<span class="delimiter">)</span>
+  <span class="command">show</span> <span class="var">?R</span> <span class="command">unfolding</span> Grp_def relcompp.simps conversep.simps
+  <span class="command">proof</span> <span class="delimiter">(</span>intro CollectI case_prodI exI<span class="delimiter">[</span>of _ a<span class="delimiter">]</span> exI<span class="delimiter">[</span>of _ b<span class="delimiter">]</span> exI<span class="delimiter">[</span>of _ R&#39;<span class="delimiter">]</span> conjI refl<span class="delimiter">)</span>
+    <span class="command">from</span> * <span class="command">show</span> <span class="string">&quot;a = fimage fst R&#39;&quot;</span> <span class="command">using</span> conjunct1<span class="delimiter">[</span>OF <span class="altstring">`?L`</span><span class="delimiter">]</span>
+      <span class="command">by</span> <span class="delimiter">(</span>transfer<span class="delimiter">,</span> auto simp add<span class="delimiter">:</span> image_def Int_def split<span class="delimiter">:</span> prod.splits<span class="delimiter">)</span>
+    <span class="command">from</span> * <span class="command">show</span> <span class="string">&quot;b = fimage snd R&#39;&quot;</span> <span class="command">using</span> conjunct2<span class="delimiter">[</span>OF <span class="altstring">`?L`</span><span class="delimiter">]</span>
+      <span class="command">by</span> <span class="delimiter">(</span>transfer<span class="delimiter">,</span> auto simp add<span class="delimiter">:</span> image_def Int_def split<span class="delimiter">:</span> prod.splits<span class="delimiter">)</span>
+  <span class="command">qed</span> <span class="delimiter">(</span>auto simp add<span class="delimiter">:</span> *<span class="delimiter">)</span>
+<span class="command">next</span>
+  <span class="command">assume</span> <span class="var">?R</span> <span class="command">thus</span> <span class="var">?L</span> <span class="command">unfolding</span> Grp_def relcompp.simps conversep.simps
+  <span class="command">apply</span> <span class="delimiter">(</span>simp add<span class="delimiter">:</span> subset_eq Ball_def<span class="delimiter">)</span>
+  <span class="command">apply</span> <span class="delimiter">(</span>rule conjI<span class="delimiter">)</span>
+  <span class="command">apply</span> <span class="delimiter">(</span>transfer<span class="delimiter">,</span> clarsimp<span class="delimiter">,</span> metis snd_conv<span class="delimiter">)</span>
+  <span class="command">by</span> <span class="delimiter">(</span>transfer<span class="delimiter">,</span> clarsimp<span class="delimiter">,</span> metis fst_conv<span class="delimiter">)</span>
+<span class="command">qed</span>
+
+<span class="command">bnf</span> <span class="string">&quot;&#39;a fset&quot;</span>
+  map<span class="delimiter">:</span> fimage
+  sets<span class="delimiter">:</span> fset 
+  bd<span class="delimiter">:</span> natLeq
+  wits<span class="delimiter">:</span> <span class="string">&quot;{||}&quot;</span>
+  rel<span class="delimiter">:</span> rel_fset
+<span class="command">apply</span> -
+          <span class="command">apply</span> transfer&#39; <span class="command">apply</span> simp
+         <span class="command">apply</span> transfer&#39; <span class="command">apply</span> force
+        <span class="command">apply</span> transfer <span class="command">apply</span> force
+       <span class="command">apply</span> transfer&#39; <span class="command">apply</span> force
+      <span class="command">apply</span> <span class="delimiter">(</span>rule natLeq_card_order<span class="delimiter">)</span>
+     <span class="command">apply</span> <span class="delimiter">(</span>rule natLeq_cinfinite<span class="delimiter">)</span>
+    <span class="command">apply</span> transfer <span class="command">apply</span> <span class="delimiter">(</span>metis ordLess_imp_ordLeq finite_iff_ordLess_natLeq<span class="delimiter">)</span>
+   <span class="command">apply</span> <span class="delimiter">(</span>fastforce simp<span class="delimiter">:</span> rel_fset_alt<span class="delimiter">)</span>
+ <span class="command">apply</span> <span class="delimiter">(</span>simp add<span class="delimiter">:</span> Grp_def relcompp.simps conversep.simps fun_eq_iff rel_fset_alt rel_fset_aux<span class="delimiter">)</span> 
+<span class="command">apply</span> transfer <span class="command">apply</span> simp
+<span class="command">done</span>
+
+<span class="command">lemma</span> rel_fset_fset<span class="delimiter">:</span> <span class="string">&quot;rel_set &chi; (fset A1) (fset A2) = rel_fset &chi; A1 A2&quot;</span>
+  <span class="command">by</span> transfer <span class="delimiter">(</span>rule refl<span class="delimiter">)</span>
+
+<span class="command">end</span>
+
+<span class="command">lemmas</span> <span class="delimiter">[</span>simp<span class="delimiter">]</span> <span class="delimiter">=</span> fset.map_comp fset.map_id fset.set_map
+
+
+<span class="command">subsection</span> <span class="verbatim">{* Size setup *}</span>
+
+<span class="command">context</span> <span class="keyword2">includes</span> fset.lifting <span class="keyword2">begin</span>
+<span class="command">lift_definition</span> size_fset <span class="delimiter">::</span> <span class="string">&quot;(&#39;a =&gt; nat) =&gt; &#39;a fset =&gt; nat&quot;</span> <span class="keyword2">is</span> <span class="string">&quot;&lambda;f. setsum (Suc o f)&quot;</span> <span class="command">.</span>
+<span class="command">end</span>
+
+<span class="command">instantiation</span> fset <span class="delimiter">::</span> <span class="delimiter">(</span>type<span class="delimiter">)</span> size <span class="keyword2">begin</span>
+<span class="command">definition</span> size_fset <span class="keyword2">where</span>
+  size_fset_overloaded_def<span class="delimiter">:</span> <span class="string">&quot;size_fset = FSet.size_fset (&lambda;_. 0)&quot;</span>
+<span class="command">instance</span> <span class="command">..</span>
+<span class="command">end</span>
+
+<span class="command">lemmas</span> size_fset_simps<span class="delimiter">[</span>simp<span class="delimiter">]</span> <span class="delimiter">=</span>
+  size_fset_def<span class="delimiter">[</span>THEN meta_eq_to_obj_eq<span class="delimiter">,</span> THEN fun_cong<span class="delimiter">,</span> THEN fun_cong<span class="delimiter">,</span>
+    unfolded map_fun_def comp_def id_apply<span class="delimiter">]</span>
+
+<span class="command">lemmas</span> size_fset_overloaded_simps<span class="delimiter">[</span>simp<span class="delimiter">]</span> <span class="delimiter">=</span>
+  size_fset_simps<span class="delimiter">[</span>of <span class="string">&quot;&lambda;_. 0&quot;</span><span class="delimiter">,</span> unfolded add_0_left add_0_right<span class="delimiter">,</span>
+    folded size_fset_overloaded_def<span class="delimiter">]</span>
+
+<span class="command">lemma</span> fset_size_o_map<span class="delimiter">:</span> <span class="string">&quot;inj f ==&gt; size_fset g o fimage f = size_fset (g o f)&quot;</span>
+  <span class="command">unfolding</span> size_fset_def fimage_def
+  <span class="command">by</span> <span class="delimiter">(</span>auto simp<span class="delimiter">:</span> Abs_fset_inverse setsum.reindex_cong<span class="delimiter">[</span>OF subset_inj_on<span class="delimiter">[</span>OF _ top_greatest<span class="delimiter">]</span><span class="delimiter">]</span><span class="delimiter">)</span>
+
+<span class="command">setup</span> <span class="verbatim">{*
+BNF_LFP_Size.register_size_global @{type_name fset} @{const_name size_fset}
+  @{thms size_fset_simps size_fset_overloaded_simps} @{thms fset_size_o_map}
+*}</span>
+
+
+<span class="command">subsection</span> <span class="verbatim">{* Advanced relator customization *}</span>
+
+<span class="comment">(* Set vs. sum relators: *)</span>
+
+<span class="command">lemma</span> rel_set_rel_sum<span class="delimiter">[</span>simp<span class="delimiter">]</span><span class="delimiter">:</span> 
+<span class="string">&quot;rel_set (rel_sum &chi; &phi;) A1 A2 &lt;-&gt; 
+ rel_set &chi; (Inl -` A1) (Inl -` A2) &and; rel_set &phi; (Inr -` A1) (Inr -` A2)&quot;</span>
+<span class="delimiter">(</span><span class="keyword2">is</span> <span class="string">&quot;?L &lt;-&gt; ?Rl &and; ?Rr&quot;</span><span class="delimiter">)</span>
+<span class="command">proof</span> safe
+  <span class="command">assume</span> L<span class="delimiter">:</span> <span class="string">&quot;?L&quot;</span>
+  <span class="command">show</span> <span class="var">?Rl</span> <span class="command">unfolding</span> rel_set_def Bex_def vimage_eq <span class="command">proof</span> safe
+    <span class="command">fix</span> l1 <span class="command">assume</span> <span class="string">&quot;Inl l1 &isin; A1&quot;</span>
+    <span class="command">then</span> <span class="command">obtain</span> a2 <span class="keyword2">where</span> a2<span class="delimiter">:</span> <span class="string">&quot;a2 &isin; A2&quot;</span> <span class="keyword2">and</span> <span class="string">&quot;rel_sum &chi; &phi; (Inl l1) a2&quot;</span>
+    <span class="command">using</span> L <span class="command">unfolding</span> rel_set_def <span class="command">by</span> auto
+    <span class="command">then</span> <span class="command">obtain</span> l2 <span class="keyword2">where</span> <span class="string">&quot;a2 = Inl l2 &and; &chi; l1 l2&quot;</span> <span class="command">by</span> <span class="delimiter">(</span>cases a2<span class="delimiter">,</span> auto<span class="delimiter">)</span>
+    <span class="command">thus</span> <span class="string">&quot;&exist; l2. Inl l2 &isin; A2 &and; &chi; l1 l2&quot;</span> <span class="command">using</span> a2 <span class="command">by</span> auto
+  <span class="command">next</span>
+    <span class="command">fix</span> l2 <span class="command">assume</span> <span class="string">&quot;Inl l2 &isin; A2&quot;</span>
+    <span class="command">then</span> <span class="command">obtain</span> a1 <span class="keyword2">where</span> a1<span class="delimiter">:</span> <span class="string">&quot;a1 &isin; A1&quot;</span> <span class="keyword2">and</span> <span class="string">&quot;rel_sum &chi; &phi; a1 (Inl l2)&quot;</span>
+    <span class="command">using</span> L <span class="command">unfolding</span> rel_set_def <span class="command">by</span> auto
+    <span class="command">then</span> <span class="command">obtain</span> l1 <span class="keyword2">where</span> <span class="string">&quot;a1 = Inl l1 &and; &chi; l1 l2&quot;</span> <span class="command">by</span> <span class="delimiter">(</span>cases a1<span class="delimiter">,</span> auto<span class="delimiter">)</span>
+    <span class="command">thus</span> <span class="string">&quot;&exist; l1. Inl l1 &isin; A1 &and; &chi; l1 l2&quot;</span> <span class="command">using</span> a1 <span class="command">by</span> auto
+  <span class="command">qed</span>
+  <span class="command">show</span> <span class="var">?Rr</span> <span class="command">unfolding</span> rel_set_def Bex_def vimage_eq <span class="command">proof</span> safe
+    <span class="command">fix</span> r1 <span class="command">assume</span> <span class="string">&quot;Inr r1 &isin; A1&quot;</span>
+    <span class="command">then</span> <span class="command">obtain</span> a2 <span class="keyword2">where</span> a2<span class="delimiter">:</span> <span class="string">&quot;a2 &isin; A2&quot;</span> <span class="keyword2">and</span> <span class="string">&quot;rel_sum &chi; &phi; (Inr r1) a2&quot;</span>
+    <span class="command">using</span> L <span class="command">unfolding</span> rel_set_def <span class="command">by</span> auto
+    <span class="command">then</span> <span class="command">obtain</span> r2 <span class="keyword2">where</span> <span class="string">&quot;a2 = Inr r2 &and; &phi; r1 r2&quot;</span> <span class="command">by</span> <span class="delimiter">(</span>cases a2<span class="delimiter">,</span> auto<span class="delimiter">)</span>
+    <span class="command">thus</span> <span class="string">&quot;&exist; r2. Inr r2 &isin; A2 &and; &phi; r1 r2&quot;</span> <span class="command">using</span> a2 <span class="command">by</span> auto
+  <span class="command">next</span>
+    <span class="command">fix</span> r2 <span class="command">assume</span> <span class="string">&quot;Inr r2 &isin; A2&quot;</span>
+    <span class="command">then</span> <span class="command">obtain</span> a1 <span class="keyword2">where</span> a1<span class="delimiter">:</span> <span class="string">&quot;a1 &isin; A1&quot;</span> <span class="keyword2">and</span> <span class="string">&quot;rel_sum &chi; &phi; a1 (Inr r2)&quot;</span>
+    <span class="command">using</span> L <span class="command">unfolding</span> rel_set_def <span class="command">by</span> auto
+    <span class="command">then</span> <span class="command">obtain</span> r1 <span class="keyword2">where</span> <span class="string">&quot;a1 = Inr r1 &and; &phi; r1 r2&quot;</span> <span class="command">by</span> <span class="delimiter">(</span>cases a1<span class="delimiter">,</span> auto<span class="delimiter">)</span>
+    <span class="command">thus</span> <span class="string">&quot;&exist; r1. Inr r1 &isin; A1 &and; &phi; r1 r2&quot;</span> <span class="command">using</span> a1 <span class="command">by</span> auto
+  <span class="command">qed</span>
+<span class="command">next</span>
+  <span class="command">assume</span> Rl<span class="delimiter">:</span> <span class="string">&quot;?Rl&quot;</span> <span class="keyword2">and</span> Rr<span class="delimiter">:</span> <span class="string">&quot;?Rr&quot;</span>
+  <span class="command">show</span> <span class="var">?L</span> <span class="command">unfolding</span> rel_set_def Bex_def vimage_eq <span class="command">proof</span> safe
+    <span class="command">fix</span> a1 <span class="command">assume</span> a1<span class="delimiter">:</span> <span class="string">&quot;a1 &isin; A1&quot;</span>
+    <span class="command">show</span> <span class="string">&quot;&exist; a2. a2 &isin; A2 &and; rel_sum &chi; &phi; a1 a2&quot;</span>
+    <span class="command">proof</span><span class="delimiter">(</span>cases a1<span class="delimiter">)</span>
+      <span class="command">case</span> <span class="delimiter">(</span>Inl l1<span class="delimiter">)</span> <span class="command">then</span> <span class="command">obtain</span> l2 <span class="keyword2">where</span> <span class="string">&quot;Inl l2 &isin; A2 &and; &chi; l1 l2&quot;</span>
+      <span class="command">using</span> Rl a1 <span class="command">unfolding</span> rel_set_def <span class="command">by</span> blast
+      <span class="command">thus</span> <span class="var">?thesis</span> <span class="command">unfolding</span> Inl <span class="command">by</span> auto
+    <span class="command">next</span>
+      <span class="command">case</span> <span class="delimiter">(</span>Inr r1<span class="delimiter">)</span> <span class="command">then</span> <span class="command">obtain</span> r2 <span class="keyword2">where</span> <span class="string">&quot;Inr r2 &isin; A2 &and; &phi; r1 r2&quot;</span>
+      <span class="command">using</span> Rr a1 <span class="command">unfolding</span> rel_set_def <span class="command">by</span> blast
+      <span class="command">thus</span> <span class="var">?thesis</span> <span class="command">unfolding</span> Inr <span class="command">by</span> auto
+    <span class="command">qed</span>
+  <span class="command">next</span>
+    <span class="command">fix</span> a2 <span class="command">assume</span> a2<span class="delimiter">:</span> <span class="string">&quot;a2 &isin; A2&quot;</span>
+    <span class="command">show</span> <span class="string">&quot;&exist; a1. a1 &isin; A1 &and; rel_sum &chi; &phi; a1 a2&quot;</span>
+    <span class="command">proof</span><span class="delimiter">(</span>cases a2<span class="delimiter">)</span>
+      <span class="command">case</span> <span class="delimiter">(</span>Inl l2<span class="delimiter">)</span> <span class="command">then</span> <span class="command">obtain</span> l1 <span class="keyword2">where</span> <span class="string">&quot;Inl l1 &isin; A1 &and; &chi; l1 l2&quot;</span>
+      <span class="command">using</span> Rl a2 <span class="command">unfolding</span> rel_set_def <span class="command">by</span> blast
+      <span class="command">thus</span> <span class="var">?thesis</span> <span class="command">unfolding</span> Inl <span class="command">by</span> auto
+    <span class="command">next</span>
+      <span class="command">case</span> <span class="delimiter">(</span>Inr r2<span class="delimiter">)</span> <span class="command">then</span> <span class="command">obtain</span> r1 <span class="keyword2">where</span> <span class="string">&quot;Inr r1 &isin; A1 &and; &phi; r1 r2&quot;</span>
+      <span class="command">using</span> Rr a2 <span class="command">unfolding</span> rel_set_def <span class="command">by</span> blast
+      <span class="command">thus</span> <span class="var">?thesis</span> <span class="command">unfolding</span> Inr <span class="command">by</span> auto
+    <span class="command">qed</span>
+  <span class="command">qed</span>
+<span class="command">qed</span>
+
+<span class="command">end</span>
+</pre>
+
+</div>
+</body>
+</html>

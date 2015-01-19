@@ -1,0 +1,128 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+<html xmlns="http://www.w3.org/1999/xhtml">
+<head>
+<meta http-equiv="Content-Type" content="text/html; charset=utf-8"/>
+<title>Theory WS1S_Examples (Isabelle2014: August 2014)</title>
+<link media="all" rel="stylesheet" type="text/css" href="isabelle.css"/>
+</head>
+
+<body>
+<div class="head"><h1>Theory WS1S_Examples</h1>
+
+<span class="command">theory</span> <span class="name">WS1S_Examples</span><br/>
+<span class="keyword">imports</span> <a href="WS1S_Formula.html"><span class="name">WS1S_Formula</span></a><br/>
+
+</div>
+<div class="source">
+<pre><span class="comment">(*&lt;*)</span>
+<span class="command">theory</span> WS1S_Examples
+<span class="keyword2">imports</span> WS1S_Formula
+<span class="keyword2">begin</span>
+<span class="comment">(*&gt;*)</span>
+
+<span class="command">section</span> <span class="cartouche">&#8249;Examples&#8250;</span>
+
+<span class="command">abbreviation</span> <span class="delimiter">(</span>input<span class="delimiter">)</span> FImp <span class="keyword2">where</span> <span class="string">&quot;FImp &phi; &psi; &equiv; FOr (FNot &phi;) &psi;&quot;</span>
+<span class="command">abbreviation</span> FIff <span class="keyword2">where</span> <span class="string">&quot;FIff &phi; &psi; &equiv; FAnd (FImp &phi; &psi;) (FImp &psi; &phi;)&quot;</span>
+<span class="command">abbreviation</span> FBall <span class="keyword2">where</span> <span class="string">&quot;FBall X &phi; &equiv; FAll FO (FImp (FBase (In 0 X)) &phi;)&quot;</span>
+
+<span class="command">abbreviation</span> SUBSET <span class="keyword2">where</span> <span class="string">&quot;SUBSET X Y &equiv; FBall X (FBase (In 0 Y))&quot;</span>
+<span class="command">abbreviation</span> EQ <span class="keyword2">where</span> <span class="string">&quot;EQ X Y &equiv; FAnd (SUBSET X Y) (SUBSET Y X)&quot;</span>
+<span class="command">abbreviation</span> First <span class="keyword2">where</span> <span class="string">&quot;First x &equiv; FNot (FEx FO (FBase (Less 0 (x+1))))&quot;</span>
+<span class="command">abbreviation</span> Last <span class="keyword2">where</span> <span class="string">&quot;Last x &equiv; FNot (FEx FO (FBase (Less (x+1) 0)))&quot;</span>
+<span class="command">abbreviation</span> Succ <span class="keyword2">where</span> <span class="string">&quot;Succ sucx x &equiv; FAnd (FBase (Less x sucx)) (FNot (FEx FO (FAnd (FBase (Less (x+1) 0)) (FBase (Less 0 (sucx+1))))))&quot;</span>
+
+<span class="command">definition</span> <span class="string">&quot;Thm idx &phi; = check_eqv idx &phi; (FBool True)&quot;</span>
+
+<span class="command">export_code</span> Thm <span class="keyword2">in</span> SML <span class="keyword2">module_name</span> Thm
+
+<span class="command">abbreviation</span> FTrue <span class="delimiter">(</span><span class="string">&quot;\&lt;top&gt;&quot;</span><span class="delimiter">)</span> <span class="keyword2">where</span> <span class="string">&quot;FTrue &equiv; FBool True&quot;</span>
+<span class="command">abbreviation</span> FFalse <span class="delimiter">(</span><span class="string">&quot;&perp;&quot;</span><span class="delimiter">)</span> <span class="keyword2">where</span> <span class="string">&quot;FFalse &equiv; FBool False&quot;</span>
+
+<span class="command">notation</span> FImp <span class="delimiter">(</span><span class="keyword2">infixr</span> <span class="string">&quot;--&gt;&quot;</span> 25<span class="delimiter">)</span>
+<span class="command">notation</span> <span class="delimiter">(</span><span class="keyword2">output</span><span class="delimiter">)</span> FO <span class="delimiter">(</span><span class="string">&quot;1&quot;</span><span class="delimiter">)</span>
+<span class="command">notation</span> <span class="delimiter">(</span><span class="keyword2">output</span><span class="delimiter">)</span> SO <span class="delimiter">(</span><span class="string">&quot;2&quot;</span><span class="delimiter">)</span>
+<span class="command">notation</span> FEx <span class="delimiter">(</span><span class="string">&quot;&exist;<span class="hidden">&#8681;</span><sub>_</sub> _&quot;</span> <span class="delimiter">[</span>10<span class="delimiter">]</span> 10<span class="delimiter">)</span>
+<span class="command">notation</span> FAll <span class="delimiter">(</span><span class="string">&quot;&forall;<span class="hidden">&#8681;</span><sub>_</sub> _&quot;</span> <span class="delimiter">[</span>10<span class="delimiter">]</span> 10<span class="delimiter">)</span>
+<span class="command">notation</span> FNot <span class="delimiter">(</span><span class="string">&quot;&not; _&quot;</span> <span class="delimiter">[</span>40<span class="delimiter">]</span> 40<span class="delimiter">)</span>
+<span class="command">notation</span> FOr <span class="delimiter">(</span><span class="keyword2">infixr</span> <span class="string">&quot;&or;&quot;</span> 30<span class="delimiter">)</span>
+<span class="command">notation</span> FAnd <span class="delimiter">(</span><span class="keyword2">infixr</span> <span class="string">&quot;&and;&quot;</span> 35<span class="delimiter">)</span>
+<span class="command">abbreviation</span> FLess <span class="delimiter">(</span><span class="string">&quot;x<span class="hidden">&#8681;</span><sub>_</sub> &lt; x<span class="hidden">&#8681;</span><sub>_</sub>&quot;</span> <span class="delimiter">[</span>65<span class="delimiter">,</span> 66<span class="delimiter">]</span> 65<span class="delimiter">)</span> <span class="keyword2">where</span> <span class="string">&quot;FLess m1 m2 &equiv; FBase (Less m1 m2)&quot;</span>
+<span class="command">abbreviation</span> FIn <span class="delimiter">(</span><span class="string">&quot;x<span class="hidden">&#8681;</span><sub>_</sub> &isin; X<span class="hidden">&#8664;</span><sub>_<span class="hidden">&#8665;</span></sub>&quot;</span> <span class="delimiter">[</span>65<span class="delimiter">,</span> 66<span class="delimiter">]</span> 65<span class="delimiter">)</span> <span class="keyword2">where</span> <span class="string">&quot;FIn m M &equiv; FBase (In m M)&quot;</span>
+<span class="command">abbreviation</span> FQ <span class="delimiter">(</span><span class="string">&quot;[x<span class="hidden">&#8681;</span><sub>_</sub>]&quot;</span> <span class="delimiter">[</span>66<span class="delimiter">]</span> 65<span class="delimiter">)</span> <span class="keyword2">where</span> <span class="string">&quot;FQ m &equiv; FBase (Q m)&quot;</span>
+
+<span class="comment">(*true in M2L, false in WS1S*)</span>
+<span class="command">definition</span> <span class="string">&quot;M2L = (FEx SO (FAll FO (FBase (In 0 0))) :: formula)&quot;</span>
+<span class="comment">(*false in M2L, true in WS1S*)</span>
+<span class="command">definition</span> <span class="string">&quot;&Phi; = (FAll FO (FEx FO (FBase (Less 1 0))) :: formula)&quot;</span>
+
+<span class="command">lemma</span> <span class="string">&quot;Thm (Abs_idx (0, 1)) (FNot M2L)&quot;</span>
+  <span class="command">by</span> eval
+
+<span class="command">lemma</span> <span class="string">&quot;Thm (Abs_idx (0, 0)) &Phi;&quot;</span>
+  <span class="command">by</span> eval
+
+<span class="command">abbreviation</span> Globally <span class="delimiter">(</span><span class="string">&quot;\&lt;box&gt;_&quot;</span> <span class="delimiter">[</span>40<span class="delimiter">]</span> 40<span class="delimiter">)</span> <span class="keyword2">where</span> <span class="string">&quot;Globally P == %n. FAll FO (FImp (FNot (FBase (Less (n+1) 0))) (P 0))&quot;</span>
+<span class="command">abbreviation</span> Future <span class="delimiter">(</span><span class="string">&quot;&diams;_&quot;</span> <span class="delimiter">[</span>40<span class="delimiter">]</span> 40<span class="delimiter">)</span> <span class="keyword2">where</span> <span class="string">&quot;Future P == %n. FEx FO (FAnd (FNot (FBase (Less (n+1) 0))) (P 0))&quot;</span>
+<span class="command">abbreviation</span> IMP <span class="delimiter">(</span><span class="keyword2">infixr</span> <span class="string">&quot;-&gt;&quot;</span> 50<span class="delimiter">)</span> <span class="keyword2">where</span> <span class="string">&quot;IMP P1 P2 == %n. FImp (P1 n) (P2 n)&quot;</span>
+
+<span class="command">definition</span> &Psi; <span class="delimiter">::</span> <span class="string">&quot;nat =&gt; formula&quot;</span> <span class="keyword2">where</span>
+  <span class="string">&quot;&Psi; n = FAll FO (((\&lt;box&gt;(foldr (&lambda;i &phi;. (&lambda;m. FBase (In m i)) -&gt; &phi;) [0..&lt;n] (&lambda;m. FBase (In m n)))) -&gt;
+     foldr (&lambda;i &phi;. (\&lt;box&gt;(&lambda;m. FBase (In m i))) -&gt; &phi;) [0..&lt;n] (\&lt;box&gt;(&lambda;m. FBase (In m n)))) 0)&quot;</span>
+
+<span class="command">lemma</span> <span class="string">&quot;Thm (Abs_idx (0, 1)) (&Psi; 0)&quot;</span> <span class="command">by</span> eval
+<span class="command">lemma</span> <span class="string">&quot;Thm (Abs_idx (0, 2)) (&Psi; 1)&quot;</span> <span class="command">by</span> eval
+<span class="command">lemma</span> <span class="string">&quot;Thm (Abs_idx (0, 3)) (&Psi; 2)&quot;</span> <span class="command">by</span> eval
+<span class="command">lemma</span> <span class="string">&quot;Thm (Abs_idx (0, 4)) (&Psi; 3)&quot;</span> <span class="command">by</span> eval
+<span class="command">lemma</span> <span class="string">&quot;Thm (Abs_idx (0, 5)) (&Psi; 4)&quot;</span> <span class="command">by</span> eval
+<span class="command">lemma</span> <span class="string">&quot;Thm (Abs_idx (0, 6)) (&Psi; 5)&quot;</span> <span class="command">by</span> eval
+<span class="command">lemma</span> <span class="string">&quot;Thm (Abs_idx (0, 11)) (&Psi; 10)&quot;</span> <span class="command">by</span> eval
+<span class="command">lemma</span> <span class="string">&quot;Thm (Abs_idx (0, 16)) (&Psi; 15)&quot;</span> <span class="command">by</span> eval
+
+<span class="comment">(*&lt;*)</span>
+<span class="comment">(*
+definition &quot;Thm1 n = (&lambda;(ws,X). (ws = [], int (card X), X)) (the (WS1S.closure (Abs_idx (0, n + 1)) (norm (&Psi; n), FBool True)))&quot;
+
+value &quot;Thm1 0&quot;
+value &quot;Thm1 1&quot;
+value &quot;Thm1 2&quot;
+value &quot;Thm1 3&quot;
+value &quot;Thm1 4&quot;
+value &quot;Thm1 5&quot;
+value &quot;Thm1 6&quot;
+value &quot;Thm1 7&quot;
+value &quot;Thm1 8&quot;
+value &quot;Thm1 9&quot;
+value &quot;Thm1 10&quot;
+value &quot;Thm1 11&quot;
+value &quot;Thm1 12&quot;
+value &quot;Thm1 13&quot;
+value &quot;Thm1 14&quot;
+value &quot;Thm1 15&quot;
+
+definition &quot;mod_two a b c d = FIff a (FIff b (FIff c d))&quot;
+definition &quot;at_least_two a b c d = FIff d (FOr (FAnd a b) (FOr (FAnd b c) (FAnd a c)))&quot;
+
+definition &quot;ADD S A B = FEx SO (FAnd (FAll FO (FImp (First 0) (FNot (FBase (In 0 0)))))
+  (FAll FO (FAnd (mod_two (FBase (In 0 (A+1))) (FBase (In 0 (B+1))) (FBase (In 0 0)) (FBase (In 0 (S+1))))
+       ((FImp (FEx FO (FAnd (Last 0) (FBase (Less 1 0)))))
+            (at_least_two (FBase (In 0 (A+1))) (FBase (In 0 (B+1))) (FBase (In 0 0)) (FAll FO (FImp (Succ 0 1) (FBase (In 0 0)))))))))&quot;
+
+lemma Comm_Test: &quot;check_eqv (Abs_idx (0, 3)) (ADD 0 1 2) (ADD 1 0 2)&quot;
+  by eval
+
+abbreviation transition (&quot;\&quot;_\&quot; -&gt; \&quot;_\&quot; [label=\&quot;_\&quot;];&quot;)
+  where &quot;transition from to lab &equiv; ((from, lab), to)&quot;
+
+value &quot;WS1S.automaton (&sigma; (Abs_idx (0, 0))) M2L&quot;
+
+*)</span>
+
+<span class="command">end</span>
+<span class="comment">(*&gt;*)</span>
+</pre>
+
+</div>
+</body>
+</html>

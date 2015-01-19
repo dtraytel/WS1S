@@ -377,6 +377,7 @@ fun PSI n = All (FO, (IMP
 fun psi_test_m2l n = eqv_m2l (0, n + 1) (B true) (PSI n);
 fun psi_test n = eqv (0, n + 1) (B true) (PSI n);
 
+(*some tests, take some time*)
 fun main () =
   if
     eqv_m2l (1, 0) (Ex (SO, In (0, 0))) (Not (Less (0, 0))) andalso

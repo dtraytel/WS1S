@@ -1,0 +1,24 @@
+session "MSO_Derivatives" = "HOL" +
+  options [document = pdf, document_output = "output"]
+  theories [document = false]
+    While_Default
+    FSet_More
+    "~~/src/Tools/Permanent_Interpretation"
+    "~~/src/HOL/Library/Code_Target_Nat"
+    "~~/src/HOL/Library/While_Combinator"
+    "$AFP/Coinductive_Languages/Coinductive_Language"
+    "$AFP/Datatype_Order_Generator/Order_Generator"
+    "$AFP/List-Index/List_Index"
+  theories
+    WS1S_Examples
+  document_files (in "document/formalization")
+    "root.tex"
+
+session "Paper_Theorems" = "MSO_Derivatives" +
+  options [print_mode = latex, document = pdf, document_output = "output2", document_variants = "document:outline=/proof,/ML"]
+  theories [document = false]
+    WS1S_Formula
+  theories
+    Paper_Theorems
+  document_files (in "document/paper")
+    "root.tex"

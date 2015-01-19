@@ -1,0 +1,419 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+<html xmlns="http://www.w3.org/1999/xhtml">
+<head>
+<meta http-equiv="Content-Type" content="text/html; charset=utf-8"/>
+<title>Theory While_Combinator (Isabelle2014: August 2014)</title>
+<link media="all" rel="stylesheet" type="text/css" href="isabelle.css"/>
+</head>
+
+<body>
+<div class="head"><h1>Theory While_Combinator</h1>
+
+<span class="command">theory</span> <span class="name">While_Combinator</span><br/>
+<span class="keyword">imports</span> <a href="../../HOL/HOL/Main.html"><span class="name">Main</span></a><br/>
+
+</div>
+<div class="source">
+<pre><span class="comment">(*  Title:      HOL/Library/While_Combinator.thy
+    Author:     Tobias Nipkow
+    Author:     Alexander Krauss
+*)</span>
+
+<span class="command">header</span> <span class="verbatim">{* A general ``while&#39;&#39; combinator *}</span>
+
+<span class="command">theory</span> While_Combinator
+<span class="keyword2">imports</span> Main
+<span class="keyword2">begin</span>
+
+<span class="command">subsection</span> <span class="verbatim">{* Partial version *}</span>
+
+<span class="command">definition</span> while_option <span class="delimiter">::</span> <span class="string">&quot;(&#39;a =&gt; bool) =&gt; (&#39;a =&gt; &#39;a) =&gt; &#39;a =&gt; &#39;a option&quot;</span> <span class="keyword2">where</span>
+<span class="string">&quot;while_option b c s = (if (&exist;k. ~ b ((c ^^ k) s))
+   then Some ((c ^^ (LEAST k. ~ b ((c ^^ k) s))) s)
+   else None)&quot;</span>
+
+<span class="command">theorem</span> while_option_unfold<span class="delimiter">[</span>code<span class="delimiter">]</span><span class="delimiter">:</span>
+<span class="string">&quot;while_option b c s = (if b s then while_option b c (c s) else Some s)&quot;</span>
+<span class="command">proof</span> cases
+  <span class="command">assume</span> <span class="string">&quot;b s&quot;</span>
+  <span class="command">show</span> <span class="var">?thesis</span>
+  <span class="command">proof</span> <span class="delimiter">(</span>cases <span class="string">&quot;&exist;k. ~ b ((c ^^ k) s)&quot;</span><span class="delimiter">)</span>
+    <span class="command">case</span> True
+    <span class="command">then</span> <span class="command">obtain</span> k <span class="keyword2">where</span> 1<span class="delimiter">:</span> <span class="string">&quot;~ b ((c ^^ k) s)&quot;</span> <span class="command">..</span>
+    <span class="command">with</span> <span class="altstring">`b s`</span> <span class="command">obtain</span> l <span class="keyword2">where</span> <span class="string">&quot;k = Suc l&quot;</span> <span class="command">by</span> <span class="delimiter">(</span>cases k<span class="delimiter">)</span> auto
+    <span class="command">with</span> 1 <span class="command">have</span> <span class="string">&quot;~ b ((c ^^ l) (c s))&quot;</span> <span class="command">by</span> <span class="delimiter">(</span>auto simp<span class="delimiter">:</span> funpow_swap1<span class="delimiter">)</span>
+    <span class="command">then</span> <span class="command">have</span> 2<span class="delimiter">:</span> <span class="string">&quot;&exist;l. ~ b ((c ^^ l) (c s))&quot;</span> <span class="command">..</span>
+    <span class="command">from</span> 1
+    <span class="command">have</span> <span class="string">&quot;(LEAST k. ~ b ((c ^^ k) s)) = Suc (LEAST l. ~ b ((c ^^ Suc l) s))&quot;</span>
+      <span class="command">by</span> <span class="delimiter">(</span>rule Least_Suc<span class="delimiter">)</span> <span class="delimiter">(</span>simp add<span class="delimiter">:</span> <span class="altstring">`b s`</span><span class="delimiter">)</span>
+    <span class="command">also</span> <span class="command">have</span> <span class="string">&quot;... = Suc (LEAST l. ~ b ((c ^^ l) (c s)))&quot;</span>
+      <span class="command">by</span> <span class="delimiter">(</span>simp add<span class="delimiter">:</span> funpow_swap1<span class="delimiter">)</span>
+    <span class="command">finally</span>
+    <span class="command">show</span> <span class="var">?thesis</span> 
+      <span class="command">using</span> True 2 <span class="altstring">`b s`</span> <span class="command">by</span> <span class="delimiter">(</span>simp add<span class="delimiter">:</span> funpow_swap1 while_option_def<span class="delimiter">)</span>
+  <span class="command">next</span>
+    <span class="command">case</span> False
+    <span class="command">then</span> <span class="command">have</span> <span class="string">&quot;~ (&exist;l. ~ b ((c ^^ Suc l) s))&quot;</span> <span class="command">by</span> blast
+    <span class="command">then</span> <span class="command">have</span> <span class="string">&quot;~ (&exist;l. ~ b ((c ^^ l) (c s)))&quot;</span>
+      <span class="command">by</span> <span class="delimiter">(</span>simp add<span class="delimiter">:</span> funpow_swap1<span class="delimiter">)</span>
+    <span class="command">with</span> False  <span class="altstring">`b s`</span> <span class="command">show</span> <span class="var">?thesis</span> <span class="command">by</span> <span class="delimiter">(</span>simp add<span class="delimiter">:</span> while_option_def<span class="delimiter">)</span>
+  <span class="command">qed</span>
+<span class="command">next</span>
+  <span class="command">assume</span> <span class="delimiter">[</span>simp<span class="delimiter">]</span><span class="delimiter">:</span> <span class="string">&quot;~ b s&quot;</span>
+  <span class="command">have</span> least<span class="delimiter">:</span> <span class="string">&quot;(LEAST k. ~ b ((c ^^ k) s)) = 0&quot;</span>
+    <span class="command">by</span> <span class="delimiter">(</span>rule Least_equality<span class="delimiter">)</span> auto
+  <span class="command">moreover</span> 
+  <span class="command">have</span> <span class="string">&quot;&exist;k. ~ b ((c ^^ k) s)&quot;</span> <span class="command">by</span> <span class="delimiter">(</span>rule exI<span class="delimiter">[</span>of _ <span class="string">&quot;0::nat&quot;</span><span class="delimiter">]</span><span class="delimiter">)</span> auto
+  <span class="command">ultimately</span> <span class="command">show</span> <span class="var">?thesis</span> <span class="command">unfolding</span> while_option_def <span class="command">by</span> auto 
+<span class="command">qed</span>
+
+<span class="command">lemma</span> while_option_stop2<span class="delimiter">:</span>
+ <span class="string">&quot;while_option b c s = Some t ==&gt; EX k. t = (c^^k) s &and; &not; b t&quot;</span>
+<span class="command">apply</span><span class="delimiter">(</span>simp add<span class="delimiter">:</span> while_option_def split<span class="delimiter">:</span> if_splits<span class="delimiter">)</span>
+<span class="command">by</span> <span class="delimiter">(</span>metis <span class="delimiter">(</span>lifting<span class="delimiter">)</span> LeastI_ex<span class="delimiter">)</span>
+
+<span class="command">lemma</span> while_option_stop<span class="delimiter">:</span> <span class="string">&quot;while_option b c s = Some t ==&gt; ~ b t&quot;</span>
+<span class="command">by</span><span class="delimiter">(</span>metis while_option_stop2<span class="delimiter">)</span>
+
+<span class="command">theorem</span> while_option_rule<span class="delimiter">:</span>
+<span class="keyword2">assumes</span> step<span class="delimiter">:</span> <span class="string">&quot;!!s. P s ==&gt; b s ==&gt; P (c s)&quot;</span>
+<span class="keyword2">and</span> result<span class="delimiter">:</span> <span class="string">&quot;while_option b c s = Some t&quot;</span>
+<span class="keyword2">and</span> init<span class="delimiter">:</span> <span class="string">&quot;P s&quot;</span>
+<span class="keyword2">shows</span> <span class="string">&quot;P t&quot;</span>
+<span class="command">proof</span> -
+  <span class="command">def</span> k <span class="delimiter">==</span> <span class="string">&quot;LEAST k. ~ b ((c ^^ k) s)&quot;</span>
+  <span class="command">from</span> assms <span class="command">have</span> t<span class="delimiter">:</span> <span class="string">&quot;t = (c ^^ k) s&quot;</span>
+    <span class="command">by</span> <span class="delimiter">(</span>simp add<span class="delimiter">:</span> while_option_def k_def split<span class="delimiter">:</span> if_splits<span class="delimiter">)</span>    
+  <span class="command">have</span> 1<span class="delimiter">:</span> <span class="string">&quot;ALL i&lt;k. b ((c ^^ i) s)&quot;</span>
+    <span class="command">by</span> <span class="delimiter">(</span>auto simp<span class="delimiter">:</span> k_def dest<span class="delimiter">:</span> not_less_Least<span class="delimiter">)</span>
+
+  <span class="command">{</span> <span class="command">fix</span> i <span class="command">assume</span> <span class="string">&quot;i &lt;= k&quot;</span> <span class="command">then</span> <span class="command">have</span> <span class="string">&quot;P ((c ^^ i) s)&quot;</span>
+      <span class="command">by</span> <span class="delimiter">(</span>induct i<span class="delimiter">)</span> <span class="delimiter">(</span>auto simp<span class="delimiter">:</span> init step 1<span class="delimiter">)</span> <span class="command">}</span>
+  <span class="command">thus</span> <span class="string">&quot;P t&quot;</span> <span class="command">by</span> <span class="delimiter">(</span>auto simp<span class="delimiter">:</span> t<span class="delimiter">)</span>
+<span class="command">qed</span>
+
+<span class="command">lemma</span> funpow_commute<span class="delimiter">:</span> 
+  <span class="string">&quot;[|&forall;k&#39; &lt; k. f (c ((c^^k&#39;) s)) = c&#39; (f ((c^^k&#39;) s))|] ==&gt; f ((c^^k) s) = (c&#39;^^k) (f s)&quot;</span>
+<span class="command">by</span> <span class="delimiter">(</span>induct k arbitrary<span class="delimiter">:</span> s<span class="delimiter">)</span> auto
+
+<span class="command">lemma</span> while_option_commute_invariant<span class="delimiter">:</span>
+<span class="keyword2">assumes</span> Invariant<span class="delimiter">:</span> <span class="string">&quot;!!s. P s ==&gt; b s ==&gt; P (c s)&quot;</span>
+<span class="keyword2">assumes</span> TestCommute<span class="delimiter">:</span> <span class="string">&quot;!!s. P s ==&gt; b s = b&#39; (f s)&quot;</span>
+<span class="keyword2">assumes</span> BodyCommute<span class="delimiter">:</span> <span class="string">&quot;!!s. P s ==&gt; b s ==&gt; f (c s) = c&#39; (f s)&quot;</span>
+<span class="keyword2">assumes</span> Initial<span class="delimiter">:</span> <span class="string">&quot;P s&quot;</span>
+<span class="keyword2">shows</span> <span class="string">&quot;map_option f (while_option b c s) = while_option b&#39; c&#39; (f s)&quot;</span>
+<span class="command">unfolding</span> while_option_def
+<span class="command">proof</span> <span class="delimiter">(</span>rule trans<span class="delimiter">[</span>OF if_distrib if_cong<span class="delimiter">]</span><span class="delimiter">,</span> safe<span class="delimiter">,</span> unfold option.inject<span class="delimiter">)</span>
+  <span class="command">fix</span> k
+  <span class="command">assume</span> <span class="string">&quot;&not; b ((c ^^ k) s)&quot;</span>
+  <span class="command">with</span> Initial <span class="command">show</span> <span class="string">&quot;&exist;k. &not; b&#39; ((c&#39; ^^ k) (f s))&quot;</span>
+  <span class="command">proof</span> <span class="delimiter">(</span>induction k arbitrary<span class="delimiter">:</span> s<span class="delimiter">)</span>
+    <span class="command">case</span> 0 <span class="command">thus</span> <span class="var">?case</span> <span class="command">by</span> <span class="delimiter">(</span>auto simp<span class="delimiter">:</span> TestCommute intro<span class="delimiter">:</span> exI<span class="delimiter">[</span>of _ 0<span class="delimiter">]</span><span class="delimiter">)</span>
+  <span class="command">next</span>
+    <span class="command">case</span> <span class="delimiter">(</span>Suc k<span class="delimiter">)</span> <span class="command">thus</span> <span class="var">?case</span>
+    <span class="command">proof</span> <span class="delimiter">(</span>cases <span class="string">&quot;b s&quot;</span><span class="delimiter">)</span>
+      <span class="command">assume</span> <span class="string">&quot;b s&quot;</span>
+      <span class="command">with</span> Suc.IH<span class="delimiter">[</span>of <span class="string">&quot;c s&quot;</span><span class="delimiter">]</span> Suc.prems <span class="command">show</span> <span class="var">?thesis</span>
+        <span class="command">by</span> <span class="delimiter">(</span>metis BodyCommute Invariant comp_apply funpow.simps<span class="delimiter">(</span>2<span class="delimiter">)</span> funpow_swap1<span class="delimiter">)</span>
+    <span class="command">next</span>
+      <span class="command">assume</span> <span class="string">&quot;&not; b s&quot;</span>
+      <span class="command">with</span> Suc <span class="command">show</span> <span class="var">?thesis</span> <span class="command">by</span> <span class="delimiter">(</span>auto simp<span class="delimiter">:</span> TestCommute intro<span class="delimiter">:</span> exI <span class="delimiter">[</span>of _ 0<span class="delimiter">]</span><span class="delimiter">)</span>
+    <span class="command">qed</span>
+  <span class="command">qed</span>
+<span class="command">next</span>
+  <span class="command">fix</span> k
+  <span class="command">assume</span> <span class="string">&quot;&not; b&#39; ((c&#39; ^^ k) (f s))&quot;</span>
+  <span class="command">with</span> Initial <span class="command">show</span> <span class="string">&quot;&exist;k. &not; b ((c ^^ k) s)&quot;</span>
+  <span class="command">proof</span> <span class="delimiter">(</span>induction k arbitrary<span class="delimiter">:</span> s<span class="delimiter">)</span>
+    <span class="command">case</span> 0 <span class="command">thus</span> <span class="var">?case</span> <span class="command">by</span> <span class="delimiter">(</span>auto simp<span class="delimiter">:</span> TestCommute intro<span class="delimiter">:</span> exI<span class="delimiter">[</span>of _ 0<span class="delimiter">]</span><span class="delimiter">)</span>
+  <span class="command">next</span>
+    <span class="command">case</span> <span class="delimiter">(</span>Suc k<span class="delimiter">)</span> <span class="command">thus</span> <span class="var">?case</span>
+    <span class="command">proof</span> <span class="delimiter">(</span>cases <span class="string">&quot;b s&quot;</span><span class="delimiter">)</span>
+       <span class="command">assume</span> <span class="string">&quot;b s&quot;</span>
+      <span class="command">with</span> Suc.IH<span class="delimiter">[</span>of <span class="string">&quot;c s&quot;</span><span class="delimiter">]</span> Suc.prems <span class="command">show</span> <span class="var">?thesis</span>
+        <span class="command">by</span> <span class="delimiter">(</span>metis BodyCommute Invariant comp_apply funpow.simps<span class="delimiter">(</span>2<span class="delimiter">)</span> funpow_swap1<span class="delimiter">)</span>
+    <span class="command">next</span>
+      <span class="command">assume</span> <span class="string">&quot;&not; b s&quot;</span>
+      <span class="command">with</span> Suc <span class="command">show</span> <span class="var">?thesis</span> <span class="command">by</span> <span class="delimiter">(</span>auto simp<span class="delimiter">:</span> TestCommute intro<span class="delimiter">:</span> exI <span class="delimiter">[</span>of _ 0<span class="delimiter">]</span><span class="delimiter">)</span>
+    <span class="command">qed</span>
+  <span class="command">qed</span>
+<span class="command">next</span>
+  <span class="command">fix</span> k
+  <span class="command">assume</span> k<span class="delimiter">:</span> <span class="string">&quot;&not; b&#39; ((c&#39; ^^ k) (f s))&quot;</span>
+  <span class="command">have</span> *<span class="delimiter">:</span> <span class="string">&quot;(LEAST k. &not; b&#39; ((c&#39; ^^ k) (f s))) = (LEAST k. &not; b ((c ^^ k) s))&quot;</span>
+          <span class="delimiter">(</span><span class="keyword2">is</span> <span class="string">&quot;?k&#39; = ?k&quot;</span><span class="delimiter">)</span>
+  <span class="command">proof</span> <span class="delimiter">(</span>cases <span class="var">?k&#39;</span><span class="delimiter">)</span>
+    <span class="command">case</span> 0
+    <span class="command">have</span> <span class="string">&quot;&not; b&#39; ((c&#39; ^^ 0) (f s))&quot;</span>
+      <span class="command">unfolding</span> 0<span class="delimiter">[</span>symmetric<span class="delimiter">]</span> <span class="command">by</span> <span class="delimiter">(</span>rule LeastI<span class="delimiter">[</span>of _ k<span class="delimiter">]</span><span class="delimiter">)</span> <span class="delimiter">(</span>rule k<span class="delimiter">)</span>
+    <span class="command">hence</span> <span class="string">&quot;&not; b s&quot;</span> <span class="command">by</span> <span class="delimiter">(</span>auto simp<span class="delimiter">:</span> TestCommute Initial<span class="delimiter">)</span>
+    <span class="command">hence</span> <span class="string">&quot;?k = 0&quot;</span> <span class="command">by</span> <span class="delimiter">(</span>intro Least_equality<span class="delimiter">)</span> auto
+    <span class="command">with</span> 0 <span class="command">show</span> <span class="var">?thesis</span> <span class="command">by</span> auto
+  <span class="command">next</span>
+    <span class="command">case</span> <span class="delimiter">(</span>Suc k&#39;<span class="delimiter">)</span>
+    <span class="command">have</span> <span class="string">&quot;&not; b&#39; ((c&#39; ^^ Suc k&#39;) (f s))&quot;</span>
+      <span class="command">unfolding</span> Suc<span class="delimiter">[</span>symmetric<span class="delimiter">]</span> <span class="command">by</span> <span class="delimiter">(</span>rule LeastI<span class="delimiter">)</span> <span class="delimiter">(</span>rule k<span class="delimiter">)</span>
+    <span class="command">moreover</span>
+    <span class="command">{</span> <span class="command">fix</span> k <span class="command">assume</span> <span class="string">&quot;k &le; k&#39;&quot;</span>
+      <span class="command">hence</span> <span class="string">&quot;k &lt; ?k&#39;&quot;</span> <span class="command">unfolding</span> Suc <span class="command">by</span> simp
+      <span class="command">hence</span> <span class="string">&quot;b&#39; ((c&#39; ^^ k) (f s))&quot;</span> <span class="command">by</span> <span class="delimiter">(</span>rule iffD1<span class="delimiter">[</span>OF not_not<span class="delimiter">,</span> OF not_less_Least<span class="delimiter">]</span><span class="delimiter">)</span>
+    <span class="command">}</span>
+    <span class="command">note</span> b&#39; <span class="delimiter">=</span> this
+    <span class="command">{</span> <span class="command">fix</span> k <span class="command">assume</span> <span class="string">&quot;k &le; k&#39;&quot;</span>
+      <span class="command">hence</span> <span class="string">&quot;f ((c ^^ k) s) = (c&#39; ^^ k) (f s)&quot;</span>
+      <span class="keyword2">and</span> <span class="string">&quot;b ((c ^^ k) s) = b&#39; ((c&#39; ^^ k) (f s))&quot;</span>
+      <span class="keyword2">and</span> <span class="string">&quot;P ((c ^^ k) s)&quot;</span>
+        <span class="command">by</span> <span class="delimiter">(</span>induct k<span class="delimiter">)</span> <span class="delimiter">(</span>auto simp<span class="delimiter">:</span> b&#39; assms<span class="delimiter">)</span>
+      <span class="command">with</span> <span class="altstring">`k &le; k&#39;`</span>
+      <span class="command">have</span> <span class="string">&quot;b ((c ^^ k) s)&quot;</span>
+      <span class="keyword2">and</span> <span class="string">&quot;f ((c ^^ k) s) = (c&#39; ^^ k) (f s)&quot;</span>
+      <span class="keyword2">and</span> <span class="string">&quot;P ((c ^^ k) s)&quot;</span>
+        <span class="command">by</span> <span class="delimiter">(</span>auto simp<span class="delimiter">:</span> b&#39;<span class="delimiter">)</span>
+    <span class="command">}</span>
+    <span class="command">note</span> b <span class="delimiter">=</span> this<span class="delimiter">(</span>1<span class="delimiter">)</span> <span class="keyword2">and</span> body <span class="delimiter">=</span> this<span class="delimiter">(</span>2<span class="delimiter">)</span> <span class="keyword2">and</span> inv <span class="delimiter">=</span> this<span class="delimiter">(</span>3<span class="delimiter">)</span>
+    <span class="command">hence</span> k&#39;<span class="delimiter">:</span> <span class="string">&quot;f ((c ^^ k&#39;) s) = (c&#39; ^^ k&#39;) (f s)&quot;</span> <span class="command">by</span> auto
+    <span class="command">ultimately</span> <span class="command">show</span> <span class="var">?thesis</span> <span class="command">unfolding</span> Suc <span class="command">using</span> b
+    <span class="command">proof</span> <span class="delimiter">(</span>intro Least_equality<span class="delimiter">[</span>symmetric<span class="delimiter">]</span><span class="delimiter">)</span>
+      <span class="command">case</span> goal1
+      <span class="command">hence</span> Test<span class="delimiter">:</span> <span class="string">&quot;&not; b&#39; (f ((c ^^ Suc k&#39;) s))&quot;</span>
+        <span class="command">by</span> <span class="delimiter">(</span>auto simp<span class="delimiter">:</span> BodyCommute inv b<span class="delimiter">)</span>
+      <span class="command">have</span> <span class="string">&quot;P ((c ^^ Suc k&#39;) s)&quot;</span> <span class="command">by</span> <span class="delimiter">(</span>auto simp<span class="delimiter">:</span> Invariant inv b<span class="delimiter">)</span>
+      <span class="command">with</span> Test <span class="command">show</span> <span class="var">?case</span> <span class="command">by</span> <span class="delimiter">(</span>auto simp<span class="delimiter">:</span> TestCommute<span class="delimiter">)</span>
+    <span class="command">next</span>
+      <span class="command">case</span> goal2 <span class="command">thus</span> <span class="var">?case</span> <span class="command">by</span> <span class="delimiter">(</span>metis not_less_eq_eq<span class="delimiter">)</span>
+    <span class="command">qed</span>
+  <span class="command">qed</span>
+  <span class="command">have</span> <span class="string">&quot;f ((c ^^ ?k) s) = (c&#39; ^^ ?k&#39;) (f s)&quot;</span> <span class="command">unfolding</span> *
+  <span class="command">proof</span> <span class="delimiter">(</span>rule funpow_commute<span class="delimiter">,</span> clarify<span class="delimiter">)</span>
+    <span class="command">fix</span> k <span class="command">assume</span> <span class="string">&quot;k &lt; ?k&quot;</span>
+    <span class="command">hence</span> TestTrue<span class="delimiter">:</span> <span class="string">&quot;b ((c ^^ k) s)&quot;</span> <span class="command">by</span> <span class="delimiter">(</span>auto dest<span class="delimiter">:</span> not_less_Least<span class="delimiter">)</span>
+    <span class="command">from</span> <span class="altstring">`k &lt; ?k`</span> <span class="command">have</span> <span class="string">&quot;P ((c ^^ k) s)&quot;</span>
+    <span class="command">proof</span> <span class="delimiter">(</span>induct k<span class="delimiter">)</span>
+      <span class="command">case</span> 0 <span class="command">thus</span> <span class="var">?case</span> <span class="command">by</span> <span class="delimiter">(</span>auto simp<span class="delimiter">:</span> assms<span class="delimiter">)</span>
+    <span class="command">next</span>
+      <span class="command">case</span> <span class="delimiter">(</span>Suc h<span class="delimiter">)</span>
+      <span class="command">hence</span> <span class="string">&quot;P ((c ^^ h) s)&quot;</span> <span class="command">by</span> auto
+      <span class="command">with</span> Suc <span class="command">show</span> <span class="var">?case</span>
+        <span class="command">by</span> <span class="delimiter">(</span>auto<span class="delimiter">,</span> metis <span class="delimiter">(</span>lifting<span class="delimiter">,</span> no_types<span class="delimiter">)</span> Invariant Suc_lessD not_less_Least<span class="delimiter">)</span>
+    <span class="command">qed</span>
+    <span class="command">with</span> TestTrue <span class="command">show</span> <span class="string">&quot;f (c ((c ^^ k) s)) = c&#39; (f ((c ^^ k) s))&quot;</span>
+      <span class="command">by</span> <span class="delimiter">(</span>metis BodyCommute<span class="delimiter">)</span>
+  <span class="command">qed</span>
+  <span class="command">thus</span> <span class="string">&quot;&exist;z. (c ^^ ?k) s = z &and; f z = (c&#39; ^^ ?k&#39;) (f s)&quot;</span> <span class="command">by</span> blast
+<span class="command">qed</span>
+
+<span class="command">lemma</span> while_option_commute<span class="delimiter">:</span>
+  <span class="keyword2">assumes</span> <span class="string">&quot;!!s. b s = b&#39; (f s)&quot;</span> <span class="string">&quot;!!s. [|b s|] ==&gt; f (c s) = c&#39; (f s)&quot;</span> 
+  <span class="keyword2">shows</span> <span class="string">&quot;map_option f (while_option b c s) = while_option b&#39; c&#39; (f s)&quot;</span>
+<span class="command">by</span><span class="delimiter">(</span>rule while_option_commute_invariant<span class="delimiter">[</span><span class="keyword2">where</span> P <span class="delimiter">=</span> <span class="string">&quot;&lambda;_. True&quot;</span><span class="delimiter">]</span><span class="delimiter">)</span>
+  <span class="delimiter">(</span>auto simp add<span class="delimiter">:</span> assms<span class="delimiter">)</span>
+
+<span class="command">subsection</span> <span class="verbatim">{* Total version *}</span>
+
+<span class="command">definition</span> while <span class="delimiter">::</span> <span class="string">&quot;(&#39;a =&gt; bool) =&gt; (&#39;a =&gt; &#39;a) =&gt; &#39;a =&gt; &#39;a&quot;</span>
+<span class="keyword2">where</span> <span class="string">&quot;while b c s = the (while_option b c s)&quot;</span>
+
+<span class="command">lemma</span> while_unfold <span class="delimiter">[</span>code<span class="delimiter">]</span><span class="delimiter">:</span>
+  <span class="string">&quot;while b c s = (if b s then while b c (c s) else s)&quot;</span>
+<span class="command">unfolding</span> while_def <span class="command">by</span> <span class="delimiter">(</span>subst while_option_unfold<span class="delimiter">)</span> simp
+
+<span class="command">lemma</span> def_while_unfold<span class="delimiter">:</span>
+  <span class="keyword2">assumes</span> fdef<span class="delimiter">:</span> <span class="string">&quot;f == while test do&quot;</span>
+  <span class="keyword2">shows</span> <span class="string">&quot;f x = (if test x then f(do x) else x)&quot;</span>
+<span class="command">unfolding</span> fdef <span class="command">by</span> <span class="delimiter">(</span>fact while_unfold<span class="delimiter">)</span>
+
+
+<span class="command">text</span> <span class="verbatim">{*
+ The proof rule for @{term while}, where @{term P} is the invariant.
+*}</span>
+
+<span class="command">theorem</span> while_rule_lemma<span class="delimiter">:</span>
+  <span class="keyword2">assumes</span> invariant<span class="delimiter">:</span> <span class="string">&quot;!!s. P s ==&gt; b s ==&gt; P (c s)&quot;</span>
+    <span class="keyword2">and</span> terminate<span class="delimiter">:</span> <span class="string">&quot;!!s. P s ==&gt; &not; b s ==&gt; Q s&quot;</span>
+    <span class="keyword2">and</span> wf<span class="delimiter">:</span> <span class="string">&quot;wf {(t, s). P s &and; b s &and; t = c s}&quot;</span>
+  <span class="keyword2">shows</span> <span class="string">&quot;P s ==&gt; Q (while b c s)&quot;</span>
+  <span class="command">using</span> wf
+  <span class="command">apply</span> <span class="delimiter">(</span>induct s<span class="delimiter">)</span>
+  <span class="command">apply</span> simp
+  <span class="command">apply</span> <span class="delimiter">(</span>subst while_unfold<span class="delimiter">)</span>
+  <span class="command">apply</span> <span class="delimiter">(</span>simp add<span class="delimiter">:</span> invariant terminate<span class="delimiter">)</span>
+  <span class="command">done</span>
+
+<span class="command">theorem</span> while_rule<span class="delimiter">:</span>
+  <span class="string">&quot;[| P s;
+      !!s. [| P s; b s  |] ==&gt; P (c s);
+      !!s. [| P s; &not; b s  |] ==&gt; Q s;
+      wf r;
+      !!s. [| P s; b s  |] ==&gt; (c s, s) &isin; r |] ==&gt;
+   Q (while b c s)&quot;</span>
+  <span class="command">apply</span> <span class="delimiter">(</span>rule while_rule_lemma<span class="delimiter">)</span>
+     <span class="command">prefer</span> 4 <span class="command">apply</span> assumption
+    <span class="command">apply</span> blast
+   <span class="command">apply</span> blast
+  <span class="command">apply</span> <span class="delimiter">(</span>erule wf_subset<span class="delimiter">)</span>
+  <span class="command">apply</span> blast
+  <span class="command">done</span>
+
+<span class="command">text</span><span class="verbatim">{* Proving termination: *}</span>
+
+<span class="command">theorem</span> wf_while_option_Some<span class="delimiter">:</span>
+  <span class="keyword2">assumes</span> <span class="string">&quot;wf {(t, s). (P s &and; b s) &and; t = c s}&quot;</span>
+  <span class="keyword2">and</span> <span class="string">&quot;!!s. P s ==&gt; b s ==&gt; P(c s)&quot;</span> <span class="keyword2">and</span> <span class="string">&quot;P s&quot;</span>
+  <span class="keyword2">shows</span> <span class="string">&quot;EX t. while_option b c s = Some t&quot;</span>
+<span class="command">using</span> assms<span class="delimiter">(</span>1<span class="delimiter">,</span>3<span class="delimiter">)</span>
+<span class="command">proof</span> <span class="delimiter">(</span>induction s<span class="delimiter">)</span>
+  <span class="command">case</span> less <span class="command">thus</span> <span class="var">?case</span> <span class="command">using</span> assms<span class="delimiter">(</span>2<span class="delimiter">)</span>
+    <span class="command">by</span> <span class="delimiter">(</span>subst while_option_unfold<span class="delimiter">)</span> simp
+<span class="command">qed</span>
+
+<span class="command">lemma</span> wf_rel_while_option_Some<span class="delimiter">:</span>
+<span class="keyword2">assumes</span> wf<span class="delimiter">:</span> <span class="string">&quot;wf R&quot;</span>
+<span class="keyword2">assumes</span> smaller<span class="delimiter">:</span> <span class="string">&quot;!!s. P s &and; b s ==&gt; (c s, s) &isin; R&quot;</span>
+<span class="keyword2">assumes</span> inv<span class="delimiter">:</span> <span class="string">&quot;!!s. P s &and; b s ==&gt; P(c s)&quot;</span>
+<span class="keyword2">assumes</span> init<span class="delimiter">:</span> <span class="string">&quot;P s&quot;</span>
+<span class="keyword2">shows</span> <span class="string">&quot;&exist;t. while_option b c s = Some t&quot;</span>
+<span class="command">proof</span> -
+ <span class="command">from</span> smaller <span class="command">have</span> <span class="string">&quot;{(t,s). P s &and; b s &and; t = c s} &sube; R&quot;</span> <span class="command">by</span> auto
+ <span class="command">with</span> wf <span class="command">have</span> <span class="string">&quot;wf {(t,s). P s &and; b s &and; t = c s}&quot;</span> <span class="command">by</span> <span class="delimiter">(</span>auto simp<span class="delimiter">:</span> wf_subset<span class="delimiter">)</span>
+ <span class="command">with</span> inv init <span class="command">show</span> <span class="var">?thesis</span> <span class="command">by</span> <span class="delimiter">(</span>auto simp<span class="delimiter">:</span> wf_while_option_Some<span class="delimiter">)</span>
+<span class="command">qed</span>
+
+<span class="command">theorem</span> measure_while_option_Some<span class="delimiter">:</span> <span class="keyword2">fixes</span> f <span class="delimiter">::</span> <span class="string">&quot;&#39;s =&gt; nat&quot;</span>
+<span class="keyword2">shows</span> <span class="string">&quot;(!!s. P s ==&gt; b s ==&gt; P(c s) &and; f(c s) &lt; f s)
+  ==&gt; P s ==&gt; EX t. while_option b c s = Some t&quot;</span>
+<span class="command">by</span><span class="delimiter">(</span>blast intro<span class="delimiter">:</span> wf_while_option_Some<span class="delimiter">[</span>OF wf_if_measure<span class="delimiter">,</span> of P b f<span class="delimiter">]</span><span class="delimiter">)</span>
+
+<span class="command">text</span><span class="verbatim">{* Kleene iteration starting from the empty set and assuming some finite
+bounding set: *}</span>
+
+<span class="command">lemma</span> while_option_finite_subset_Some<span class="delimiter">:</span> <span class="keyword2">fixes</span> C <span class="delimiter">::</span> <span class="string">&quot;&#39;a set&quot;</span>
+  <span class="keyword2">assumes</span> <span class="string">&quot;mono f&quot;</span> <span class="keyword2">and</span> <span class="string">&quot;!!X. X &sube; C ==&gt; f X &sube; C&quot;</span> <span class="keyword2">and</span> <span class="string">&quot;finite C&quot;</span>
+  <span class="keyword2">shows</span> <span class="string">&quot;&exist;P. while_option (&lambda;A. f A &ne; A) f {} = Some P&quot;</span>
+<span class="command">proof</span><span class="delimiter">(</span>rule measure_while_option_Some<span class="delimiter">[</span><span class="keyword2">where</span>
+    f<span class="delimiter">=</span> <span class="string">&quot;%A::&#39;a set. card C - card A&quot;</span> <span class="keyword2">and</span> P<span class="delimiter">=</span> <span class="string">&quot;%A. A &sube; C &and; A &sube; f A&quot;</span> <span class="keyword2">and</span> s<span class="delimiter">=</span> <span class="string">&quot;{}&quot;</span><span class="delimiter">]</span><span class="delimiter">)</span>
+  <span class="command">fix</span> A <span class="command">assume</span> A<span class="delimiter">:</span> <span class="string">&quot;A &sube; C &and; A &sube; f A&quot;</span> <span class="string">&quot;f A &ne; A&quot;</span>
+  <span class="command">show</span> <span class="string">&quot;(f A &sube; C &and; f A &sube; f (f A)) &and; card C - card (f A) &lt; card C - card A&quot;</span>
+    <span class="delimiter">(</span><span class="keyword2">is</span> <span class="string">&quot;?L &and; ?R&quot;</span><span class="delimiter">)</span>
+  <span class="command">proof</span>
+    <span class="command">show</span> <span class="var">?L</span> <span class="command">by</span><span class="delimiter">(</span>metis A<span class="delimiter">(</span>1<span class="delimiter">)</span> assms<span class="delimiter">(</span>2<span class="delimiter">)</span> monoD<span class="delimiter">[</span>OF <span class="altstring">`mono f`</span><span class="delimiter">]</span><span class="delimiter">)</span>
+    <span class="command">show</span> <span class="var">?R</span> <span class="command">by</span> <span class="delimiter">(</span>metis A assms<span class="delimiter">(</span>2<span class="delimiter">,</span>3<span class="delimiter">)</span> card_seteq diff_less_mono2 equalityI linorder_le_less_linear rev_finite_subset<span class="delimiter">)</span>
+  <span class="command">qed</span>
+<span class="command">qed</span> simp
+
+<span class="command">lemma</span> lfp_the_while_option<span class="delimiter">:</span>
+  <span class="keyword2">assumes</span> <span class="string">&quot;mono f&quot;</span> <span class="keyword2">and</span> <span class="string">&quot;!!X. X &sube; C ==&gt; f X &sube; C&quot;</span> <span class="keyword2">and</span> <span class="string">&quot;finite C&quot;</span>
+  <span class="keyword2">shows</span> <span class="string">&quot;lfp f = the(while_option (&lambda;A. f A &ne; A) f {})&quot;</span>
+<span class="command">proof</span>-
+  <span class="command">obtain</span> P <span class="keyword2">where</span> <span class="string">&quot;while_option (&lambda;A. f A &ne; A) f {} = Some P&quot;</span>
+    <span class="command">using</span> while_option_finite_subset_Some<span class="delimiter">[</span>OF assms<span class="delimiter">]</span> <span class="command">by</span> blast
+  <span class="command">with</span> while_option_stop2<span class="delimiter">[</span>OF this<span class="delimiter">]</span> lfp_Kleene_iter<span class="delimiter">[</span>OF assms<span class="delimiter">(</span>1<span class="delimiter">)</span><span class="delimiter">]</span>
+  <span class="command">show</span> <span class="var">?thesis</span> <span class="command">by</span> auto
+<span class="command">qed</span>
+
+<span class="command">lemma</span> lfp_while<span class="delimiter">:</span>
+  <span class="keyword2">assumes</span> <span class="string">&quot;mono f&quot;</span> <span class="keyword2">and</span> <span class="string">&quot;!!X. X &sube; C ==&gt; f X &sube; C&quot;</span> <span class="keyword2">and</span> <span class="string">&quot;finite C&quot;</span>
+  <span class="keyword2">shows</span> <span class="string">&quot;lfp f = while (&lambda;A. f A &ne; A) f {}&quot;</span>
+<span class="command">unfolding</span> while_def <span class="command">using</span> assms <span class="command">by</span> <span class="delimiter">(</span>rule lfp_the_while_option<span class="delimiter">)</span> blast
+
+
+<span class="command">text</span><span class="verbatim">{* Computing the reflexive, transitive closure by iterating a successor
+function. Stops when an element is found that dos not satisfy the test.
+
+More refined (and hence more efficient) versions can be found in ITP 2011 paper
+by Nipkow (the theories are in the AFP entry Flyspeck by Nipkow)
+and the AFP article Executable Transitive Closures by René Thiemann. *}</span>
+
+<span class="command">context</span>
+<span class="keyword2">fixes</span> p <span class="delimiter">::</span> <span class="string">&quot;&#39;a =&gt; bool&quot;</span>
+<span class="keyword2">and</span> f <span class="delimiter">::</span> <span class="string">&quot;&#39;a =&gt; &#39;a list&quot;</span>
+<span class="keyword2">and</span> x <span class="delimiter">::</span> <span class="tfree">&#39;a</span>
+<span class="keyword2">begin</span>
+
+<span class="command">fun</span> rtrancl_while_test <span class="delimiter">::</span> <span class="string">&quot;&#39;a list &times; &#39;a set =&gt; bool&quot;</span>
+<span class="keyword2">where</span> <span class="string">&quot;rtrancl_while_test (ws,_) = (ws &ne; [] &and; p(hd ws))&quot;</span>
+
+<span class="command">fun</span> rtrancl_while_step <span class="delimiter">::</span> <span class="string">&quot;&#39;a list &times; &#39;a set =&gt; &#39;a list &times; &#39;a set&quot;</span>
+<span class="keyword2">where</span> <span class="string">&quot;rtrancl_while_step (ws, Z) =
+  (let x = hd ws; new = remdups (filter (&lambda;y. y &notin; Z) (f x))
+  in (new @ tl ws, set new &cup; Z))&quot;</span>
+
+<span class="command">definition</span> rtrancl_while <span class="delimiter">::</span> <span class="string">&quot;(&#39;a list * &#39;a set) option&quot;</span>
+<span class="keyword2">where</span> <span class="string">&quot;rtrancl_while = while_option rtrancl_while_test rtrancl_while_step ([x],{x})&quot;</span>
+
+<span class="command">fun</span> rtrancl_while_invariant <span class="delimiter">::</span> <span class="string">&quot;&#39;a list &times; &#39;a set =&gt; bool&quot;</span>
+<span class="keyword2">where</span> <span class="string">&quot;rtrancl_while_invariant (ws, Z) =
+   (x &isin; Z &and; set ws &sube; Z &and; distinct ws &and; {(x,y). y &isin; set(f x)} `` (Z - set ws) &sube; Z &and;
+    Z &sube; {(x,y). y &isin; set(f x)}^* `` {x} &and; (&forall;z&isin;Z - set ws. p z))&quot;</span>
+
+<span class="command">lemma</span> rtrancl_while_invariant<span class="delimiter">:</span> 
+  <span class="keyword2">assumes</span> inv<span class="delimiter">:</span> <span class="string">&quot;rtrancl_while_invariant st&quot;</span> <span class="keyword2">and</span> test<span class="delimiter">:</span> <span class="string">&quot;rtrancl_while_test st&quot;</span>
+  <span class="keyword2">shows</span>   <span class="string">&quot;rtrancl_while_invariant (rtrancl_while_step st)&quot;</span>
+<span class="command">proof</span> <span class="delimiter">(</span>cases st<span class="delimiter">)</span>
+  <span class="command">fix</span> ws Z <span class="command">assume</span> st<span class="delimiter">:</span> <span class="string">&quot;st = (ws, Z)&quot;</span>
+  <span class="command">with</span> test <span class="command">obtain</span> h t <span class="keyword2">where</span> <span class="string">&quot;ws = h # t&quot;</span> <span class="string">&quot;p h&quot;</span> <span class="command">by</span> <span class="delimiter">(</span>cases ws<span class="delimiter">)</span> auto
+  <span class="command">with</span> inv st <span class="command">show</span> <span class="var">?thesis</span> <span class="command">by</span> <span class="delimiter">(</span>auto intro<span class="delimiter">:</span> rtrancl.rtrancl_into_rtrancl<span class="delimiter">)</span>
+<span class="command">qed</span>
+
+<span class="command">lemma</span> rtrancl_while_Some<span class="delimiter">:</span> <span class="keyword2">assumes</span> <span class="string">&quot;rtrancl_while = Some(ws,Z)&quot;</span>
+<span class="keyword2">shows</span> <span class="string">&quot;if ws = []
+       then Z = {(x,y). y &isin; set(f x)}^* `` {x} &and; (&forall;z&isin;Z. p z)
+       else &not;p(hd ws) &and; hd ws &isin; {(x,y). y &isin; set(f x)}^* `` {x}&quot;</span>
+<span class="command">proof</span> -
+  <span class="command">have</span> <span class="string">&quot;rtrancl_while_invariant ([x],{x})&quot;</span> <span class="command">by</span> simp
+  <span class="command">with</span> rtrancl_while_invariant <span class="command">have</span> I<span class="delimiter">:</span> <span class="string">&quot;rtrancl_while_invariant (ws,Z)&quot;</span>
+    <span class="command">by</span> <span class="delimiter">(</span>rule while_option_rule<span class="delimiter">[</span>OF _ assms<span class="delimiter">[</span>unfolded rtrancl_while_def<span class="delimiter">]</span><span class="delimiter">]</span><span class="delimiter">)</span>
+  <span class="command">{</span> <span class="command">assume</span> <span class="string">&quot;ws = []&quot;</span>
+    <span class="command">hence</span> <span class="var">?thesis</span> <span class="command">using</span> I
+      <span class="command">by</span> <span class="delimiter">(</span>auto simp del<span class="delimiter">:</span>Image_Collect_split dest<span class="delimiter">:</span> Image_closed_trancl<span class="delimiter">)</span>
+  <span class="command">}</span> <span class="command">moreover</span>
+  <span class="command">{</span> <span class="command">assume</span> <span class="string">&quot;ws &ne; []&quot;</span>
+    <span class="command">hence</span> <span class="var">?thesis</span> <span class="command">using</span> I while_option_stop<span class="delimiter">[</span>OF assms<span class="delimiter">[</span>unfolded rtrancl_while_def<span class="delimiter">]</span><span class="delimiter">]</span>
+      <span class="command">by</span> <span class="delimiter">(</span>simp add<span class="delimiter">:</span> subset_iff<span class="delimiter">)</span>
+  <span class="command">}</span>
+  <span class="command">ultimately</span> <span class="command">show</span> <span class="var">?thesis</span> <span class="command">by</span> simp
+<span class="command">qed</span>
+
+<span class="command">lemma</span> rtrancl_while_finite_Some<span class="delimiter">:</span>
+  <span class="keyword2">assumes</span> <span class="string">&quot;finite ({(x, y). y &isin; set (f x)}<span class="hidden">&#8679;</span><sup>*</sup> `` {x})&quot;</span> <span class="delimiter">(</span><span class="keyword2">is</span> <span class="string">&quot;finite ?Cl&quot;</span><span class="delimiter">)</span>
+  <span class="keyword2">shows</span> <span class="string">&quot;&exist;y. rtrancl_while = Some y&quot;</span>
+<span class="command">proof</span> -
+  <span class="command">let</span> <span class="var">?R</span> <span class="delimiter">=</span> <span class="string">&quot;(&lambda;(_, Z). card (?Cl - Z)) &lt;*mlex*&gt; (&lambda;(ws, _). length ws) &lt;*mlex*&gt; {}&quot;</span>
+  <span class="command">have</span> <span class="string">&quot;wf ?R&quot;</span> <span class="command">by</span> <span class="delimiter">(</span>blast intro<span class="delimiter">:</span> wf_mlex<span class="delimiter">)</span>
+  <span class="command">then</span> <span class="command">show</span> <span class="var">?thesis</span> <span class="command">unfolding</span> rtrancl_while_def
+  <span class="command">proof</span> <span class="delimiter">(</span>rule wf_rel_while_option_Some<span class="delimiter">[</span>of <span class="var">?R</span> rtrancl_while_invariant<span class="delimiter">]</span><span class="delimiter">)</span>
+    <span class="command">fix</span> st <span class="command">assume</span> *<span class="delimiter">:</span> <span class="string">&quot;rtrancl_while_invariant st &and; rtrancl_while_test st&quot;</span>
+    <span class="command">hence</span> I<span class="delimiter">:</span> <span class="string">&quot;rtrancl_while_invariant (rtrancl_while_step st)&quot;</span>
+      <span class="command">by</span> <span class="delimiter">(</span>blast intro<span class="delimiter">:</span> rtrancl_while_invariant<span class="delimiter">)</span>
+    <span class="command">show</span> <span class="string">&quot;(rtrancl_while_step st, st) &isin; ?R&quot;</span>
+    <span class="command">proof</span> <span class="delimiter">(</span>cases st<span class="delimiter">)</span>
+      <span class="command">fix</span> ws Z <span class="command">let</span> <span class="var">?ws</span> <span class="delimiter">=</span> <span class="string">&quot;fst (rtrancl_while_step st)&quot;</span> <span class="keyword2">and</span> <span class="var">?Z</span> <span class="delimiter">=</span> <span class="string">&quot;snd (rtrancl_while_step st)&quot;</span>
+      <span class="command">assume</span> st<span class="delimiter">:</span> <span class="string">&quot;st = (ws, Z)&quot;</span>
+      <span class="command">with</span> * <span class="command">obtain</span> h t <span class="keyword2">where</span> ws<span class="delimiter">:</span> <span class="string">&quot;ws = h # t&quot;</span> <span class="string">&quot;p h&quot;</span> <span class="command">by</span> <span class="delimiter">(</span>cases ws<span class="delimiter">)</span> auto
+      <span class="command">{</span> <span class="command">assume</span> <span class="string">&quot;remdups (filter (&lambda;y. y &notin; Z) (f h)) &ne; []&quot;</span>
+        <span class="command">then</span> <span class="command">obtain</span> z <span class="keyword2">where</span> <span class="string">&quot;z &isin; set (remdups (filter (&lambda;y. y &notin; Z) (f h)))&quot;</span> <span class="command">by</span> fastforce
+        <span class="command">with</span> st ws I <span class="command">have</span> <span class="string">&quot;Z &sub; ?Z&quot;</span> <span class="string">&quot;Z &sube; ?Cl&quot;</span> <span class="string">&quot;?Z &sube; ?Cl&quot;</span> <span class="command">by</span> auto
+        <span class="command">with</span> assms <span class="command">have</span> <span class="string">&quot;card (?Cl - ?Z) &lt; card (?Cl - Z)&quot;</span> <span class="command">by</span> <span class="delimiter">(</span>blast intro<span class="delimiter">:</span> psubset_card_mono<span class="delimiter">)</span>
+        <span class="command">with</span> st ws <span class="command">have</span> <span class="var">?thesis</span> <span class="command">unfolding</span> mlex_prod_def <span class="command">by</span> simp
+      <span class="command">}</span>
+      <span class="command">moreover</span>
+      <span class="command">{</span> <span class="command">assume</span> <span class="string">&quot;remdups (filter (&lambda;y. y &notin; Z) (f h)) = []&quot;</span>
+        <span class="command">with</span> st ws <span class="command">have</span> <span class="string">&quot;?Z = Z&quot;</span> <span class="string">&quot;?ws = t&quot;</span>  <span class="command">by</span> <span class="delimiter">(</span>auto simp<span class="delimiter">:</span> filter_empty_conv<span class="delimiter">)</span>
+        <span class="command">with</span> st ws <span class="command">have</span> <span class="var">?thesis</span> <span class="command">unfolding</span> mlex_prod_def <span class="command">by</span> simp
+      <span class="command">}</span>
+      <span class="command">ultimately</span> <span class="command">show</span> <span class="var">?thesis</span> <span class="command">by</span> blast
+    <span class="command">qed</span>
+  <span class="command">qed</span> <span class="delimiter">(</span>simp_all add<span class="delimiter">:</span> rtrancl_while_invariant<span class="delimiter">)</span>
+<span class="command">qed</span>
+
+<span class="command">end</span>
+
+<span class="command">hide_const</span> <span class="delimiter">(</span><span class="keyword2">open</span><span class="delimiter">)</span> rtrancl_while_test rtrancl_while_step rtrancl_while_invariant
+<span class="command">hide_fact</span> <span class="delimiter">(</span><span class="keyword2">open</span><span class="delimiter">)</span> rtrancl_while_invariant
+
+<span class="command">end</span>
+</pre>
+
+</div>
+</body>
+</html>

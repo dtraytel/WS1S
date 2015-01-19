@@ -1,0 +1,133 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+<html xmlns="http://www.w3.org/1999/xhtml">
+<head>
+<meta http-equiv="Content-Type" content="text/html; charset=utf-8"/>
+<title>Theory Order_Generator (Isabelle2014: August 2014)</title>
+<link media="all" rel="stylesheet" type="text/css" href="isabelle.css"/>
+</head>
+
+<body>
+<div class="head"><h1>Theory Order_Generator</h1>
+
+<span class="command">theory</span> <span class="name">Order_Generator</span><br/>
+<span class="keyword">imports</span> <a href="Derive_Manager.html"><span class="name">Derive_Manager</span></a><br/>
+
+</div>
+<div class="source">
+<pre><span class="comment">(*  Title:       Deriving class instances for datatypes
+    Author:      René Thiemann       &lt;rene.thiemann@uibk.ac.at&gt;
+    Maintainer:  René Thiemann
+    License:     LGPL
+*)</span>
+
+<span class="comment">(*
+Copyright 2013 René Thiemann
+
+This file is part of IsaFoR/CeTA.
+
+IsaFoR/CeTA is free software: you can redistribute it and/or modify it under the
+terms of the GNU Lesser General Public License as published by the Free Software
+Foundation, either version 3 of the License, or (at your option) any later
+version.
+
+IsaFoR/CeTA is distributed in the hope that it will be useful, but WITHOUT ANY
+WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS FOR A
+PARTICULAR PURPOSE.  See the GNU Lesser General Public License for more details.
+
+You should have received a copy of the GNU Lesser General Public License along
+with IsaFoR/CeTA. If not, see &lt;http://www.gnu.org/licenses/&gt;.
+*)</span>
+
+<span class="command">header</span> <span class="verbatim">{* Generating linear orders for datatypes *}</span>
+
+<span class="command">theory</span> Order_Generator
+<span class="keyword2">imports</span> Derive_Manager
+<span class="keyword2">begin</span>
+
+<span class="command">subsection</span> Introduction
+
+<span class="command">text</span> <span class="verbatim">{*
+
+The order generator registers itself at the derive-manager for the classes @{class ord},
+@{class order}, and @{class linorder}.
+To be more precise,
+it automatically generates the two functions @{term &quot;op &le;&quot;} and @{term &quot;op &lt;&quot;} for some datatype 
+\texttt{dtype} and
+proves the following instantiations.
+
+\begin{itemize}
+\item \texttt{instantiation dtype :: (ord,\ldots,ord) ord}
+\item \texttt{instantiation dtype :: (order,\ldots,order) order}
+\item \texttt{instantiation dtype :: (linorder,\ldots,linorder) linorder}
+\end{itemize}
+
+All the non-recursive types that are used in the datatype must have similar instantiations.
+For recursive type-dependencies this is automatically generated.
+
+For example, for the \texttt{datatype tree = Leaf nat | Node &quot;tree list&quot;} we require that
+@{type nat} is already in @{class linorder}, whereas for @{type list} nothing is required, since for the 
+\texttt{tree}
+datatype the @{type list} is only used recursively.
+
+However, if we define \texttt{datatype tree = Leaf &quot;nat list&quot; | Node tree tree} then 
+@{type list} must
+provide the above instantiations.
+
+Note that when calling the generator for @{class linorder}, it will automatically also derive the instantiations 
+for @{class order}, which in turn invokes the generator for @{class ord}. 
+A later invokation of @{class linorder}
+after @{class order} or @{class ord} is not possible.
+*}</span>
+
+<span class="command">subsection</span> <span class="string">&quot;Implementation Notes&quot;</span>
+
+<span class="command">text</span> <span class="verbatim">{*
+The generator uses the recursors from the datatype package to define a lexicographic order.
+E.g., for a declaration 
+\texttt{datatype &#39;a tree = Empty | Node &quot;&#39;a tree&quot; &#39;a &quot;&#39;a tree&quot;}
+this will semantically result in
+\begin{verbatim}
+(Empty &lt; Node _ _ _) = True
+(Node l1 l2 l3 &lt; Node r1 r2 r3) = 
+  (l1 &lt; r1 || l1 = r1 &amp;&amp; (l2 &lt; r2 || l2 = r2 &amp;&amp; l3 &lt; r3))
+(_ &lt; _) = False
+(l &lt;= r) = (l &lt; r || l = r)
+\end{verbatim}
+
+The desired properties (like @{term &quot;x &lt; y ==&gt; y &lt; z ==&gt; x &lt; z&quot;}) 
+of the orders are all proven using induction (with the induction theorem from the datatype on @{term x}),
+and afterwards there is a case distinction on the remaining variables, i.e., here @{term y} and @{term z}.
+If the constructors of @{term x}, @{term y}, and @{term z} are different always some basic tactic is invoked. 
+In the other case (identical constructors) for each property a dedicated tactic was designed.
+*}</span>
+
+<span class="command">subsection</span> <span class="string">&quot;Features and Limitations&quot;</span>
+
+<span class="command">text</span> <span class="verbatim">{*
+The order generator has been developed mainly for datatypes without explicit mutual recursion. 
+For mutual recursive datatypes---like
+\texttt{datatype a = C b and b = D a a}---only
+for the first mentioned datatype---here \texttt{a}---the instantiations of the order-classes are
+derived.
+
+Indirect recursion like in \texttt{datatype tree = Leaf nat | Node &quot;tree list&quot;} should work 
+without problems.
+*}</span>
+
+<span class="command">subsection</span> <span class="string">&quot;Installing the generator&quot;</span>
+
+<span class="command">lemma</span> linear_cases<span class="delimiter">:</span> <span class="string">&quot;(x :: &#39;a :: linorder) = y &or; x &lt; y &or; y &lt; x&quot;</span> <span class="command">by</span> auto
+
+<span class="command">ML_file</span> <span class="string">&quot;order_generator.ML&quot;</span> 
+
+<span class="command">setup</span> <span class="verbatim">{*
+  Order_Generator.setup
+*}</span>
+
+<span class="command">end</span>
+</pre>
+
+</div>
+</body>
+</html>

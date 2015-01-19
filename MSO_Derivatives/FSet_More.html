@@ -1,0 +1,115 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+<html xmlns="http://www.w3.org/1999/xhtml">
+<head>
+<meta http-equiv="Content-Type" content="text/html; charset=utf-8"/>
+<title>Theory FSet_More (Isabelle2014: August 2014)</title>
+<link media="all" rel="stylesheet" type="text/css" href="isabelle.css"/>
+</head>
+
+<body>
+<div class="head"><h1>Theory FSet_More</h1>
+
+<span class="command">theory</span> <span class="name">FSet_More</span><br/>
+<span class="keyword">imports</span> <a href="FSet.html"><span class="name">FSet</span></a><br/>
+
+</div>
+<div class="source">
+<pre><span class="command">theory</span> FSet_More
+<span class="keyword2">imports</span>  <span class="string">&quot;~~/src/HOL/Library/FSet&quot;</span>
+<span class="keyword2">begin</span>
+
+<span class="command">lemma</span> Suc_pred_image<span class="delimiter">[</span>simp<span class="delimiter">]</span><span class="delimiter">:</span> <span class="string">&quot;0 &notin; P ==&gt; (&lambda;x. Suc (x - Suc 0)) ` P = P&quot;</span>
+    <span class="command">unfolding</span> image_def <span class="command">by</span> safe <span class="delimiter">(</span>metis Suc_pred neq0_conv<span class="delimiter">)</span><span class="delimiter">+</span>
+
+<span class="command">context</span> <span class="keyword2">includes</span> fset.lifting <span class="keyword2">begin</span>
+
+<span class="command">lift_definition</span> fMax <span class="delimiter">::</span> <span class="string">&quot;(&#39;a :: linorder) fset =&gt; &#39;a&quot;</span> <span class="keyword2">is</span> Max <span class="command">.</span>
+<span class="command">lift_definition</span> fMin <span class="delimiter">::</span> <span class="string">&quot;(&#39;a :: linorder) fset =&gt; &#39;a&quot;</span> <span class="keyword2">is</span> Min <span class="command">.</span>
+
+<span class="command">lemma</span> fMax_in<span class="delimiter">[</span>simp<span class="delimiter">]</span><span class="delimiter">:</span> <span class="string">&quot;A &ne; {||} ==&gt; fMax A |&isin;| A&quot;</span>
+  <span class="command">by</span> transfer <span class="delimiter">(</span>rule Max_in<span class="delimiter">)</span>
+
+<span class="command">lemma</span> fMin_in<span class="delimiter">[</span>simp<span class="delimiter">]</span><span class="delimiter">:</span> <span class="string">&quot;A &ne; {||} ==&gt; fMin A |&isin;| A&quot;</span>
+  <span class="command">by</span> transfer <span class="delimiter">(</span>rule Min_in<span class="delimiter">)</span>
+
+<span class="command">lemma</span> fMax_ge<span class="delimiter">[</span>simp<span class="delimiter">]</span><span class="delimiter">:</span> <span class="string">&quot;x |&isin;| A ==&gt; x &le; fMax A&quot;</span>
+  <span class="command">by</span> transfer <span class="delimiter">(</span>rule Max_ge<span class="delimiter">)</span>
+
+<span class="command">lemma</span> fMin_le<span class="delimiter">[</span>simp<span class="delimiter">]</span><span class="delimiter">:</span> <span class="string">&quot;x |&isin;| A ==&gt; fMin A &le; x&quot;</span>
+  <span class="command">by</span> transfer <span class="delimiter">(</span>rule Min_le<span class="delimiter">)</span>
+
+<span class="command">lemma</span> fMax_eqI<span class="delimiter">:</span> <span class="string">&quot;(!!y. y |&isin;| A ==&gt; y &le; x) ==&gt; x |&isin;| A ==&gt; fMax A = x&quot;</span>
+  <span class="command">by</span> transfer <span class="delimiter">(</span>rule Max_eqI<span class="delimiter">)</span>
+
+<span class="command">lemma</span> fMin_eqI<span class="delimiter">:</span> <span class="string">&quot;(!!y. y |&isin;| A ==&gt; x &le; y) ==&gt; x |&isin;| A ==&gt; fMin A = x&quot;</span>
+  <span class="command">by</span> transfer <span class="delimiter">(</span>rule Min_eqI<span class="delimiter">)</span>
+
+<span class="command">lemma</span> fMax_singleton<span class="delimiter">[</span>simp<span class="delimiter">]</span><span class="delimiter">:</span> <span class="string">&quot;fMax {|x|} = x&quot;</span>
+  <span class="command">by</span> transfer <span class="delimiter">(</span>rule Max_singleton<span class="delimiter">)</span>
+
+<span class="command">lemma</span> fMin_singleton<span class="delimiter">[</span>simp<span class="delimiter">]</span><span class="delimiter">:</span> <span class="string">&quot;fMin {|x|} = x&quot;</span>
+  <span class="command">by</span> transfer <span class="delimiter">(</span>rule Min_singleton<span class="delimiter">)</span>
+
+<span class="command">lemma</span> fMax_finsert<span class="delimiter">[</span>simp<span class="delimiter">]</span><span class="delimiter">:</span> <span class="string">&quot;A &ne; {||} ==&gt; fMax (finsert x A) = max x (fMax A)&quot;</span>
+  <span class="command">by</span> transfer <span class="delimiter">(</span>rule Max_insert<span class="delimiter">)</span>
+
+<span class="command">lemma</span> fMin_finsert<span class="delimiter">[</span>simp<span class="delimiter">]</span><span class="delimiter">:</span> <span class="string">&quot;A &ne; {||} ==&gt; fMin (finsert x A) = min x (fMin A)&quot;</span>
+  <span class="command">by</span> transfer <span class="delimiter">(</span>rule Min_insert<span class="delimiter">)</span>
+
+<span class="command">lemmas</span> Suc_pred_fimage<span class="delimiter">[</span>simp<span class="delimiter">]</span> <span class="delimiter">=</span> Suc_pred_image<span class="delimiter">[</span>Transfer.transferred<span class="delimiter">]</span>
+
+<span class="command">lemma</span> mono_fMax_commute<span class="delimiter">:</span> <span class="string">&quot;mono f ==&gt; A &ne; {||} ==&gt; f (fMax A) = fMax (f |`| A)&quot;</span>
+  <span class="command">by</span> transfer <span class="delimiter">(</span>rule mono_Max_commute<span class="delimiter">)</span>
+
+<span class="command">end</span>
+
+<span class="command">context</span> linorder
+<span class="keyword2">begin</span>
+
+<span class="command">context</span> <span class="keyword2">includes</span> fset.lifting <span class="keyword2">begin</span>
+
+<span class="command">lemma</span> fset_linorder_max_induct<span class="delimiter">[</span>case_names fempty finsert<span class="delimiter">]</span><span class="delimiter">:</span>
+  <span class="keyword2">assumes</span> <span class="string">&quot;P {||}&quot;</span>
+  <span class="keyword2">and</span>     <span class="string">&quot;!!x S. [|&forall;y. y |&isin;| S --&gt; y &lt; x; P S|] ==&gt; P (finsert x S)&quot;</span>
+  <span class="keyword2">shows</span> <span class="string">&quot;P S&quot;</span>
+<span class="command">proof</span> -
+  <span class="comment">(* FIXME transfer and right_total vs. bi_total *)</span>
+  <span class="command">note</span> Domainp_forall_transfer<span class="delimiter">[</span>transfer_rule<span class="delimiter">]</span>
+  <span class="command">show</span> <span class="var">?thesis</span>
+  <span class="command">using</span> assms <span class="command">by</span> <span class="delimiter">(</span>transfer fixing<span class="delimiter">:</span> less<span class="delimiter">)</span> <span class="delimiter">(</span>auto intro<span class="delimiter">:</span> finite_linorder_max_induct<span class="delimiter">)</span>
+<span class="command">qed</span>
+
+<span class="command">lemma</span> finsert_eq_iff<span class="delimiter">:</span>
+  <span class="keyword2">assumes</span> <span class="string">&quot;a |&notin;| A&quot;</span> <span class="keyword2">and</span> <span class="string">&quot;b |&notin;| B&quot;</span>
+  <span class="keyword2">shows</span> <span class="string">&quot;(finsert a A = finsert b B) =
+    (if a = b then A = B else &exist;C. A = finsert b C &and; b |&notin;| C &and; B = finsert a C &and; a |&notin;| C)&quot;</span>
+  <span class="command">using</span> assms <span class="command">by</span> transfer <span class="delimiter">(</span>force simp<span class="delimiter">:</span> insert_eq_iff<span class="delimiter">)</span>
+
+<span class="command">end</span>
+
+<span class="command">end</span>
+
+<span class="command">lemma</span> ffilter_eq_fempty_iff<span class="delimiter">:</span>
+  <span class="string">&quot;ffilter P X = {||} &lt;-&gt; (&forall;x. x |&isin;| X --&gt; &not; P x)&quot;</span>
+  <span class="string">&quot;{||} = ffilter P X &lt;-&gt; (&forall;x. x |&isin;| X --&gt; &not; P x)&quot;</span>
+  <span class="command">by</span> auto
+
+<span class="command">lemma</span> max_ffilter_below<span class="delimiter">[</span>simp<span class="delimiter">]</span><span class="delimiter">:</span> <span class="string">&quot;[|x |&isin;| P; x &lt; n|] ==&gt;
+  max n (Suc (fMax (ffilter (&lambda;i. i &lt; n) P))) = n&quot;</span>
+  <span class="command">by</span> <span class="delimiter">(</span>metis max.absorb1 Suc_leI fMax_in fempty_iff ffmember_filter<span class="delimiter">)</span>
+
+<span class="command">lemma</span> fMax_boundedD<span class="delimiter">:</span>
+  <span class="string">&quot;[|fMax P &lt; n; x |&isin;| P|] ==&gt; x &lt; n&quot;</span>
+  <span class="string">&quot;[|fMax P &le; n; n |&notin;| P; x |&isin;| P|] ==&gt; x &lt; n&quot;</span>
+  <span class="command">by</span> <span class="delimiter">(</span>metis fMax_ge le_less_trans<span class="delimiter">,</span> metis fMax_ge leD neqE order.strict_trans2<span class="delimiter">)</span>
+
+<span class="command">lemma</span> fMax_ffilter_less<span class="delimiter">:</span> <span class="string">&quot;x |&isin;| P ==&gt; x &lt; n ==&gt; fMax (ffilter (&lambda;i. i &lt; n) P) &lt; n&quot;</span>
+  <span class="command">by</span> <span class="delimiter">(</span>metis fMax_in ffilter_eq_fempty_iff<span class="delimiter">(</span>2<span class="delimiter">)</span> ffmember_filter<span class="delimiter">)</span>
+
+<span class="command">end</span>
+</pre>
+
+</div>
+</body>
+</html>

@@ -1,0 +1,81 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+<html xmlns="http://www.w3.org/1999/xhtml">
+<head>
+<meta http-equiv="Content-Type" content="text/html; charset=utf-8"/>
+<title>Theory While_Default (Isabelle2014: August 2014)</title>
+<link media="all" rel="stylesheet" type="text/css" href="isabelle.css"/>
+</head>
+
+<body>
+<div class="head"><h1>Theory While_Default</h1>
+
+<span class="command">theory</span> <span class="name">While_Default</span><br/>
+<span class="keyword">imports</span> <a href="While_Combinator.html"><span class="name">While_Combinator</span></a><br/>
+
+</div>
+<div class="source">
+<pre><span class="command">theory</span> While_Default
+<span class="keyword2">imports</span> <span class="string">&quot;~~/src/HOL/Library/While_Combinator&quot;</span>
+<span class="keyword2">begin</span>
+
+<span class="command">context</span>
+  <span class="keyword2">fixes</span> d <span class="delimiter">::</span> <span class="string">&quot;&#39;a&quot;</span>
+  <span class="keyword2">and</span> b <span class="delimiter">::</span> <span class="string">&quot;&#39;a =&gt; bool&quot;</span>
+  <span class="keyword2">and</span> c <span class="delimiter">::</span> <span class="string">&quot;&#39;a =&gt; &#39;a&quot;</span>
+<span class="keyword2">begin</span>
+
+<span class="command">definition</span> while_default <span class="delimiter">::</span> <span class="string">&quot;&#39;a =&gt; &#39;a&quot;</span> <span class="keyword2">where</span>
+  <span class="string">&quot;while_default s =
+     (if &forall;k. b ((c^^k) s) then d else the (while_option b c s))&quot;</span>
+
+<span class="command">lemma</span> while_default_code<span class="delimiter">[</span>code<span class="delimiter">]</span><span class="delimiter">:</span>
+   <span class="string">&quot;while_default s = (if b s then while_default (c s) else s)&quot;</span>
+<span class="command">proof</span> <span class="delimiter">(</span>cases <span class="string">&quot;&forall;k. b ((c^^k) s)&quot;</span><span class="delimiter">)</span>
+  <span class="command">case</span> True
+  <span class="command">moreover</span>
+  <span class="command">from</span> spec<span class="delimiter">[</span>OF True<span class="delimiter">,</span> of <span class="string">&quot;0&quot;</span><span class="delimiter">]</span> <span class="command">have</span> <span class="string">&quot;b s&quot;</span> <span class="command">by</span> simp_all
+  <span class="command">moreover</span>
+  <span class="command">from</span> spec<span class="delimiter">[</span>OF True<span class="delimiter">,</span> of <span class="string">&quot;Suc m&quot;</span> <span class="keyword2">for</span> m<span class="delimiter">]</span> <span class="command">have</span> <span class="string">&quot;&forall;k. b ((c^^k) (c s))&quot;</span>
+    <span class="command">by</span> <span class="delimiter">(</span>simp add<span class="delimiter">:</span> funpow_Suc_right del<span class="delimiter">:</span> funpow.simps<span class="delimiter">(</span>2<span class="delimiter">)</span><span class="delimiter">)</span>
+  <span class="command">ultimately</span> <span class="command">show</span> <span class="var">?thesis</span> <span class="command">unfolding</span> while_default_def <span class="command">by</span> simp
+<span class="command">next</span>
+  <span class="command">case</span> False
+  <span class="command">def</span> k <span class="delimiter">&equiv;</span> <span class="string">&quot;LEAST k. &not; b ((c ^^ k) s)&quot;</span>
+  <span class="command">with</span> False <span class="command">have</span> k<span class="delimiter">:</span> <span class="string">&quot;&not; b ((c ^^ k) s)&quot;</span>
+    <span class="string">&quot;!!l. &not; b ((c ^^ l) s) ==&gt; k &le; l&quot;</span>
+    <span class="command">by</span> <span class="delimiter">(</span>auto intro<span class="delimiter">!</span><span class="delimiter">:</span> LeastI_ex<span class="delimiter">[</span>of <span class="string">&quot;&lambda;k. &not; b ((c ^^ k) s)&quot;</span><span class="delimiter">]</span> Least_le<span class="delimiter">)</span>
+  <span class="command">show</span> <span class="var">?thesis</span>
+  <span class="command">proof</span> <span class="delimiter">(</span>cases k<span class="delimiter">)</span>
+    <span class="command">case</span> 0
+    <span class="command">with</span> k<span class="delimiter">(</span>1<span class="delimiter">)</span> <span class="command">have</span> <span class="string">&quot;&not; b s&quot;</span> <span class="command">by</span> auto
+    <span class="command">with</span> False <span class="command">show</span> <span class="var">?thesis</span> <span class="command">by</span> <span class="delimiter">(</span>auto simp add<span class="delimiter">:</span> while_default_def while_option_unfold<span class="delimiter">)</span>
+  <span class="command">next</span>
+    <span class="command">case</span> <span class="delimiter">(</span>Suc k<span class="delimiter">)</span>
+    <span class="command">with</span> k<span class="delimiter">(</span>2<span class="delimiter">)</span> <span class="command">have</span> <span class="string">&quot;b ((c ^^ 0) s)&quot;</span> <span class="command">by</span> blast
+    <span class="command">then</span> <span class="command">have</span> <span class="string">&quot;b s&quot;</span> <span class="command">by</span> simp
+    <span class="command">with</span> k<span class="delimiter">(</span>1<span class="delimiter">)</span> Suc False <span class="command">show</span> <span class="var">?thesis</span> <span class="command">unfolding</span> while_default_def
+      <span class="command">by</span> <span class="delimiter">(</span>subst while_option_unfold<span class="delimiter">)</span> <span class="delimiter">(</span>auto simp add<span class="delimiter">:</span> funpow_Suc_right simp del<span class="delimiter">:</span> funpow.simps<span class="delimiter">(</span>2<span class="delimiter">)</span><span class="delimiter">)</span>
+  <span class="command">qed</span>
+<span class="command">qed</span>
+
+<span class="command">lemma</span> while_default_rule<span class="delimiter">:</span>
+  <span class="keyword2">assumes</span> c<span class="delimiter">:</span> <span class="string">&quot;!!s. P s ==&gt; b s ==&gt; P (c s)&quot;</span>
+  <span class="keyword2">and</span> t<span class="delimiter">:</span> <span class="string">&quot;!!s. P s ==&gt; &not; b s ==&gt; Q s&quot;</span>
+  <span class="keyword2">and</span> s<span class="delimiter">:</span> <span class="string">&quot;P s&quot;</span> <span class="keyword2">and</span> d<span class="delimiter">:</span> <span class="string">&quot;Q d&quot;</span>
+  <span class="keyword2">shows</span> <span class="string">&quot;Q (while_default s)&quot;</span>
+<span class="command">proof</span> <span class="delimiter">(</span>cases <span class="string">&quot;&forall;k. b ((c^^k) s)&quot;</span><span class="delimiter">)</span>
+  <span class="command">case</span> False
+  <span class="command">then</span> <span class="command">obtain</span> t <span class="keyword2">where</span> <span class="string">&quot;while_option b c s = Some t&quot;</span> <span class="command">unfolding</span> while_option_def <span class="command">by</span> auto
+  <span class="command">with</span> False <span class="command">show</span> <span class="var">?thesis</span> <span class="command">using</span> while_option_rule<span class="delimiter">[</span>of P b c s t<span class="delimiter">]</span> while_option_stop<span class="delimiter">[</span>of b c s t<span class="delimiter">]</span> s c t
+    <span class="command">by</span> <span class="delimiter">(</span>auto simp add<span class="delimiter">:</span> while_default_def<span class="delimiter">)</span>
+<span class="command">qed</span> <span class="delimiter">(</span>simp add<span class="delimiter">:</span> while_default_def d t<span class="delimiter">)</span>
+
+<span class="command">end</span>
+
+<span class="command">end</span>
+</pre>
+
+</div>
+</body>
+</html>

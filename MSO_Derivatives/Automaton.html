@@ -1,0 +1,275 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+<html xmlns="http://www.w3.org/1999/xhtml">
+<head>
+<meta http-equiv="Content-Type" content="text/html; charset=utf-8"/>
+<title>Theory Automaton (Isabelle2014: August 2014)</title>
+<link media="all" rel="stylesheet" type="text/css" href="isabelle.css"/>
+</head>
+
+<body>
+<div class="head"><h1>Theory Automaton</h1>
+
+<span class="command">theory</span> <span class="name">Automaton</span><br/>
+<span class="keyword">imports</span> <a href="While_Combinator.html"><span class="name">While_Combinator</span></a> <a href="Coinductive_Language.html"><span class="name">Coinductive_Language</span></a><br/>
+
+</div>
+<div class="source">
+<pre><span class="comment">(*  Author: Dmitriy Traytel *)</span>
+
+<span class="command">header</span> <span class="string">&quot;Equivalence Framework&quot;</span>
+
+<span class="comment">(*&lt;*)</span>
+<span class="command">theory</span> Automaton
+<span class="keyword2">imports</span>
+  <span class="string">&quot;~~/src/HOL/Library/While_Combinator&quot;</span>
+  <span class="string">&quot;$AFP/Coinductive_Languages/Coinductive_Language&quot;</span>
+<span class="keyword2">begin</span>
+<span class="comment">(*&gt;*)</span>
+
+<span class="command">abbreviation</span> <span class="string">&quot;\&lt;dd&gt;s &equiv; fold (&lambda;a L. \&lt;dd&gt; L a)&quot;</span>
+
+<span class="command">lemma</span> in_language_\&lt;dd&gt;s<span class="delimiter">:</span> <span class="string">&quot;in_language (\&lt;dd&gt;s w L) v &lt;-&gt; in_language L (w @ v)&quot;</span>
+  <span class="command">by</span> <span class="delimiter">(</span>induct w arbitrary<span class="delimiter">:</span> L<span class="delimiter">)</span> simp_all
+
+<span class="command">lemma</span> \&lt;oo&gt;_\&lt;dd&gt;s<span class="delimiter">:</span> <span class="string">&quot;\&lt;oo&gt; (\&lt;dd&gt;s w L) &lt;-&gt; in_language L w&quot;</span>
+  <span class="command">by</span> <span class="delimiter">(</span>induct w arbitrary<span class="delimiter">:</span> L<span class="delimiter">)</span> auto
+
+<span class="command">lemma</span> in_language_to_language<span class="delimiter">[</span>simp<span class="delimiter">]</span><span class="delimiter">:</span> <span class="string">&quot;in_language (to_language L) w &lt;-&gt; w &isin; L&quot;</span>
+  <span class="command">by</span> <span class="delimiter">(</span>metis in_language_to_language mem_Collect_eq<span class="delimiter">)</span>
+
+<span class="command">lemma</span> rtrancl_fold_product<span class="delimiter">:</span>
+<span class="keyword2">shows</span> <span class="string">&quot;{((r, s), (f a r, f a s)) | a r s. a &isin; A}^* =
+       {((r, s), (fold f w r, fold f w s)) | w r s. w &isin; lists A}&quot;</span> <span class="delimiter">(</span><span class="keyword2">is</span> <span class="string">&quot;?L = ?R&quot;</span><span class="delimiter">)</span>
+<span class="command">proof</span>-
+  <span class="command">{</span> <span class="command">fix</span> r s r&#39; s&#39;
+    <span class="command">have</span> <span class="string">&quot;((r, s), (r&#39;, s&#39;)) : ?L ==&gt; ((r, s), (r&#39;, s&#39;)) &isin; ?R&quot;</span>
+    <span class="command">proof</span><span class="delimiter">(</span>induction rule<span class="delimiter">:</span> converse_rtrancl_induct2<span class="delimiter">)</span>
+      <span class="command">case</span> refl <span class="command">show</span> <span class="var">?case</span> <span class="command">by</span><span class="delimiter">(</span>force intro<span class="delimiter">!</span><span class="delimiter">:</span> fold_simps<span class="delimiter">(</span>1<span class="delimiter">)</span><span class="delimiter">[</span>symmetric<span class="delimiter">]</span><span class="delimiter">)</span>
+    <span class="command">next</span>
+      <span class="command">case</span> step <span class="command">thus</span> <span class="var">?case</span> <span class="command">by</span><span class="delimiter">(</span>force intro<span class="delimiter">!</span><span class="delimiter">:</span> fold_simps<span class="delimiter">(</span>2<span class="delimiter">)</span><span class="delimiter">[</span>symmetric<span class="delimiter">]</span><span class="delimiter">)</span>
+    <span class="command">qed</span>
+  <span class="command">}</span> <span class="command">moreover</span>
+  <span class="command">{</span> <span class="command">fix</span> r s r&#39; s&#39;
+    <span class="command">{</span> <span class="command">fix</span> w <span class="command">assume</span> <span class="string">&quot;w &isin; lists A&quot;</span>
+      <span class="command">then</span> <span class="command">have</span> <span class="string">&quot;((r, s), fold f w r, fold f w s) &isin; ?L&quot;</span>
+      <span class="command">proof</span><span class="delimiter">(</span>induction w rule<span class="delimiter">:</span> rev_induct<span class="delimiter">)</span>
+        <span class="command">case</span> Nil <span class="command">show</span> <span class="var">?case</span> <span class="command">by</span> simp
+      <span class="command">next</span>
+        <span class="command">case</span> snoc <span class="command">thus</span> <span class="var">?case</span> <span class="command">by</span> <span class="delimiter">(</span>force elim<span class="delimiter">!</span><span class="delimiter">:</span> rtrancl_into_rtrancl<span class="delimiter">)</span>
+      <span class="command">qed</span>
+    <span class="command">}</span>
+    <span class="command">hence</span> <span class="string">&quot;((r, s), (r&#39;, s&#39;)) &isin; ?R ==&gt; ((r, s), (r&#39;, s&#39;)) &isin; ?L&quot;</span> <span class="command">by</span> auto
+  <span class="command">}</span> <span class="command">ultimately</span> <span class="command">show</span> <span class="var">?thesis</span> <span class="command">by</span> <span class="delimiter">(</span>auto 10 0<span class="delimiter">)</span>
+<span class="command">qed</span>
+
+<span class="command">lemma</span> rtrancl_fold_product1<span class="delimiter">:</span>
+<span class="keyword2">shows</span> <span class="string">&quot;{(r, s). &exist;a &isin; A. s = f a r}^* = {(r, s). &exist;a &isin; lists A. s = fold f a r}&quot;</span> <span class="delimiter">(</span><span class="keyword2">is</span> <span class="string">&quot;?L = ?R&quot;</span><span class="delimiter">)</span>
+<span class="command">proof</span>-
+  <span class="command">{</span> <span class="command">fix</span> r s
+    <span class="command">have</span> <span class="string">&quot;(r, s) &isin; ?L ==&gt; (r, s) &isin; ?R&quot;</span>
+    <span class="command">proof</span><span class="delimiter">(</span>induction rule<span class="delimiter">:</span> converse_rtrancl_induct<span class="delimiter">)</span>
+      <span class="command">case</span> base <span class="command">show</span> <span class="var">?case</span> <span class="command">by</span><span class="delimiter">(</span>force intro<span class="delimiter">!</span><span class="delimiter">:</span> fold_simps<span class="delimiter">(</span>1<span class="delimiter">)</span><span class="delimiter">[</span>symmetric<span class="delimiter">]</span><span class="delimiter">)</span>
+    <span class="command">next</span>
+      <span class="command">case</span> step <span class="command">thus</span> <span class="var">?case</span> <span class="command">by</span><span class="delimiter">(</span>force intro<span class="delimiter">!</span><span class="delimiter">:</span> fold_simps<span class="delimiter">(</span>2<span class="delimiter">)</span><span class="delimiter">[</span>symmetric<span class="delimiter">]</span><span class="delimiter">)</span>
+    <span class="command">qed</span>
+  <span class="command">}</span> <span class="command">moreover</span>
+  <span class="command">{</span> <span class="command">fix</span> r s
+    <span class="command">{</span> <span class="command">fix</span> w <span class="command">assume</span> <span class="string">&quot;w &isin; lists A&quot;</span>
+      <span class="command">then</span> <span class="command">have</span> <span class="string">&quot;(r, fold f w r) &isin; ?L&quot;</span>
+      <span class="command">proof</span><span class="delimiter">(</span>induction w rule<span class="delimiter">:</span> rev_induct<span class="delimiter">)</span>
+        <span class="command">case</span> Nil <span class="command">show</span> <span class="var">?case</span> <span class="command">by</span> simp
+      <span class="command">next</span>
+        <span class="command">case</span> snoc <span class="command">thus</span> <span class="var">?case</span> <span class="command">by</span> <span class="delimiter">(</span>force elim<span class="delimiter">!</span><span class="delimiter">:</span> rtrancl_into_rtrancl<span class="delimiter">)</span>
+      <span class="command">qed</span>
+    <span class="command">}</span> 
+    <span class="command">hence</span> <span class="string">&quot;(r, s) &isin; ?R ==&gt; (r, s) &isin; ?L&quot;</span> <span class="command">by</span> auto
+  <span class="command">}</span> <span class="command">ultimately</span> <span class="command">show</span> <span class="var">?thesis</span> <span class="command">by</span> <span class="delimiter">(</span>auto 10 0<span class="delimiter">)</span>
+<span class="command">qed</span>
+
+<span class="command">lemma</span> lang_eq_ext_Nil_fold_Deriv<span class="delimiter">:</span>
+  <span class="keyword2">fixes</span> K L A
+  <span class="keyword2">assumes</span> <span class="string">&quot;!!w. in_language K w ==&gt; w &isin; lists A&quot;</span> <span class="string">&quot;!!w. in_language L w ==&gt; w &isin; lists A&quot;</span>
+  <span class="keyword2">defines</span> <span class="string">&quot;\&lt;BB&gt; &equiv; {(\&lt;dd&gt;s w K, \&lt;dd&gt;s w L) | w. w &isin; lists A}&quot;</span>
+  <span class="keyword2">shows</span> <span class="string">&quot;K = L &lt;-&gt; (&forall;(K, L) &isin; \&lt;BB&gt;. \&lt;oo&gt; K &lt;-&gt; \&lt;oo&gt; L)&quot;</span>
+<span class="command">proof</span>
+  <span class="command">assume</span> <span class="string">&quot;&forall;(K, L)&isin;\&lt;BB&gt;. \&lt;oo&gt; K = \&lt;oo&gt; L&quot;</span>
+  <span class="command">then</span> <span class="command">show</span> <span class="string">&quot;K = L&quot;</span>
+  <span class="command">unfolding</span> \&lt;BB&gt;_def <span class="command">using</span> assms<span class="delimiter">(</span>1<span class="delimiter">,</span>2<span class="delimiter">)</span>
+  <span class="command">proof</span> <span class="delimiter">(</span>coinduction arbitrary<span class="delimiter">:</span> K L<span class="delimiter">)</span>
+    <span class="command">case</span> <span class="delimiter">(</span>Lang K L<span class="delimiter">)</span>
+    <span class="command">then</span> <span class="command">have</span> CIH<span class="delimiter">:</span> <span class="string">&quot;!!K&#39; L&#39;. &exist;w. K&#39; = \&lt;dd&gt;s w K &and; L&#39; = \&lt;dd&gt;s w L &and; w &isin; lists A ==&gt; \&lt;oo&gt; K&#39; = \&lt;oo&gt; L&#39;&quot;</span> <span class="keyword2">and</span>
+      <span class="delimiter">[</span>dest<span class="delimiter">,</span> simp<span class="delimiter">]</span><span class="delimiter">:</span> <span class="string">&quot;!!w. in_language K w ==&gt; w &isin; lists A&quot;</span> <span class="string">&quot;!!w. in_language L w ==&gt; w &isin; lists A&quot;</span> 
+      <span class="command">by</span> blast<span class="delimiter">+</span>
+    <span class="command">show</span> <span class="var">?case</span> <span class="command">unfolding</span> ex_simps simp_thms
+    <span class="command">proof</span> <span class="delimiter">(</span>safe del<span class="delimiter">:</span> iffI<span class="delimiter">)</span>
+      <span class="command">show</span> <span class="string">&quot;\&lt;oo&gt; K = \&lt;oo&gt; L&quot;</span> <span class="command">by</span> <span class="delimiter">(</span>intro CIH<span class="delimiter">[</span>OF exI<span class="delimiter">[</span><span class="keyword2">where</span> x <span class="delimiter">=</span> <span class="string">&quot;[]&quot;</span><span class="delimiter">]</span><span class="delimiter">]</span><span class="delimiter">)</span> simp
+    <span class="command">next</span>
+      <span class="command">fix</span> x w <span class="command">assume</span> <span class="string">&quot;&forall;x&isin;set w. x &isin; A&quot;</span>
+      <span class="command">then</span> <span class="command">show</span> <span class="string">&quot;\&lt;oo&gt; (\&lt;dd&gt;s w (\&lt;dd&gt; K x)) = \&lt;oo&gt; (\&lt;dd&gt;s w (\&lt;dd&gt; L x))&quot;</span>
+      <span class="command">proof</span> <span class="delimiter">(</span>cases <span class="string">&quot;x &isin; A&quot;</span><span class="delimiter">)</span>
+        <span class="command">assume</span> <span class="string">&quot;x &notin; A&quot;</span>
+        <span class="command">then</span> <span class="command">show</span> <span class="var">?thesis</span> <span class="command">unfolding</span> in_language_\&lt;dd&gt;s in_language.simps<span class="delimiter">[</span>symmetric<span class="delimiter">]</span> <span class="command">by</span> fastforce
+      <span class="command">qed</span> <span class="delimiter">(</span>intro CIH<span class="delimiter">[</span>OF exI<span class="delimiter">[</span><span class="keyword2">where</span> x <span class="delimiter">=</span> <span class="string">&quot;x # w&quot;</span><span class="delimiter">]</span><span class="delimiter">]</span><span class="delimiter">,</span> auto<span class="delimiter">)</span>
+    <span class="command">qed</span> <span class="delimiter">(</span>auto simp add<span class="delimiter">:</span> in_language.simps<span class="delimiter">[</span>symmetric<span class="delimiter">]</span> simp del<span class="delimiter">:</span> in_language.simps<span class="delimiter">)</span>
+  <span class="command">qed</span>
+<span class="command">qed</span> <span class="delimiter">(</span>auto simp<span class="delimiter">:</span> \&lt;BB&gt;_def<span class="delimiter">)</span>
+
+<span class="command">subsection</span> <span class="cartouche">&#8249;Abstract Deterministic Automaton&#8250;</span>
+
+<span class="command">locale</span> DA <span class="delimiter">=</span>
+<span class="keyword2">fixes</span> alphabet <span class="delimiter">::</span> <span class="string">&quot;&#39;a list&quot;</span>
+<span class="keyword2">fixes</span> init <span class="delimiter">::</span> <span class="string">&quot;&#39;t =&gt; &#39;s&quot;</span>
+<span class="keyword2">fixes</span> delta <span class="delimiter">::</span> <span class="string">&quot;&#39;a =&gt; &#39;s =&gt; &#39;s&quot;</span>
+<span class="keyword2">fixes</span> accept <span class="delimiter">::</span> <span class="string">&quot;&#39;s =&gt; bool&quot;</span>
+<span class="keyword2">fixes</span> wellformed <span class="delimiter">::</span> <span class="string">&quot;&#39;s =&gt; bool&quot;</span>
+<span class="keyword2">fixes</span> wf <span class="delimiter">::</span> <span class="string">&quot;&#39;t =&gt; bool&quot;</span>
+<span class="keyword2">fixes</span> Language <span class="delimiter">::</span> <span class="string">&quot;&#39;s =&gt; &#39;a language&quot;</span>
+<span class="keyword2">fixes</span> Lang <span class="delimiter">::</span> <span class="string">&quot;&#39;t =&gt; &#39;a language&quot;</span>
+<span class="keyword2">assumes</span> Language_init<span class="delimiter">:</span> <span class="string">&quot;Language (init t) = Lang t&quot;</span>
+<span class="keyword2">assumes</span> wellformed_init<span class="delimiter">:</span> <span class="string">&quot;wf t ==&gt; wellformed (init t)&quot;</span>
+<span class="keyword2">assumes</span> Language_alphabet<span class="delimiter">:</span> <span class="string">&quot;[|wellformed s; in_language (Language s) w|] ==&gt; w &isin; lists (set alphabet)&quot;</span>
+<span class="keyword2">assumes</span> wellformed_delta<span class="delimiter">:</span> <span class="string">&quot;[|wellformed s; a &isin; set alphabet|] ==&gt; wellformed (delta a s)&quot;</span>
+<span class="keyword2">assumes</span> Language_delta<span class="delimiter">:</span> <span class="string">&quot;[|wellformed s; a &isin; set alphabet|] ==&gt; Language (delta a s) = \&lt;dd&gt; (Language s) a&quot;</span>
+<span class="keyword2">assumes</span> accept_Language<span class="delimiter">:</span> <span class="string">&quot;wellformed s ==&gt; accept s &lt;-&gt; \&lt;oo&gt; (Language s)&quot;</span>
+<span class="keyword2">begin</span>
+
+<span class="command">lemma</span> wellformed_deltas<span class="delimiter">:</span> <span class="string">&quot;[|wellformed s; w &isin; lists (set alphabet)|] ==&gt;
+  wellformed (fold delta w s)&quot;</span>
+  <span class="command">by</span> <span class="delimiter">(</span>induction w arbitrary<span class="delimiter">:</span> s<span class="delimiter">)</span> <span class="delimiter">(</span>auto simp add<span class="delimiter">:</span> Language_delta wellformed_delta<span class="delimiter">)</span>
+
+<span class="command">lemma</span> Language_deltas<span class="delimiter">:</span> <span class="string">&quot;[|wellformed s; w &isin; lists (set alphabet)|] ==&gt;
+  Language (fold delta w s) = \&lt;dd&gt;s w (Language s)&quot;</span>
+  <span class="command">by</span> <span class="delimiter">(</span>induction w arbitrary<span class="delimiter">:</span> s<span class="delimiter">)</span> <span class="delimiter">(</span>auto simp add<span class="delimiter">:</span> Language_delta wellformed_delta<span class="delimiter">)</span>
+
+<span class="command">abbreviation</span> closure <span class="delimiter">::</span> <span class="string">&quot;&#39;s * &#39;s =&gt; ((&#39;s * &#39;s) list * (&#39;s * &#39;s) set) option&quot;</span> <span class="keyword2">where</span>
+  <span class="string">&quot;closure &equiv; rtrancl_while (&lambda;(p, q). accept p = accept q)
+    (&lambda;(p, q). map (&lambda;a. (delta a p, delta a q)) alphabet)&quot;</span>
+
+<span class="command">theorem</span> closure_sound_complete<span class="delimiter">:</span>
+<span class="keyword2">assumes</span> wf<span class="delimiter">:</span> <span class="string">&quot;wf r&quot;</span> <span class="string">&quot;wf s&quot;</span>
+<span class="keyword2">and</span> result<span class="delimiter">:</span> <span class="string">&quot;closure (init r, init s) = Some (ws, R)&quot;</span> <span class="delimiter">(</span><span class="keyword2">is</span> <span class="string">&quot;closure (?r, ?s) = _&quot;</span><span class="delimiter">)</span>
+<span class="keyword2">shows</span> <span class="string">&quot;ws = [] &lt;-&gt; Lang r = Lang s&quot;</span>
+<span class="command">proof</span> -
+  <span class="command">from</span> wf <span class="command">have</span> wellformed<span class="delimiter">:</span> <span class="string">&quot;wellformed ?r&quot;</span> <span class="string">&quot;wellformed ?s&quot;</span> <span class="command">using</span> wellformed_init <span class="command">by</span> blast<span class="delimiter">+</span>
+  <span class="command">note</span> Language_alphabets<span class="delimiter">[</span>simp<span class="delimiter">]</span> <span class="delimiter">=</span>
+    Language_alphabet<span class="delimiter">[</span>OF wellformed<span class="delimiter">(</span>1<span class="delimiter">)</span><span class="delimiter">]</span> Language_alphabet<span class="delimiter">[</span>OF wellformed<span class="delimiter">(</span>2<span class="delimiter">)</span><span class="delimiter">]</span>
+  <span class="command">note</span> Language_deltass <span class="delimiter">=</span> Language_deltas<span class="delimiter">[</span>OF wellformed<span class="delimiter">(</span>1<span class="delimiter">)</span><span class="delimiter">]</span> Language_deltas<span class="delimiter">[</span>OF wellformed<span class="delimiter">(</span>2<span class="delimiter">)</span><span class="delimiter">]</span>
+
+  <span class="command">have</span> bisim<span class="delimiter">:</span> <span class="string">&quot;(Language ?r = Language ?s) =
+    (&forall;a b. (&exist;w. a = \&lt;dd&gt;s w (Language ?r) &and; b = \&lt;dd&gt;s w (Language ?s) &and; w &isin; lists (set alphabet)) --&gt;
+    \&lt;oo&gt; a = \&lt;oo&gt; b)&quot;</span>
+    <span class="command">by</span> <span class="delimiter">(</span>subst lang_eq_ext_Nil_fold_Deriv<span class="delimiter">)</span> auto
+
+  <span class="command">have</span> leq<span class="delimiter">:</span> <span class="string">&quot;(Language ?r = Language ?s) =
+  (&forall;(r&#39;, s&#39;) &isin; {((r, s), (delta a r, delta a s)) | a r s. a &isin; set alphabet}^* `` {(?r, ?s)}.
+    accept r&#39; = accept s&#39;)&quot;</span> <span class="command">using</span> Language_deltass
+      accept_Language<span class="delimiter">[</span>OF wellformed_deltas<span class="delimiter">[</span>OF wellformed<span class="delimiter">(</span>1<span class="delimiter">)</span><span class="delimiter">]</span><span class="delimiter">]</span>
+      accept_Language<span class="delimiter">[</span>OF wellformed_deltas<span class="delimiter">[</span>OF wellformed<span class="delimiter">(</span>2<span class="delimiter">)</span><span class="delimiter">]</span><span class="delimiter">]</span>
+      <span class="command">unfolding</span> rtrancl_fold_product in_lists_conv_set bisim
+      <span class="command">by</span> <span class="delimiter">(</span>auto 10 0<span class="delimiter">)</span>
+  <span class="command">have</span> <span class="string">&quot;{(x,y). y &isin; set ((&lambda;(p,q). map (&lambda;a. (delta a p, delta a q)) alphabet) x)} =
+    {((r, s), (delta a r, delta a s)) | a r s. a &isin; set alphabet}&quot;</span> <span class="command">by</span> auto
+  <span class="command">with</span> rtrancl_while_Some<span class="delimiter">[</span>OF result<span class="delimiter">]</span>
+  <span class="command">have</span> <span class="string">&quot;(ws = []) = (Language ?r = Language ?s)&quot;</span> <span class="command">by</span> <span class="delimiter">(</span>auto simp add<span class="delimiter">:</span> leq Ball_def split<span class="delimiter">:</span> if_splits<span class="delimiter">)</span>
+  <span class="command">then</span> <span class="command">show</span> <span class="var">?thesis</span> <span class="command">unfolding</span> Language_init <span class="command">.</span>
+<span class="command">qed</span>
+
+<span class="command">subsection</span> <span class="cartouche">&#8249;The overall procedure&#8250;</span>
+
+<span class="command">definition</span> check_eqv <span class="delimiter">::</span> <span class="string">&quot;&#39;t =&gt; &#39;t =&gt; bool&quot;</span> <span class="keyword2">where</span>
+<span class="string">&quot;check_eqv r s = (wf r &and; wf s &and; (case closure (init r, init s) of Some([], _) =&gt; True | _ =&gt; False))&quot;</span>
+
+<span class="command">lemma</span> soundness<span class="delimiter">:</span> 
+<span class="keyword2">assumes</span> <span class="string">&quot;check_eqv r s&quot;</span> <span class="keyword2">shows</span> <span class="string">&quot;Lang r = Lang s&quot;</span>
+<span class="command">proof</span> -
+  <span class="command">obtain</span> R <span class="keyword2">where</span> <span class="string">&quot;wf r&quot;</span> <span class="string">&quot;wf s&quot;</span> <span class="string">&quot;closure (init r, init s) = Some([], R)&quot;</span>
+    <span class="command">using</span> assms <span class="command">by</span> <span class="delimiter">(</span>auto simp<span class="delimiter">:</span> check_eqv_def Let_def split<span class="delimiter">:</span> option.splits list.splits<span class="delimiter">)</span>
+  <span class="command">from</span> closure_sound_complete<span class="delimiter">[</span>OF this<span class="delimiter">]</span> <span class="command">show</span> <span class="string">&quot;Lang r = Lang s&quot;</span> <span class="command">by</span> simp
+<span class="command">qed</span>
+
+<span class="comment">(* completeness needs termination of closure, otherwise result could be None *)</span>
+
+<span class="command">text</span><span class="cartouche">&#8249;Auxiliary functions:&#8250;</span>
+<span class="command">definition</span> reachable <span class="delimiter">::</span> <span class="string">&quot;&#39;a list =&gt; &#39;s =&gt; &#39;s set&quot;</span> <span class="keyword2">where</span>
+  <span class="string">&quot;reachable as s = snd (the (rtrancl_while (&lambda;_. True) (&lambda;s. map (&lambda;a. delta a s) as) s))&quot;</span>
+
+<span class="command">definition</span> automaton <span class="delimiter">::</span> <span class="string">&quot;&#39;a list =&gt; &#39;s =&gt; ((&#39;s * &#39;a) * &#39;s) set&quot;</span> <span class="keyword2">where</span>
+  <span class="string">&quot;automaton as s =
+    snd (the
+    (let start = (([s], {s}), {});
+         test = &lambda;((ws, Z), A). ws &ne; [];
+         step = &lambda;((ws, Z), A).
+           (let s = hd ws;
+                new_edges = map (&lambda;a. ((s, a), delta a s)) as;
+                new = remdups (filter (&lambda;ss. ss &notin; Z) (map snd new_edges))
+           in ((new @ tl ws, set new &cup; Z), set new_edges &cup; A))
+    in while_option test step start))&quot;</span>
+
+<span class="command">definition</span> match <span class="delimiter">::</span> <span class="string">&quot;&#39;s =&gt; &#39;a list =&gt; bool&quot;</span> <span class="keyword2">where</span>
+  <span class="string">&quot;match s w = accept (fold delta w s)&quot;</span>
+
+<span class="command">lemma</span> match_correct<span class="delimiter">:</span>
+  <span class="keyword2">assumes</span> <span class="string">&quot;wellformed s&quot;</span> <span class="string">&quot;w &isin; lists (set alphabet)&quot;</span>
+  <span class="keyword2">shows</span> <span class="string">&quot;match s w &lt;-&gt; in_language (Language s) w&quot;</span>
+  <span class="command">unfolding</span> match_def accept_Language<span class="delimiter">[</span>OF wellformed_deltas<span class="delimiter">[</span>OF assms<span class="delimiter">]</span><span class="delimiter">]</span> Language_deltas<span class="delimiter">[</span>OF assms<span class="delimiter">]</span> \&lt;oo&gt;_\&lt;dd&gt;s <span class="command">..</span>
+
+<span class="command">end</span>
+
+<span class="command">subsection</span> <span class="cartouche">&#8249;Abstract Deterministic Finite Automaton&#8250;</span>
+
+<span class="command">locale</span> DFA <span class="delimiter">=</span> DA <span class="delimiter">+</span>
+<span class="keyword2">assumes</span> fin<span class="delimiter">:</span> <span class="string">&quot;wellformed s ==&gt; finite {fold delta w s | w. w &isin; lists (set alphabet)}&quot;</span>
+<span class="keyword2">begin</span>
+
+<span class="command">lemma</span> finite_rtrancl_delta_Image<span class="delimiter">:</span>
+  <span class="string">&quot;[|wellformed r; wellformed s|] ==&gt;
+  finite ({((r, s), (delta a r, delta a s))| a r s. a &isin; set (alphabet)}^* `` {(r, s)})&quot;</span>
+  <span class="command">unfolding</span> rtrancl_fold_product Image_singleton
+  <span class="command">by</span> <span class="delimiter">(</span>auto intro<span class="delimiter">:</span> finite_subset<span class="delimiter">[</span>OF _ finite_cartesian_product<span class="delimiter">[</span>OF fin fin<span class="delimiter">]</span><span class="delimiter">]</span><span class="delimiter">)</span>
+
+<span class="command">lemma</span> <span class="string">&quot;termination&quot;</span><span class="delimiter">:</span>
+  <span class="keyword2">assumes</span> <span class="string">&quot;wellformed r&quot;</span> <span class="string">&quot;wellformed s&quot;</span>
+  <span class="keyword2">shows</span> <span class="string">&quot;&exist;st. closure (r, s) = Some st&quot;</span> <span class="delimiter">(</span><span class="keyword2">is</span> <span class="string">&quot;&exist;_. closure  ?i = _&quot;</span><span class="delimiter">)</span>
+<span class="command">proof</span> <span class="delimiter">(</span>rule rtrancl_while_finite_Some<span class="delimiter">)</span>
+  <span class="command">show</span> <span class="string">&quot;finite ({(x, st). st &isin; set ((&lambda;(p,q). map (&lambda;a. (delta a p, delta a q)) alphabet) x)}<span class="hidden">&#8679;</span><sup>*</sup> `` {?i})&quot;</span>
+    <span class="command">by</span> <span class="delimiter">(</span>rule finite_subset<span class="delimiter">[</span>OF Image_mono<span class="delimiter">[</span>OF rtrancl_mono<span class="delimiter">]</span> finite_rtrancl_delta_Image<span class="delimiter">[</span>OF assms<span class="delimiter">]</span><span class="delimiter">]</span><span class="delimiter">)</span> auto
+<span class="command">qed</span>
+
+<span class="command">lemma</span> completeness<span class="delimiter">:</span> 
+<span class="keyword2">assumes</span> <span class="string">&quot;wf r&quot;</span> <span class="string">&quot;wf s&quot;</span> <span class="string">&quot;Lang r = Lang s&quot;</span> <span class="keyword2">shows</span> <span class="string">&quot;check_eqv r s&quot;</span>
+<span class="command">proof</span> -
+  <span class="command">obtain</span> ws R <span class="keyword2">where</span> 1<span class="delimiter">:</span> <span class="string">&quot;closure (init r, init s) = Some (ws, R)&quot;</span> <span class="command">using</span> <span class="string">&quot;termination&quot;</span>
+    wellformed_init assms <span class="command">by</span> fastforce
+  <span class="command">with</span> closure_sound_complete<span class="delimiter">[</span>OF _ _ this<span class="delimiter">]</span> assms
+  <span class="command">show</span> <span class="string">&quot;check_eqv r s&quot;</span> <span class="command">by</span> <span class="delimiter">(</span>simp add<span class="delimiter">:</span> check_eqv_def Language_alphabet<span class="delimiter">)</span>
+<span class="command">qed</span>
+
+<span class="command">lemma</span> finite_rtrancl_delta_Image1<span class="delimiter">:</span>
+  <span class="string">&quot;wellformed r ==&gt; finite ({(r, s). &exist;a &isin; set alphabet. s = delta a r}^* `` {r})&quot;</span>
+  <span class="command">unfolding</span> rtrancl_fold_product1 <span class="command">by</span> <span class="delimiter">(</span>auto intro<span class="delimiter">:</span> finite_subset<span class="delimiter">[</span>OF _ fin<span class="delimiter">]</span><span class="delimiter">)</span>
+
+<span class="command">lemma</span>
+  <span class="keyword2">assumes</span> <span class="string">&quot;wellformed r&quot;</span> <span class="string">&quot;set as &sube; set alphabet&quot;</span>
+  <span class="keyword2">shows</span> reachable<span class="delimiter">:</span> <span class="string">&quot;reachable as r = {fold delta w r | w. w &isin; lists (set as)}&quot;</span>
+  <span class="keyword2">and</span> finite_reachable<span class="delimiter">:</span> <span class="string">&quot;finite (reachable as r)&quot;</span>
+<span class="command">proof</span> -
+  <span class="command">obtain</span> wsZ <span class="keyword2">where</span> *<span class="delimiter">:</span> <span class="string">&quot;rtrancl_while (&lambda;_. True) (&lambda;s. map (&lambda;a. delta a s) as) r = Some wsZ&quot;</span>
+    <span class="command">using</span> assms <span class="command">by</span> <span class="delimiter">(</span>atomize_elim<span class="delimiter">,</span> intro rtrancl_while_finite_Some Image_mono rtrancl_mono
+      finite_subset<span class="delimiter">[</span>OF _ finite_rtrancl_delta_Image1<span class="delimiter">[</span>of r<span class="delimiter">]</span><span class="delimiter">]</span><span class="delimiter">)</span> auto
+  <span class="command">then</span> <span class="command">show</span> <span class="string">&quot;reachable as r = {fold delta w r | w. w &isin; lists (set as)}&quot;</span>
+    <span class="command">unfolding</span> reachable_def <span class="command">by</span> <span class="delimiter">(</span>cases wsZ<span class="delimiter">)</span>
+      <span class="delimiter">(</span>auto dest<span class="delimiter">!</span><span class="delimiter">:</span> rtrancl_while_Some split<span class="delimiter">:</span> if_splits simp<span class="delimiter">:</span> rtrancl_fold_product1 image_iff<span class="delimiter">)</span>
+  <span class="command">then</span> <span class="command">show</span> <span class="string">&quot;finite (reachable as r)&quot;</span> <span class="command">using</span> assms <span class="command">by</span> <span class="delimiter">(</span>force intro<span class="delimiter">:</span> finite_subset<span class="delimiter">[</span>OF _ fin<span class="delimiter">]</span><span class="delimiter">)</span>
+<span class="command">qed</span>
+  
+<span class="command">end</span>
+
+<span class="comment">(*&lt;*)</span>
+<span class="command">end</span>
+<span class="comment">(*&gt;*)</span>
+</pre>
+
+</div>
+</body>
+</html>
