@@ -25,7 +25,7 @@ There are few deviations from the description in the paper:
   the concrete formulas, which in turn include the base formulas).
 
 * Formulas include conjunctions and universal quantifiers. This means, e.g.,
-  that the reasoning must happen not only modulo \/-ACI, but also modulo /\-ACI.
+  that the reasoning must happen not only modulo \/-ACI, but also modulo /\\-ACI.
 
 * We prove only soundness (and conditional completeness assuming termination)
   for a stronger normalization function (that is doing strictly more than ACI).
